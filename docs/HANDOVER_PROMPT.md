@@ -52,7 +52,9 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
   - `deck.html` + `src/deck.js`: the 11-slide pitch deck. Its results slide reads the real ledger.
   - Data: `atlas/src/data/atlas-data.json` and `atlas/src/data/ledger.json`, written by `npm run atlas` / `npm run finalize`.
 - `legacy-dapp/`: the dApp being migrated. Its tests are the behavior contract.
-- `scripts/finalize.mjs` (`npm run finalize`): guard, tests, a check that test files are unchanged since tag `before-bob`, build + gzip bundle size against `reports/baseline-bundle.json` (549 kB), audit, reports, replay bundle. Writes `reports/submission-numbers.md`.
+- `scripts/record-tour.mjs` (`npm run record:tour` / `record:deck`): 1920×1080 clips of the guided replay and the deck for the video (needs `npm i --no-save playwright && npx playwright install chromium` once).
+- `scripts/prove-pack.mjs` (`npm run prove:pack`): runs the whole protocol on `samples/moment-billing` with the Moment.js pack; CI runs it.
+- `scripts/finalize.mjs` (`npm run finalize`): also writes paste-ready statements to `docs/submission/final/`; guard, tests, a check that test files are unchanged since tag `before-bob`, build + gzip bundle size against `reports/baseline-bundle.json` (549 kB), audit, reports, replay bundle. Writes `reports/submission-numbers.md`.
 - `docs/BOB_RUNBOOK.md`: the exact Bob prompts: expand step, dispatcher, cleanup, review, retakes.
 - `docs/MIGRATION_PLAYBOOK.md`: the ethers/web3 → viem/wagmi mapping and traps.
 - `docs/REHEARSAL.md`: a full dry run done by hand on a throwaway clone. It proved the tooling works end to end.
@@ -69,7 +71,7 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
   - `signalbox-pr.yml`: bot comment on pull requests.
 
 ## Status right now
-- Done, tested (79 tests: 39 chainguard/signalbox, 22 dApp, 18 panel) and pushed on the branch: everything above.
+- Done, tested (87 tests: 41 chainguard/signalbox, 22 dApp, 18 panel, 6 Moment.js sample) and pushed on the branch: everything above.
 - Already live on `main`: the panel with the night colours.
 - **Not yet on `main`** (needs one more PR merge): the deck, the hash-chained ledger + audit + "Ledger verified" badge, "Review bob-N's change" diffs, blast radius, crew roster, risk scores, the PR bot, and the guided tour. To merge: open https://github.com/ramadan904/bob-chainguard/compare/main...claude/dazzling-ptolemy-c288r3 → Create pull request → Merge pull request → Confirm merge.
 - **Not done yet:** the real Bob run. **The migration must be done by IBM Bob, not by you or by me**, because it's what the judges score. `legacy-dapp/src` is still the untouched "before" code, and that's correct.
