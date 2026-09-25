@@ -265,7 +265,7 @@ function buildStats() {
   $('#stats').replaceChildren(
     cell('calls', 'Legacy call sites'),
     cell('blocks', 'Blocks cleared'),
-    cell('agents', 'Agents on the network'),
+    cell('agents', 'Agents in section'),
     cell('faults', 'Faults caught'),
   )
 }
@@ -279,7 +279,7 @@ function updateStats() {
   tween('blocks', $('#stat-blocks'), sum.cleared)
   $('#stat-blocks-sub').textContent = `of ${sum.total} in ${view.sb.waves} waves`
   tween('agents', $('#stat-agents'), sum.agents.length)
-  $('#stat-agents-sub').textContent = sum.agents.join(' · ') || (view.opened ? 'none' : 'box not opened')
+  $('#stat-agents-sub').textContent = sum.agents.join(' · ') || 'none in section'
   tween('faults', $('#stat-faults'), view.faults)
   $('#stat-faults-sub').textContent = view.faults ? 'stopped before commit' : ''
   document.body.dataset.done = String(calls === 0)
@@ -291,7 +291,7 @@ function updateStats() {
   $('#health').setAttribute('aria-valuenow', String(pct))
   const badge = $('#mode')
   badge.dataset.mode = model.mode
-  badge.textContent = model.mode === 'live' ? (view.atHead ? 'Live' : 'Live · paused') : model.mode === 'replay' ? 'Replay' : 'Baseline'
+  badge.textContent = `Mode · ${model.mode === 'live' ? (view.atHead ? 'Live' : 'Live · paused') : model.mode === 'replay' ? 'Replay' : 'Plan open'}`
 }
 
 // ------------------------------------------------------------------ signal box panel (board)
@@ -339,7 +339,7 @@ function updateBoard() {
 function updateDescriber() {
   const list = $('#describer')
   if (!view.opened) {
-    list.replaceChildren(h('li', { class: 'td-empty' }, 'The signal box has not been opened yet. Run ', h('code', {}, 'npm run sb -- init'), ', then give each Bob subagent its block prompt.'))
+    list.replaceChildren(h('li', { class: 'td-empty' }, 'No events. ', h('code', {}, 'sb init'), ' opens the box; every claim, fault and clear lands here.'))
     return
   }
   const upto = view.stops[view.i].event
@@ -382,9 +382,10 @@ function updateTower() {
   const sum = summary(view.sb)
   const green = Object.values(view.sb.tasks).filter((t) => t.state === 'clear')
   const held = lanes.filter((l) => l.status === 'held').length
-  $('#tower-sub').textContent = lanes.length
-    ? `${sum.agents.length} Bob subagent${sum.agents.length === 1 ? '' : 's'} in section · ${held} held at a signal · ${green.length} green block${green.length === 1 ? '' : 's'} waiting`
-    : `${green.length} green block${green.length === 1 ? '' : 's'} waiting for Bob subagents. Lanes open as agents claim them.`
+  const busy = lanes.filter((l) => l.task).length
+  $('#tower-sub').replaceChildren(...[
+    ['in section', busy], ['held', held], ['green, free', green.length], ['at danger', sum.danger], ['cleared', sum.cleared],
+  ].map(([k, v]) => h('span', { class: `tc${v ? '' : ' zero'}` }, h('b', {}, String(v)), ` ${k}`)))
   const cards = lanes.map((l) => {
     const t = l.task && view.sb.tasks[l.task]
     return h('li', { class: `lane l-${l.status}${l.fresh ? ' fresh' : ''}`, style: `--c:${agentColor(l.agent)}`, tabindex: 0,
@@ -401,10 +402,18 @@ function updateTower() {
       l.heldFor ? h('p', { class: 'lane-held' }, h('b', {}, `Refused ${l.heldFor}: `), l.reason.replace(/^signal at danger: /, '')) : h('p', { class: 'lane-last' }, h('time', {}, l.last.at.slice(11, 19)), ' ', describe(l.last)),
       h('p', { class: 'lane-stats' }, h('b', {}, String(l.clears)), ' cleared · ', h('b', { class: l.faults ? 'f' : '' }, String(l.faults)), ' faults · ', h('b', { class: l.denies ? 'd' : '' }, String(l.denies)), ' refused'))
   })
-  const ghosts = lanes.length ? [] : green.slice(0, 4).map((t, k) => h('li', { class: 'lane l-ghost' },
-    h('div', { class: 'lane-top' }, h('span', { class: 'lane-name' }, `LANE ${k + 1}`)),
-    h('p', { class: 'lane-status' }, 'Awaiting a subagent'),
-    h('p', { class: 'lane-block' }, h('b', {}, t.id), ` · wave ${t.wave} · signal green`)))
+  // No agent yet: the tracks are still real. Each green block is a free section with its files
+  // and call count; the rules strip states the interlocking in one line.
+  const ghosts = lanes.length ? [] : green.map((t) => h('li', { class: 'lane l-ghost', tabindex: 0,
+    onclick: () => select(taskFiles(t.id)[0]),
+    onmouseenter: () => { model.focusTask = t.id; updateMap() },
+    onmouseleave: () => { model.focusTask = null; updateMap() },
+  },
+    h('div', { class: 'lane-top' }, h('span', { class: 'lane-name' }, t.id), h('span', { class: 'signal-head s-clear' }, h('i', { class: 'lamp red' }), h('i', { class: 'lamp amber' }), h('i', { class: 'lamp green' }))),
+    h('p', { class: 'lane-status' }, `Wave ${t.wave} · clear · unoccupied`),
+    h('p', { class: 'lane-block' }, taskFiles(t.id).map((f) => f.split('/').pop()).join(' · ')),
+    h('p', { class: 'lane-stats' }, h('b', {}, String(t.findings || 0)), ' legacy call sites')))
+  $('#tower-rules').hidden = lanes.length > 0
   $('#lanes').replaceChildren(...cards, ...ghosts)
   document.body.classList.toggle('held-now', view.event?.t === 'deny')
 }
@@ -487,15 +496,18 @@ function askDesk(question) {
   }
 }
 
+const DESK_CHIPS = ['start wave 1', 'riskiest block', 'why w2-lib']
+
 function buildDesk() {
   $('#ask').replaceChildren(
     h('form', { class: 'ask-form', onsubmit: (e) => { e.preventDefault(); askDesk() } },
-      h('label', { for: 'ask-input', class: 'ask-label' }, 'Dispatcher'),
-      h('input', { id: 'ask-input', type: 'text', autocomplete: 'off', placeholder: 'Ask the signal box… “Why is w2-lib at danger?”  (press / )' }),
-      h('button', { type: 'submit', class: 'ask-go' }, 'Ask')),
-    h('div', { class: 'ask-examples' }, EXAMPLES.slice(0, 4).map((x) => h('button', { type: 'button', class: 'ask-chip', onclick: () => askDesk(x) }, x))),
-    h('div', { class: 'ask-answer', id: 'ask-answer', hidden: true, 'aria-live': 'polite' }),
-    h('p', { class: 'ask-note' }, 'Answers are computed from the ledger by keyword intents, not a language model. Bob Agent mode uses the same desk from its terminal: ', h('code', {}, 'npm run -s sb -- ask "…"'), '.'))
+      h('label', { for: 'ask-input', class: 'ask-label', title: 'Deterministic: keyword intents over the ledger, no language model. Bob uses the same desk: sb ask "…" or the signalbox_ask MCP tool.' }, 'Desk'),
+      h('span', { class: 'ask-prompt', 'aria-hidden': 'true' }, '›'),
+      h('input', { id: 'ask-input', type: 'text', autocomplete: 'off', spellcheck: 'false', placeholder: 'why w2-lib · riskiest block · start wave 1' }),
+      h('kbd', { class: 'ask-kbd', title: 'Press / to focus' }, '/'),
+      h('button', { type: 'submit', class: 'ask-go' }, 'Run')),
+    h('div', { class: 'ask-examples' }, DESK_CHIPS.map((x) => h('button', { type: 'button', class: 'ask-chip', onclick: () => askDesk(x) }, x))),
+    h('div', { class: 'ask-answer', id: 'ask-answer', hidden: true, 'aria-live': 'polite' }))
 }
 
 // ------------------------------------------------------------------ train graph
@@ -505,8 +517,34 @@ const AGENT_COLORS = ['#ffb000', '#33b1ff', '#ff7eb6', '#42be65', '#08bdba', '#d
 function updateGraph() {
   const el = $('#graph')
   const full = timeline(model.events)
+  const W = Math.max(640, el.clientWidth || 900)
+  const left = 160
+  const right = 24
+  const rowH = 38
+  const band = 34 // parallelism band
+  const tasks = [...(full ? full.tasks : Object.values(view.sb.tasks).map((t) => ({ id: t.id, wave: t.wave })))].sort((a, b) => a.wave - b.wave || a.id.localeCompare(b.id))
+  const top = band + 22
+  const H = top + tasks.length * rowH + 30
+  const rowY = Object.fromEntries(tasks.map((t, i) => [t.id, top + i * rowH]))
+  const g = s('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, class: 'graph', role: 'img' })
+  const rows = () => {
+    let lastWave = null
+    for (const t of tasks) {
+      const y = rowY[t.id]
+      g.append(s('rect', { x: left, y: y + 3, width: W - left - right, height: rowH - 6, rx: 3, class: 'g-lane' }))
+      if (t.wave !== lastWave) {
+        g.append(s('line', { x1: 8, x2: W - right, y1: y - 1, y2: y - 1, class: 'g-wave' }))
+        lastWave = t.wave
+      }
+      g.append(s('text', { x: 12, y: y + rowH / 2 + 4, class: 'g-row' }, s('tspan', { class: 'g-w' }, `W${t.wave} `), t.id))
+    }
+    g.append(s('text', { x: 12, y: band / 2 + 8, class: 'g-row g-par-label' }, 'PARALLEL'))
+  }
   if (!full) {
-    el.replaceChildren(h('p', { class: 'graph-empty' }, 'Bars appear here as Bob subagents claim blocks.'))
+    rows()
+    g.setAttribute('aria-label', 'Train graph: no block has been occupied yet')
+    g.append(s('text', { x: left + 12, y: band / 2 + 8, class: 'g-axis' }, 'no occupations yet · bars start at the first claim'))
+    el.replaceChildren(g)
     return
   }
   const upto = view.stops[view.i].event
@@ -514,52 +552,50 @@ function updateGraph() {
   const now = Date.parse(model.events[upto].at)
   const agents = [...new Set(full.runs.map((r) => r.agent))]
   const color = agentColor
-  const tasks = [...full.tasks].sort((a, b) => a.wave - b.wave || a.id.localeCompare(b.id))
-  const W = Math.max(640, el.clientWidth || 900)
-  const left = 150
-  const right = 24
-  const rowH = 30
-  const top = 26
-  const H = top + tasks.length * rowH + 30
   const span = Math.max(1, full.t1 - full.t0)
   const x = (t) => left + ((t - full.t0) / span) * (W - left - right)
-  const rowY = Object.fromEntries(tasks.map((t, i) => [t.id, top + i * rowH]))
-
-  const g = s('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, class: 'graph', role: 'img', 'aria-label': `Train graph: ${tl.runs.length} block occupations by ${agents.length} agents` })
-  // time axis: minute marks
+  g.setAttribute('aria-label', `Train graph: ${tl.runs.length} block occupations by ${agents.length} agents`)
+  rows()
   const stepMs = [10e3, 30e3, 60e3, 120e3, 300e3, 600e3, 900e3, 1800e3, 3600e3].find((m) => span / m <= 8) || 7200e3
   for (let t = 0; t <= span; t += stepMs) {
     const xx = x(full.t0 + t)
-    g.append(s('line', { x1: xx, x2: xx, y1: top - 6, y2: H - 24, class: 'g-grid' }),
+    g.append(s('line', { x1: xx, x2: xx, y1: band + 4, y2: H - 24, class: 'g-grid' }),
       s('text', { x: xx, y: H - 8, class: 'g-axis', 'text-anchor': 'middle' }, t >= 60e3 ? `+${Math.round(t / 60e3)}m` : `+${Math.round(t / 1e3)}s`))
   }
-  let lastWave = null
-  for (const t of tasks) {
-    const y = rowY[t.id]
-    if (t.wave !== lastWave) {
-      g.append(s('line', { x1: 8, x2: W - right, y1: y - 3, y2: y - 3, class: 'g-wave' }))
-      lastWave = t.wave
-    }
-    g.append(s('text', { x: 12, y: y + rowH / 2 + 1, class: 'g-row' }, `W${t.wave}  ${t.id}`))
+  // Parallelism band: how many agents occupy blocks at each moment. Height and colour = count.
+  const edges = tl.runs.flatMap((r) => [[r.start, 1], [r.end ?? now, -1]]).sort((a, b) => a[0] - b[0] || a[1] - b[1])
+  let cur = 0
+  let peak = 0
+  for (let k = 0; k < edges.length; k++) {
+    cur += edges[k][1]
+    const next = edges[k + 1]?.[0]
+    if (next == null || cur <= 0 || next <= edges[k][0]) continue
+    peak = Math.max(peak, cur)
+    const hh = Math.min(band - 6, 6 + (cur - 1) * 8)
+    const x0 = x(edges[k][0])
+    const w = Math.max(1, x(next) - x0)
+    g.append(s('rect', { x: x0, y: band - hh, width: w, height: hh, class: `g-par p${Math.min(cur, 4)}` }, s('title', {}, `${cur} agent${cur > 1 ? 's' : ''} in parallel`)))
+    if (cur > 1 && w > 26) g.append(s('text', { x: x0 + w / 2, y: band - hh - 4, class: 'g-par-n', 'text-anchor': 'middle' }, `×${cur}`))
   }
+  if (peak > 1) g.append(s('text', { x: W - right, y: 12, class: 'g-peak', 'text-anchor': 'end' }, `peak ×${peak}`))
   for (const r of tl.runs) {
-    const y = rowY[r.task] + 7
+    const y = rowY[r.task] + 8
     const end = r.end ?? now
-    const bar = s('g', { class: `g-run o-${r.outcome}` },
-      s('rect', { x: x(r.start), y, width: Math.max(3, x(end) - x(r.start)), height: rowH - 14, rx: 3, fill: color(r.agent), style: `color:${color(r.agent)}` }),
-      x(end) - x(r.start) > 44 ? s('text', { x: x(r.start) + 6, y: y + 12, class: 'g-agent' }, r.agent.toUpperCase()) : null,
-      r.verifies.map((v) => s('rect', { x: x(v.at) - 2, y: y - 4, width: 4, height: rowH - 6, rx: 1, class: v.ok ? 'g-ok' : 'g-fault' }, s('title', {}, v.ok ? 'track circuit clear' : `fault: ${v.failed.join(', ')}`))),
-      r.outcome === 'cleared' ? s('circle', { cx: x(end), cy: y + (rowH - 14) / 2, r: 5, class: 'g-clear' }) : null,
-      r.outcome === 'rolled-back' ? s('path', { d: `M${x(end) - 4},${y}l8,${rowH - 14}M${x(end) + 4},${y}l-8,${rowH - 14}`, class: 'g-rollback' }) : null,
-      s('title', {}, `${r.agent} in ${r.task}: ${r.outcome}`))
-    g.append(bar)
+    const hgt = rowH - 16
+    g.append(s('g', { class: `g-run o-${r.outcome}` },
+      s('rect', { x: x(r.start), y, width: Math.max(3, x(end) - x(r.start)), height: hgt, rx: 3, fill: color(r.agent), style: `color:${color(r.agent)}` }),
+      x(end) - x(r.start) > 44 ? s('text', { x: x(r.start) + 6, y: y + hgt / 2 + 4, class: 'g-agent' }, r.agent.toUpperCase()) : null,
+      r.verifies.map((v) => s('rect', { x: x(v.at) - 2, y: y - 4, width: 4, height: hgt + 8, rx: 1, class: v.ok ? 'g-ok' : 'g-fault' }, s('title', {}, v.ok ? 'track circuit clear' : `fault: ${v.failed.join(', ')}`))),
+      r.outcome === 'cleared' ? s('circle', { cx: x(end), cy: y + hgt / 2, r: 5, class: 'g-clear' }) : null,
+      r.outcome === 'rolled-back' ? s('path', { d: `M${x(end) - 4},${y}l8,${hgt}M${x(end) + 4},${y}l-8,${hgt}`, class: 'g-rollback' }) : null,
+      s('title', {}, `${r.agent} in ${r.task}: ${r.outcome}`)))
   }
   for (const e of model.events.slice(0, upto + 1).filter((e) => e.t === 'deny' && rowY[e.task] != null)) {
     const xx = x(Date.parse(e.at))
     const y = rowY[e.task] + rowH / 2
-    g.append(s('path', { d: `M${xx},${y - 6}l6,6l-6,6l-6,-6z`, class: 'g-deny' }, s('title', {}, `${e.agent} held at signal`)))
+    g.append(s('path', { d: `M${xx},${y - 7}l7,7l-7,7l-7,-7z`, class: 'g-deny' }, s('title', {}, `${e.agent} held at signal`)))
   }
-  g.append(s('line', { x1: x(now), x2: x(now), y1: top - 10, y2: H - 22, class: 'g-now' }))
+  g.append(s('line', { x1: x(now), x2: x(now), y1: 4, y2: H - 22, class: 'g-now' }))
   el.replaceChildren(g, h('ul', { class: 'g-legend' }, agents.map((a) => h('li', {}, h('i', { style: `background:${color(a)}` }), a))))
 }
 
@@ -630,7 +666,7 @@ function buildTimeline() {
     play,
     tour,
     h('div', { class: `track${n === 1 ? ' pending' : ''}` }, h('div', { class: 'track-fill', id: 'track-fill' }), ticks,
-      n === 1 ? h('span', { class: 'track-note' }, 'Bob subagents arrive here →') : null),
+    ),
     h('div', { class: 'commit', id: 'commit' }),
   )
 }
@@ -649,7 +685,7 @@ function updateTimeline() {
     ? [h('span', { class: 'subject' }, describe(model.events[stop.event])), h('span', { class: 'when' }, `${when} UTC · ${view.i + 1}/${n}`)]
     : [h('span', { class: 'mono' }, stop.label), ' ', h('span', { class: 'subject' }, stop.title), h('span', { class: 'when' }, `${view.i + 1}/${n}`)]
   if (model.mode === 'live' && !view.atHead) parts.push(h('button', { class: 'follow', onclick: () => { model.follow = true; goTo(n - 1) } }, 'Back to live'))
-  if (!view.opened && n === 1) parts.push(h('span', { class: 'hint' }, 'Baseline only. Open the signal box and start Bob subagents to see them here.'))
+  if (!view.opened && n === 1) parts.push(h('span', { class: 'hint' }, `Plan open · ${Object.keys(view.sb.tasks).length} blocks · ${view.sb.waves} waves · no claims yet`))
   $('#commit').replaceChildren(...parts)
 }
 
@@ -879,9 +915,7 @@ function overviewPanel() {
   return [
     h('p', { class: 'eyebrow' }, 'Signal box'),
     h('h2', {}, calls === 0 ? 'All blocks cleared' : sum.agents.length ? `${sum.agents.length} agent${sum.agents.length > 1 ? 's' : ''} on the network` : 'Legacy lines in service'),
-    h('p', { class: 'lede' }, view.opened
-      ? `${sum.cleared} of ${sum.total} blocks cleared. Every block is released only after its scope, exported contract, legacy scan and tests pass on an isolated copy of the code, and is then committed on its own.`
-      : 'Bob subagents will each claim a block, the files one task owns. A block\'s signal stays at danger until every earlier wave has cleared.'),
+    h('p', { class: 'lede mono' }, `${sum.cleared}/${sum.total} cleared · ${sum.occupied + sum.fault} occupied · ${sum.clear} clear · ${sum.danger} at danger`),
     crewSection(),
     ranked.length ? h('p', { class: 'eyebrow' }, 'Legacy patterns still in service') : null,
     h('ul', { class: 'rules' }, ranked.map(([id, n]) => {
