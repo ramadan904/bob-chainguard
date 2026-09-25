@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { init, claim, extend, release, rollback, loadState, readLedger, repoRoot, SignalboxError, DEFAULT_TEST } from '../src/signalbox.js'
+import { init, claim, extend, release, rollback, loadState, readLedger, repoRoot, writeReplay, SignalboxError, DEFAULT_TEST } from '../src/signalbox.js'
 import { summary, describe } from '../src/signalbox-state.js'
+import { resolve as resolvePath } from 'node:path'
 
 const USAGE = `signalbox - interlocking for parallel Bob subagents
 
@@ -10,9 +11,11 @@ Usage:
   signalbox extend <block> <file...> --agent <name>      add files to your block
   signalbox release <block> --agent <name> [--no-commit] run scope, contract, scan and isolated tests; commit the block if clear
   signalbox rollback <block> --agent <name>              restore the block's files and free it
+  signalbox prompt <block>                               the subagent prompt for a block
   signalbox status                                       the signal box panel, as text
   signalbox log                                          the train describer (every event)
-  signalbox serve [--port 4700]                          live panel for the Atlas UI
+  signalbox serve [--port 4700] [--dist atlas/dist]       live signal box panel in the browser
+  signalbox export [--out atlas/src/data/ledger.json]     ledger for the static replay build
 
 Exit codes: 0 ok, 1 refused or fault, 2 usage error.`
 
@@ -103,12 +106,24 @@ async function main() {
     case 'status':
       printStatus(root)
       return 0
+    case 'prompt': {
+      const t = loadState(root).tasks[block]
+      if (!t) throw new SignalboxError(`unknown block ${block}`)
+      console.log(t.prompt.replaceAll('<your-agent-name>', opts.agent || '<your-agent-name>'))
+      return 0
+    }
     case 'log':
       for (const e of readLedger(root)) console.log(`${e.at.slice(11, 19)}  ${describe(e)}`)
       return 0
+    case 'export': {
+      const out = resolvePath(opts.out || `${root}/atlas/src/data/ledger.json`)
+      writeReplay(root, out)
+      console.log(`wrote ${readLedger(root).length} events to ${out}`)
+      return 0
+    }
     case 'serve': {
       const { serve } = await import('../src/signalbox-server.js')
-      await serve(root, { port: Number(opts.port || 4700) })
+      await serve(root, { port: Number(opts.port || 4700), ...(opts.dist ? { dist: resolvePath(opts.dist) } : {}) })
       return null
     }
     default:

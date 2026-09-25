@@ -1,55 +1,51 @@
 # Problem & Solution Statement
 
-<!-- Limit: 500 words. Replace every [bracketed] value with the real number from reports/ before submitting. -->
+<!-- Limit: 500 words. Replace every [bracketed] value with the real number from the ledger before submitting. -->
 
 ## Problem
 
-Thousands of Ethereum dApp frontends still run on **web3.js 1.x** and **ethers v5**. ChainSafe
-sunset web3.js in March 2025, and ethers v5 was superseded by v6. The ecosystem has moved to
-**viem + wagmi**. Teams know they need to migrate, and they keep postponing it because:
+AI agents can now change code in parallel, and every team that tries it hits the same wall.
+Two agents edit the same file. One agent quietly renames a function another agent's code depends
+on. A third "fixes" a failing test by changing the test. The result is one huge diff that nobody
+can review, with no record of which agent did what or whether any single change was safe on its own.
 
-- **It touches everything.** Providers, signers, contracts, events, unit math and error handling
-  all change at once. `BigNumber` becomes native `bigint`, event callbacks become log batches,
-  and sync helpers become async.
-- **Silent behavior changes.** Some translations look right and are wrong. For example, viem's
-  `parseUnits('0.0000001', 6)` returns `0n` where ethers threw an error, so a user could submit
-  a zero-value transfer without noticing.
-- **Progress is hard to measure or protect.** Nobody knows how much legacy code is left, and
-  new legacy calls slip back in through copy-pasted snippets.
+So teams fall back to one agent at a time. Large, risky changes such as migrations, upgrades and
+API renames stay slow, exactly where parallel agents should help most.
 
-A manual migration of even a small dApp takes days of focused senior time, and the risk is
-highest exactly where the money moves.
+## Solution: Signalbox, interlocking for parallel Bob subagents
 
-## Solution: bob-chainguard
+Railways solved "many trains, one network" with **interlocking**. Signalbox applies it to IBM Bob
+subagents working on one repository:
 
-bob-chainguard turns that migration into a measured, parallel, test-guarded workflow run by
-**IBM Bob 2.0**:
+1. **Blocks.** chainguard scans the repo and reads the import graph. It splits the change into
+   blocks (one per subagent task) and orders them into waves, so no block depends on a block in
+   its own or a later wave.
+2. **Signals.** A Bob subagent must `claim` its block. The signal box refuses the claim while an
+   earlier wave is uncleared or another agent holds the files. Only one train per block.
+3. **Track circuit.** An agent can only `release` its block when four checks pass:
+   - scope: no edits outside any block, otherwise it's flagged as a SPAD ("signal passed at danger")
+   - exported contract: nothing other code imports was removed or renamed
+   - legacy scan: no old-library calls left in the block
+   - behavior tests: run on an **isolated git worktree** holding only cleared work plus this block,
+     so parallel agents can neither cause nor mask each other's failures
+4. **Commit or roll back.** A clear block is committed on its own and tagged with its agent. A
+   faulty block stays uncommitted until the agent fixes it or rolls it back, and the other agents
+   keep working.
+5. **Live panel.** Every step is appended to a ledger and streamed to a transit-map signal box:
+   blocks light up as agents enter, files shrink as Bob edits, faults flash with the failing test.
 
-1. **Measure.** `chainguard` is a zero-dependency scanner with 25 rules for ethers v5 and web3.js
-   APIs. On our sample ERC-20 wallet dApp it found **72 legacy call sites in 10 of 18 files**
-   (`reports/baseline.md`).
-2. **Plan.** chainguard reads the import graph and generates a **Bob task plan**: waves of tasks
-   that touch disjoint files, where each wave only depends on earlier ones. Each task is a
-   ready-made prompt for a Bob subagent, so independent modules migrate **in parallel**.
-3. **Migrate with Bob.** Bob reads the repo and our migration playbook (document
-   understanding), then runs each wave in Agent mode. It edits the files and runs the tests, and
-   when a test fails it fixes the implementation, not the test.
-4. **Verify.** 22 behavior tests act as the contract. They were written against the legacy code
-   and never modified, so a pass means the behavior was preserved, not just that the code compiles.
-5. **Guard.** Once the scan reaches zero, CI switches to `npm run guard`, and any new ethers or
-   web3.js call fails the pull request.
-6. **See it.** **Chainguard Atlas** draws the codebase as a transit map and replays every commit,
-   so reviewers watch the migration happen instead of reading a long diff.
+We proved it on a real ERC-20 wallet dApp: Bob migrates it from ethers v5 + web3.js (web3.js was
+sunset in 2025) to viem/wagmi. That's 72 legacy call sites in 10 files, split into 6 blocks in 3 waves.
 
 ## Impact
 
-| Metric | Before | After Bob |
-| --- | --- | --- |
-| Legacy call sites | 72 | [0] |
-| Files on legacy APIs | 10 / 18 | [0 / N] |
-| Behavior tests passing | 22 / 22 | [22 / 22] |
-| Migration time | [manual estimate, e.g. ~2 days] | [measured, e.g. X h Y min] |
-| Bundle size (gzip) | [550 kB] | [after] |
-| Silent-bug traps caught by tests | n/a | [N] |
+| Metric | Result |
+| --- | --- |
+| Legacy call sites | 72 → [0] |
+| Blocks cleared by Bob subagents | [6 / 6], [N] agents, up to [N] in parallel |
+| Faults caught before commit | [N] (e.g. viem `parseUnits` silently rounding where ethers threw) |
+| SPADs and rollbacks | [N] / [N], none reached a commit |
+| Behavior tests | 22 / 22, never modified |
+| Wall-clock time | [X min] vs [manual estimate] |
 
-Swap the rule set and the playbook, and the same workflow handles any risky library migration.
+Swap the rule set and playbook, and the same interlocking protects any large parallel-agent change.

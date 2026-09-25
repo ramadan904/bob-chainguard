@@ -1,16 +1,51 @@
 # bob-chainguard
 
-**IBM Bob 2.0 migrates a legacy web3.js + ethers v5 dApp frontend to viem/wagmi, while
-`chainguard` measures the legacy code, plans the work as parallel Bob subagent tasks, and guards
-CI against regressions. Chainguard Atlas replays the whole migration as a transit map.**
+**Signalbox: interlocking for parallel IBM Bob subagents.** Railways let many trains share
+one network safely: a train enters a block only on a green signal, one train per block, and the
+block is released only after a track circuit proves it clear. Signalbox does the same for Bob
+subagents changing one codebase at the same time, and shows it live on a transit-map signal box.
 Built for the IBM Bob 2.0 Hackathon (Sep 25–27, 2026).
 
 ```
- scan ───────► plan ───────────► Bob waves (parallel subagents) ───► verify ───────► guard
- chainguard    import-graph        Agent mode + playbook docs          22 behavior     CI fails on
- 72 findings   waves of disjoint   edit, run tests, fix                tests + scan    any new legacy
-               tasks               implementation                      = 0             call
+ chainguard scan+plan ──► signal box ──► Bob dispatcher ──► Bob subagents (parallel, one per block)
+ 72 legacy call sites     6 blocks,      reads status,      claim ─► edit ─► release
+ import graph             3 waves        starts subagents            │
+                                                                     ▼
+            live panel ◄── ledger ◄── clear + commit block  ◄── track circuit: scope · contract ·
+            (transit map,                 or FAULT / rollback      legacy scan · isolated tests
+             replayable)
 ```
+
+## Signalbox
+
+```bash
+npm run -s sb -- init                                   # plan blocks and waves, open the ledger
+npm run signalbox                                       # live panel at http://localhost:4700
+npm run -s sb -- claim w1-lib-1 --agent bob-1           # refused while the signal is at danger
+npm run -s sb -- release w1-lib-1 --agent bob-1         # scope, contract, scan, isolated tests -> commit
+npm run -s sb -- rollback w1-lib-1 --agent bob-1        # restore only this block
+npm run -s sb -- status | log | prompt <block>
+```
+
+- **Blocks and waves.** chainguard's import graph splits the change into blocks of disjoint files.
+  Wave N's signals turn green only when every block of earlier waves has cleared.
+- **Interlocking.** A claim is refused if the signal is at danger, another agent occupies the
+  block, or its files are held elsewhere.
+- **Track circuit on release.** Four checks:
+  - scope: an edit that no occupied block owns is a SPAD and blocks everyone
+  - exported contract: no export removed or renamed
+  - legacy scan: zero call sites left in the block
+  - behavior tests: run in a throwaway `git worktree` holding HEAD plus only this block, so
+    parallel agents can't cause or mask each other's failures
+- **Commit or roll back.** A clear block is committed alone with a `Signalbox-Agent` trailer. A
+  faulty one stays uncommitted until it's fixed or rolled back.
+- **Ledger.** `.signalbox/ledger.jsonl` is append-only and is the single source of truth. The CLI,
+  the live server and the UI derive state from it with the same pure reducer.
+- **Live panel.** `signalbox serve` streams ledger events and a rescan on every file change.
+  Deployed statically, the UI replays the recorded ledger.
+
+The step-by-step run with Bob, including the dispatcher prompt, is in
+[docs/BOB_RUNBOOK.md](docs/BOB_RUNBOOK.md).
 
 ## Why
 
@@ -26,7 +61,8 @@ ethers threw. Teams postpone the migration because they can't size it, split it 
 | `legacy-dapp/` | ERC-20 wallet dApp on Sepolia (React + Vite) written against **ethers v5 + web3.js 1.x**: connect, balances, send with preflight, sign-in message, live activity feed. This is the "before" state Bob migrates. |
 | `legacy-dapp/src/lib/__tests__/` | 22 behavior tests, library-agnostic. They are the migration contract and must pass unchanged afterwards. |
 | `chainguard/` | Zero-dependency Node CLI: 25 detection rules, text/JSON/Markdown reports, before/after deltas, import-graph task planner, per-commit history scan, CI gate. |
-| `atlas/` | **Chainguard Atlas**, the demo app: the codebase as a transit map, built from a real chainguard scan of every commit. See below. |
+| `atlas/` | The Signalbox panel (formerly Chainguard Atlas): the codebase as a transit map with live block occupancy, signals, track-circuit lamps, the train describer and replay. |
+| `chainguard/src/signalbox*.js` | Interlocking engine, pure state reducer and live server. |
 | `docs/MIGRATION_PLAYBOOK.md` | Instructions Bob follows: mapping table, hard rules, known traps. |
 | `docs/BOB_RUNBOOK.md` | Step-by-step plan for running the migration with Bob during the hackathon. |
 | `reports/` | `baseline.md/json` (before), `bob-task-plan.md` (generated prompts), `timings.md`, `after.md` (generated after the run). |

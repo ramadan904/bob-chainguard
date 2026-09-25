@@ -203,15 +203,17 @@ export function checkContract(root, files) {
 
 export function checkScan(root, files) {
   const byFile = {}
+  const findings = {}
   let remaining = 0
   for (const f of files) {
     const text = readWorking(root, f)
     if (text == null || !/\.(m?[jt]sx?|cjs|vue|svelte)$/.test(f)) continue
-    const n = scanSource(text, f).length
-    byFile[f] = n
-    remaining += n
+    const list = scanSource(text, f)
+    byFile[f] = list.length
+    findings[f] = list.map((x) => [x.ruleId, x.line, x.snippet])
+    remaining += list.length
   }
-  return { ok: remaining === 0, remaining, byFile }
+  return { ok: remaining === 0, remaining, byFile, findings }
 }
 
 // Run the tests on an isolated worktree: HEAD (every cleared block) plus only this block's

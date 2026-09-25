@@ -1,91 +1,107 @@
-# Hackathon runbook: running the migration with IBM Bob
+# Hackathon runbook: Bob subagents under the signal box
 
-This is the step-by-step plan for the 48-hour window. The steps are Bob's work. Our job is to
-set them up, time them, and capture the evidence judges ask for.
+The migration is done by IBM Bob, never by hand. Signalbox keeps Bob's parallel subagents
+safe and makes everything they do visible and replayable. This runbook is the demo.
 
 > Bob's UI changes between releases. Mode and button names below follow the challenge wording
-> (Agent mode, parallel tasks, subagents, document understanding). Check the exact names
-> against the official Bob 2.0 Hackathon Guide linked from the event page.
+> (Agent mode, parallel tasks, subagents, document understanding). Check the exact names against
+> the official Bob 2.0 Hackathon Guide.
 
-## 0. Setup (≈30 min)
+## 0. Setup (≈20 min)
 
-1. Open this repo in the Bob IDE and sign in with the hackathon account.
-2. `cp .env.example .env`. The defaults work; never paste a key into a Bob prompt.
-3. `npm ci --prefix legacy-dapp && npm test && npm run scan:baseline && npm run plan`
-4. Commit if anything changed. **Tag the before state:** `git tag before-bob && git push origin before-bob`.
-5. Start a stopwatch log in `reports/timings.md` (task id, start, end, Bobcoins used).
-
-## 1. Onboarding: Bob explains the legacy code (document understanding)
-
-Prompt:
-
-```text
-Read @README.md, @docs/MIGRATION_PLAYBOOK.md and @reports/baseline.md, then walk the
-legacy-dapp/src folder. Explain to a new team member how wallet connection, ERC-20 reads,
-transfers, signing and the activity feed flow through lib -> hooks -> components, and which
-parts depend on ethers v5 versus web3.js. List risks you see for a viem/wagmi migration.
+```bash
+cp .env.example .env
+npm ci --prefix legacy-dapp && npm ci --prefix atlas
+npm test                                   # chainguard, dApp behavior and signalbox tests
+git tag before-bob && git push origin before-bob
 ```
 
-Screenshot the answer. It becomes the "Bob understands the whole repo" part of the video.
-
-## 2. Plan review (Plan / Agent mode)
-
-Prompt:
+Ask Bob (Agent mode) to add the target libraries first, so no block has to touch `package.json`:
 
 ```text
-Review @reports/bob-task-plan.md, which chainguard generated from the import graph.
-Check that the waves respect dependencies and that no two tasks in a wave edit the same file.
-Propose changes to the plan if needed, but don't edit any code yet.
+In legacy-dapp, add viem@2, wagmi@3 and @tanstack/react-query@5 as dependencies. Do not change
+any source file. Run npm test --prefix legacy-dapp, then commit "Add viem and wagmi".
 ```
 
-## 3. Setup task (before wave 1)
+Open the signal box and put the live panel on screen:
+
+```bash
+npm run -s sb -- init          # scans, plans 6 blocks in 3 waves, writes .signalbox/ledger.jsonl
+npm run signalbox              # builds the UI and serves it live at http://localhost:4700
+```
+
+Arrange the screen for recording: Bob IDE on the left, the Signalbox panel on the right.
+
+## 1. Onboarding: Bob explains the codebase (document understanding)
 
 ```text
-In legacy-dapp: add viem@2, wagmi@3 and @tanstack/react-query@5 as dependencies (keep ethers
-and web3 for now). Create src/wagmi.js and wrap <App /> in src/main.jsx exactly as described in
-@docs/MIGRATION_PLAYBOOK.md "React hooks". Run npm run build --prefix legacy-dapp.
+Read @README.md, @docs/MIGRATION_PLAYBOOK.md and @reports/baseline.md, then walk
+legacy-dapp/src. Explain how wallet connection, ERC-20 reads, transfers, signing and the activity
+feed flow through lib -> hooks -> components, and which parts depend on ethers v5 versus web3.js.
+List the three riskiest parts of a viem/wagmi migration.
 ```
 
-## 4. Waves: parallel subagents
+## 2. The dispatcher: one Bob agent orchestrates the subagents
 
-For each wave in `reports/bob-task-plan.md`:
-
-1. Start one Bob subagent / parallel task **per task block**, pasting its prompt as written.
-2. When every task in the wave finishes, run `npm run scan && npm test` yourself (or ask Bob to).
-3. Commit the wave: `git commit -am "Bob wave N: <task ids>"`. One commit per wave keeps the diff
-   story readable for judges, and each commit becomes a stop on the Atlas timeline.
-   Commit partial progress too (e.g. one task of a wave). More stops make a smoother replay.
-4. `npm run atlas:dev`, press play, and check that the new stop looks right.
-5. Log times and Bobcoins in `reports/timings.md`.
-
-If a test fails, don't fix it by hand. Paste the failure into the same subagent:
-"Test X fails with: ... Fix the implementation per the playbook traps table." That loop is part of the demo.
-
-## 5. Cleanup and guard
+Give this to Bob's top-level agent (Agent mode, subagents / parallel tasks enabled):
 
 ```text
-chainguard reports 0 findings. Remove ethers and web3 from legacy-dapp/package.json, reinstall,
-and make npm run build and npm test pass. Then run npm run report and summarize reports/after.md.
+You are the dispatcher for a migration that runs under Signalbox interlocking.
+Loop until `npm run -s sb -- status` shows every block CLEARED:
+1. Run `npm run -s sb -- status`.
+2. For every block whose signal is CLEAR and that no agent occupies, start a parallel subagent
+   named bob-<n> (n = 1, 2, 3...). Give it exactly the output of
+   `npm run -s sb -- prompt <block> --agent bob-<n>` as its task. Run the subagents of a wave
+   in parallel; never start a block whose signal is at DANGER.
+3. Wait for the subagents of the wave to finish. If a subagent reports a FAULT it could not fix
+   after two releases, tell it to roll back, then start a fresh subagent on that block.
+4. After each wave, summarize what cleared, what faulted and why (from `npm run -s sb -- log`).
+Never edit files yourself and never bypass the signal box.
 ```
 
-Then switch CI to blocking: in `.github/workflows/ci.yml` change the scan step to `npm run guard`.
-From then on any new ethers/web3.js code fails the PR. That's the "guard" in chainguard.
+What each subagent does (it's in its prompt): `claim` → edit only its block → `release`. Release
+runs four checks: scope, exported contract, legacy scan, and the behavior tests on an isolated git
+worktree. If they pass, it commits the block alone. If not, it fixes the problem and releases
+again, or rolls back.
 
-## 6. Code review by Bob
+What judges see on the panel:
+- Blocks turn amber with the agent's name as soon as they are claimed.
+- Station sizes shrink live as Bob edits.
+- A fault flashes red with the failing test, and the block stays uncommitted.
+- A SPAD banner appears if an agent edits outside its block.
+- When a wave clears, the next wave's signals turn green.
+
+## 3. Setup files for the hooks block
+
+The `w2-hooks` block also owns app setup (`src/wagmi.js`, `src/main.jsx`), as the playbook says.
+Its subagent must run `npm run -s sb -- extend w2-hooks legacy-dapp/src/wagmi.js legacy-dapp/src/main.jsx --agent <name>`
+before touching them. If it forgets, the release fails with a SPAD. That's a great moment to keep in the video.
+
+## 4. Cleanup and guard
 
 ```text
-Review the full diff between tag before-bob and HEAD as a senior reviewer. Look for behavior
-changes the tests would not catch (event ordering, bigint/number mixing in the UI, error
-messages shown to users, receipt status handling). List findings with file:line.
+Every block is CLEARED. Remove ethers and web3 from legacy-dapp/package.json, reinstall, make
+npm run build and npm test pass, run npm run report, and commit "Remove ethers and web3".
 ```
 
-Fix what it finds in a last wave. This covers the "code review" workflow too.
+Then switch CI to blocking: in `.github/workflows/ci.yml` replace the scan step with `npm run guard`.
 
-## 7. Evidence for the submission
+## 5. Code review by Bob
 
-- [ ] Export the Bob session summary for **every** task and every team member into `bob_sessions/`
-      (screenshots as PNG, plus any exported reports). The template's `.gitignore` keeps this folder on purpose.
-- [ ] `reports/baseline.md`, `reports/after.md`, `reports/timings.md` committed.
-- [ ] `git diff --stat before-bob..HEAD -- legacy-dapp/src` pasted into `docs/submission/IBM_BOB_USAGE.md`.
-- [ ] Fill the numbers in `docs/submission/*.md` from the real run.
-- [ ] `npm run atlas`, commit `atlas/src/data/atlas-data.json`, and deploy `atlas/` (see docs/submission/CHECKLIST.md).
+```text
+Review the diff between tag before-bob and HEAD as a senior reviewer. Use `npm run -s sb -- log`
+to see which agent changed which block and which faults were caught. Look for behavior changes the
+tests would not catch (event ordering, bigint/number mixing in the UI, user-facing error messages,
+receipt status handling). List findings with file:line.
+```
+
+## 6. Evidence for the submission
+
+- [ ] Bob session summary screenshots for the dispatcher and every subagent, from **every** team
+      member, in `bob_sessions/`.
+- [ ] `npm run -s sb -- log > reports/signalbox-log.txt` and `npm run report`, then commit
+      `.signalbox/ledger.jsonl` and `reports/`.
+- [ ] `npm run atlas` (exports the ledger into the static build), commit `atlas/src/data/`, then
+      deploy `atlas/` (docs/submission/CHECKLIST.md). The deployed site replays the real run.
+- [ ] Fill the numbers in `docs/submission/*.md` from the ledger: blocks, agents, faults caught,
+      SPADs, rollbacks, wall-clock time.

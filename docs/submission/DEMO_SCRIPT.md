@@ -1,20 +1,20 @@
 # Demo video script (target 2:50, hard limit 3:00)
 
-The rules require at least 90 seconds of the solution running and a clear demonstration of Bob.
-The Atlas is the stage: open it full-screen in the dark theme and keep coming back to it.
+The core segment (0:20–1:50) is 90 seconds of the solution running with Bob visibly driving it.
+Record the Bob IDE on the left and the live Signalbox panel (`npm run signalbox`) on the right.
 
 | Time | On screen | Voice-over |
 | --- | --- | --- |
-| 0:00–0:20 | Atlas at the baseline stop: rust stations everywhere, **72** in the masthead | "This is a real ERC-20 wallet dApp drawn as a transit map. Folders are lines, files are stations. Every rust ring is a call into web3.js or ethers v5: 72 of them in 10 files. web3.js is sunset, and teams keep putting this migration off." |
-| 0:20–0:40 | Click `units.js`: call sites with source lines and viem replacements. Hover a tunnel | "chainguard found every call site and knows the viem replacement. It also reads the import graph, so it knows units.js must be migrated before the files that use it." |
-| 0:40–0:55 | Scroll to the departures board, hover a wave-2 row so its stations light up | "That graph becomes Bob's timetable: six tasks in three waves. Tasks in a wave touch different files, so they run as parallel Bob subagents. Each row carries a ready-made prompt." |
-| 0:55–1:10 | Bob IDE: onboarding answer, then the playbook opened as context (4x speed) | "Bob reads the whole repo and our migration playbook before it touches anything." |
-| 1:10–1:40 | Bob running wave 2 as two parallel tasks (split screen) | "Wave two: two Bob subagents at once, each editing its own files and running the tests." |
-| 1:40–2:00 | A red test (viem `parseUnits` rounding), then Bob fixing the implementation and the test turning green | "The dangerous part: viem silently rounds where ethers threw. Our behavior tests catch it, and Bob fixes the code, not the test." |
-| 2:00–2:30 | Back to Atlas: press **play**. Stations turn from rust to steel checks, the board flips from SCHEDULED to BOARDING to ARRIVED, and 72 counts down to 0 | "Every stop on this timeline is a real commit, scanned by chainguard. Here is Bob's migration, replayed." |
-| 2:30–2:50 | Terminal: `npm test` green, `npm run guard` exit 0. Then the impact table | "All 22 behavior tests pass unchanged. [Manual estimate] of work done in [measured time]. And CI now blocks any new legacy code. That's bob-chainguard." |
+| 0:00–0:20 | Signalbox panel, all signals at danger except wave 1; the map full of rust stations | "Everyone wants AI agents working in parallel. Nobody trusts them to: they overwrite each other, break each other's code and hand you one giant diff. Railways solved this over 150 years ago with interlocking. This is interlocking for IBM Bob." |
+| 0:20–0:35 | Bob dispatcher prompt running; it reads `sb status` and starts two subagents | "One Bob agent is the dispatcher. It reads the signal box and starts a subagent for every block with a green signal. Wave one: two subagents in parallel." |
+| 0:35–0:55 | Panel: two blocks turn amber, BOB-1 and BOB-2 tags, stations shrink live as Bob edits | "Each subagent claims its block. Nobody else can touch those files. As Bob edits, the map updates live." |
+| 0:55–1:15 | bob-2 releases → track circuit → red FAULT banner with the failing test; describer line in red | "Before a block is released, the signal box runs the tests on an isolated copy with only that block's changes. Here viem silently rounds a value that ethers rejected. Fault caught, nothing committed, and bob-1 kept working." |
+| 1:15–1:30 | Bob fixes the implementation; release → CLEARED, commit hash on the board | "Bob reads the failure and fixes the code, not the test. The block clears and is committed on its own, signed by its agent." |
+| 1:30–1:50 | Wave 1 cleared → wave 2 signals turn green automatically; a third agent held at signal earlier shows in the describer | "When a wave clears, the next signals turn green. An agent that tried to jump ahead was held at the signal." |
+| 1:50–2:20 | Time-lapse (4–8x) of waves 2 and 3; then the finished map: 0 legacy calls, 6/6 blocks | "Six blocks, three waves, [N] Bob subagents. [N] faults caught before they ever reached a commit." |
+| 2:20–2:40 | Deployed site: press play to replay the ledger | "Every event is in a ledger. The deployed site replays the real run, so reviewers can see what happened and why it was safe." |
+| 2:40–2:50 | Impact table | "Signalbox: parallel Bob subagents you can actually trust." |
 
 Recording tips:
-- Record the Atlas at 1440×900 or larger.
-- Use Sepolia with a faucet-funded demo wallet, and hide browser extensions and bookmarks.
-- Never show `.env` or the wallet's seed or private key screens.
+- Speed up long Bob thinking segments, but show the real subagent names and timestamps.
+- Never show `.env` or any key.
