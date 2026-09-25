@@ -21,7 +21,7 @@
           <rect x="1" y="19.5" width="46" height="9" rx="1" />
         </svg>
         <div>
-          <h1>Chainguard Signalbox <span class="mode" id="mode" data-mode="baseline">Baseline</span></h1>
+          <h1>Chainguard Signalbox <span class="mode" id="mode" data-mode="baseline">Baseline</span> <span class="ledger" id="ledger" role="status"></span></h1>
           <p class="route" id="route"></p>
         </div>
       </div>
@@ -74,6 +74,8 @@
       </div>
       <div class="graph-wrap" id="graph"></div>
     </section>
+
+    <dialog class="diff" id="diff" aria-label="Bob's change"></dialog>
 
     <footer class="foot">
       <p>Everything here comes from the signal box ledger and real <code>chainguard</code> scans of real commits. The agents are IBM Bob subagents. Keys: ← → step through events, Esc returns to the overview. · <a href="./deck.html">Pitch deck</a></p>

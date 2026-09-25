@@ -20,12 +20,19 @@ export function gitSnapshots(dir, rules = DEFAULT_PACK.rules) {
       .map((p) => ({ path: p, rel: posix.relative(sub, p) }))
       .filter((e) => isSourcePath(e.rel))
       .map((e) => ({ rel: e.rel, text: git(top, ['show', `${commit}:${e.path}`]) }))
-    snapshots.push({ commit, time: Number(time) * 1000, subject, report: scanEntries(sub, entries, rules) })
+    // Block commits carry their patch, so the panel can show exactly what each agent changed.
+    const diff = /^signalbox: clear /.test(subject) ? capDiff(git(top, ['show', '--format=', '--patch', '--no-color', '--no-ext-diff', commit])) : null
+    snapshots.push({ commit, time: Number(time) * 1000, subject, report: scanEntries(sub, entries, rules), diff })
   }
   if (git(top, ['status', '--porcelain', '--', sub]).trim() || snapshots.length === 0) {
     snapshots.push({ commit: null, time: Date.now(), subject: 'Working tree (uncommitted)', report: scanDir(dir, rules) })
   }
   return { root: sub, snapshots }
+}
+
+const MAX_DIFF = 60_000
+function capDiff(patch) {
+  return patch.length > MAX_DIFF ? `${patch.slice(0, MAX_DIFF)}\n… (diff truncated at ${MAX_DIFF / 1000} kB)\n` : patch
 }
 
 // Longest import chain below each file (files importing nothing sit at depth 0).
@@ -90,6 +97,7 @@ export function buildAtlas({ root, snapshots }, pack = DEFAULT_PACK) {
         byLib: s.report.byLib,
         present: Object.keys(s.report.imports).sort(),
         findings: byFile,
+        ...(s.diff ? { diff: s.diff } : {}),
       }
     }),
   }

@@ -60,6 +60,9 @@ const pkg = JSON.parse(readFileSync(join(root, 'legacy-dapp/package.json'), 'utf
 const stillLegacy = ['ethers', 'web3'].filter((d) => pkg.dependencies?.[d])
 if (stillLegacy.length) warnings.push(`still in package.json: ${stillLegacy.join(', ')} (runbook step 4)`)
 
+step('Ledger audit (hash chain + every cleared commit)')
+try { console.log('  ' + run('node chainguard/bin/signalbox.js audit').trim().split('\n').join('\n  ')) } catch (e) { warnings.push('signalbox audit failed: the ledger does not match git'); console.log(`  ${e.stdout || ''}`) }
+
 step('Reports')
 run('node chainguard/bin/signalbox.js report --out reports/signalbox-report.md')
 writeFileSync(join(root, 'reports/signalbox-log.txt'), run('node chainguard/bin/signalbox.js log'))

@@ -23,6 +23,8 @@ jobs:
       - run: npm test
       - run: npm run build --prefix legacy-dapp
       - run: npm run atlas
+      # The ledger must be intact and must match git (no-op before the Bob run).
+      - run: node chainguard/bin/signalbox.js audit
       # Reporting only while the migration is in progress. After Bob's cleanup step,
       # replace with `npm run guard` so new ethers/web3.js code fails CI.
       - name: chainguard scan

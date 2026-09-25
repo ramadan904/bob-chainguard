@@ -57,6 +57,14 @@ npm run -s sb -- status | log | prompt <block>
 - **Live panel.** `signalbox serve` streams ledger events and a rescan on every file change.
   Deployed statically, the UI replays the recorded ledger.
 
+- **Tamper-evident ledger.** Every event is SHA-256 chained to the previous one. `npm run -s sb -- audit`
+  verifies the chain and checks that every cleared block's commit exists on the branch, is signed by
+  the agent the ledger names, and changed only that block's files. CI runs it, and the panel re-verifies
+  the chain in the browser ("Ledger verified").
+- **Review every agent's change.** Each cleared block's real diff ships with the panel. Open a
+  block and click "Review bob-N's change".
+- **Blast radius.** Pick a file to see every file that depends on it, ripple by ripple.
+- **Crew roster.** A record for each Bob subagent: blocks cleared, releases, faults fixed, time in blocks.
 - **Black-box recorder.** Every occupied block's in-flight files are saved (content-addressed) on
   every signal box command and every file change. If an agent runs `git stash` or `checkout .`
   anyway, `npm run -s sb -- recover <block>` puts the work back.
