@@ -169,7 +169,8 @@ export function modifiedFiles(root) {
     files.push(parts[i].slice(3))
     if (code.startsWith('R') || code.startsWith('C')) i++ // rename source follows
   }
-  return files.filter((f) => !f.startsWith('.signalbox/'))
+  // node_modules can be a symlink (pnpm, workspaces), which `node_modules/` in .gitignore misses.
+  return files.filter((f) => !f.startsWith('.signalbox/') && !f.split('/').includes('node_modules'))
 }
 
 export function exportsOf(text) {

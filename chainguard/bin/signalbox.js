@@ -219,7 +219,7 @@ async function main() {
     case 'hook-check': {
       const blocked = hookCheck(root)
       if (!blocked.length) return 0
-      console.error('signalbox: these files belong to a block that has not cleared:')
+      console.error('signalbox: these files cannot be committed directly while the signal box is open:')
       for (const f of blocked) console.error(`  ${f}`)
       console.error('Block files are committed by `npm run -s sb -- release <block> --agent <name>` after the track circuit.')
       console.error('Protected files (tests, chainguard/) cannot be committed while the box is open; a human can override with SIGNALBOX_COMMIT=1.')

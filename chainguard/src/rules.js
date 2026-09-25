@@ -115,7 +115,8 @@ export const RULES = [
     lib: 'ethers-v5',
     severity: 'error',
     title: 'signMessage via signer',
-    pattern: /\bsigner\.signMessage\(|\._signTypedData\(/,
+    // ethers passes the message itself; viem's walletClient.signMessage takes an options object.
+    pattern: /\bsigner\.signMessage\(\s*(?!\{)|\._signTypedData\(/,
     replacement: 'walletClient.signMessage / signTypedData, wagmi useSignMessage',
   },
   {

@@ -164,6 +164,12 @@ Hooks use wagmi and keep their return shapes:
 | ENS | `useEnsName({ address })` |
 | `accountsChanged` / `chainChanged` listeners | not needed; wagmi tracks them |
 
+wagmi 3 mutation hooks return `mutate` / `mutateAsync`; `connect`, `connectAsync`, `switchChain`
+and `switchChainAsync` still exist but are deprecated. Use
+`useConnect().mutate({ connector: injected() })` and `useSwitchChain().mutateAsync({ chainId })`.
+Components call `wallet.signer.writeContract(...)` / `signMessage({ account, message })`, so
+`signer` must be the viem `WalletClient` from `useWalletClient()`.
+
 App setup is part of the expand step (done before the waves), so hooks can use wagmi right away:
 - `src/wagmi.js`: `createConfig({ chains: [sepolia], connectors: [injected()], transports: { [sepolia.id]: http(RPC_URL) } })`
 - `src/main.jsx`: wrap `<App />` in `<WagmiProvider config={config}><QueryClientProvider client={queryClient}>`.

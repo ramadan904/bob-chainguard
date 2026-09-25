@@ -25,6 +25,8 @@ test('detects ethers v5 patterns', () => {
   assert.ok(ids('await c.callStatic.transfer(a, b)').includes('ETH012'))
   assert.ok(ids("await provider.send('eth_requestAccounts', [])").includes('ETH015'))
   assert.ok(ids('setStatus(err.reason || err.message)').includes('ETH016'))
+  assert.ok(ids('const sig = await signer.signMessage(message)').includes('ETH014'))
+  assert.ok(!ids('const sig = await signer.signMessage({ account, message })').includes('ETH014'), 'viem walletClient call')
 })
 
 test('detects web3.js patterns', () => {
