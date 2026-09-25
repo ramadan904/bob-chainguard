@@ -432,7 +432,7 @@ async function runDrill(kind, btn) {
   const all = document.querySelectorAll('.chaos-btn')
   all.forEach((b) => (b.disabled = true))
   try {
-    const r = await fetch(`./api/drill?kind=${kind}`, { method: 'POST' })
+    const r = await fetch(`./api/drill?kind=${kind}`, { method: 'POST', headers: { 'x-signalbox': 'drill' } })
     const body = await r.json()
     if (!r.ok) showCaption({ kind: 'fault', text: body.error })
   } catch (err) {

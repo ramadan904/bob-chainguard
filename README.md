@@ -6,6 +6,18 @@ block is released only after a track circuit proves it clear. Signalbox does the
 subagents changing one codebase at the same time, and shows it live on a transit-map signal box.
 Built for the IBM Bob 2.0 Hackathon (Sep 25–27, 2026).
 
+## Judge it in 60 seconds
+
+| Try this | What you'll see |
+| --- | --- |
+| Open **https://bob-chainguard.vercel.app/?tour** | The recorded Bob run replays itself with captions: subagents claiming blocks, a claim refused at a red signal, a fault caught before commit, the chaos drill |
+| Click **Ledger verified** under the title, then **Tamper test** | Your browser re-hashes every event; editing one event in memory breaks the chain right there |
+| Type *why is w2-lib at danger?* in the **Dispatcher** bar | An answer computed from the ledger, and the block lights up |
+| Toggle **Risk heatmap** on the map | Every unfinished block glows by risk |
+| Switch the **Rule pack** to *Moment → date-fns* | The same interlocking planning a different migration |
+| Open **[the deck](https://bob-chainguard.vercel.app/deck.html)** | 11 slides; the results slide reads the real ledger |
+| Locally: `npm ci --prefix samples/moment-billing && npm run prove:pack` | The whole protocol on the second pack, 9 checks, in a throwaway worktree |
+
 ```
  chainguard scan+plan ──► signal box ──► Bob dispatcher ──► Bob subagents (parallel, one per block)
  72 legacy call sites     6 blocks,      reads status,      claim ─► edit ─► release

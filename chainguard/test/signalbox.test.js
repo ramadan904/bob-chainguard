@@ -393,3 +393,29 @@ test('mcp: the signal box as tools over stdio JSON-RPC', async () => {
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+test('server: chaos drills only from the local panel, restored after the hold', async () => {
+  const { root } = makeRepo()
+  init(root, { scanPath: 'src', testCmd: 'node check.js', allow: [] })
+  const { serve } = await import('../src/signalbox-server.js')
+  const log = console.log
+  console.log = () => {}
+  const server = await serve(root, { port: 0, drillHoldMs: 300 }).finally(() => { console.log = log })
+  try {
+    const url = `http://127.0.0.1:${server.address().port}/api/drill?kind=spad`
+    const before = readFileSync(join(root, 'src/a.js'), 'utf8')
+    assert.equal((await fetch(url, { method: 'POST' })).status, 403, 'no panel header')
+    assert.equal((await fetch(url, { method: 'POST', headers: { 'x-signalbox': 'drill', origin: 'https://evil.example' } })).status, 403, 'cross-site origin')
+    assert.equal(readFileSync(join(root, 'src/a.js'), 'utf8'), before, 'refused drills never touch files')
+    const ok = await fetch(url, { method: 'POST', headers: { 'x-signalbox': 'drill' } })
+    assert.equal(ok.status, 200)
+    assert.equal((await ok.json()).file, 'src/a.js')
+    assert.match(readFileSync(join(root, 'src/a.js'), 'utf8'), /chaos drill/)
+    await new Promise((r) => setTimeout(r, 700))
+    assert.equal(readFileSync(join(root, 'src/a.js'), 'utf8'), before, 'restored after the hold')
+    assert.deepEqual(readLedger(root).map((e) => e.t), ['init', 'drill', 'drill-end'])
+  } finally {
+    await new Promise((r) => server.close(r))
+    rmSync(root, { recursive: true, force: true })
+  }
+})

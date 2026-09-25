@@ -31,7 +31,7 @@ Usage:
   signalbox status                                       the signal box panel, as text
   signalbox log                                          the train describer (every event)
   signalbox mcp [--root <repo>]                          MCP server on stdio: the signal box as tools for Bob
-  signalbox serve [--port 4700] [--dist atlas/dist]       live signal box panel in the browser
+  signalbox serve [--port 4700] [--host 127.0.0.1] [--dist atlas/dist]       live signal box panel in the browser
   signalbox export [--out atlas/src/data/ledger.json]     ledger for the static replay build
 
 Exit codes: 0 ok, 1 refused or fault, 2 usage error.`
@@ -306,7 +306,7 @@ async function main() {
     }
     case 'serve': {
       const { serve } = await import('../src/signalbox-server.js')
-      await serve(root, { port: Number(opts.port || 4700), ...(opts.dist ? { dist: resolvePath(opts.dist) } : {}) })
+      await serve(root, { port: Number(opts.port || 4700), ...(opts.host ? { host: opts.host } : {}), ...(opts.dist ? { dist: resolvePath(opts.dist) } : {}) })
       return null
     }
     default:
