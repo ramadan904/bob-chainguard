@@ -118,7 +118,7 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
   - `parseUnits` rounds extra decimals silently where ethers threw, so the agent must throw itself.
   - `recoverMessageAddress` is async.
 - In wagmi 3, mutation hooks return `mutate` / `mutateAsync`.
-- If something goes wrong mid-run, the retake steps are at the bottom of `docs/BOB_RUNBOOK.md`: reset to the "Expand" commit, `sb init --force`, delete checkpoints, run `doctor`.
+- If something goes wrong mid-run: `npm run bob:retake -- --yes` (same as the manual retake steps at the bottom of `docs/BOB_RUNBOOK.md`).
 
 ## Useful commands when debugging
 - `npm run -s sb -- status`, `sb next`, `sb log`: see what the agents are doing.
