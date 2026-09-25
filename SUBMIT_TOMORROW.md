@@ -50,6 +50,7 @@ Then merge to `main` again (step 0's link). The live panel and the deck's result
 ## 3. Media
 
 - **Video (≤ 3 min):** follow docs/submission/DEMO_SCRIPT.md. Upload to YouTube (unlisted is fine).
+  Easy segment: open `https://ramadan904.github.io/bob-chainguard/?tour` and record it. It narrates your real run by itself.
 - **Slides:** open the deck link → **Save as PDF** button (in the print dialog, turn on "Background graphics").
   `docs/submission/Signalbox-deck.pdf` is the pre-run version, if you're short on time.
 - **Cover image:** `docs/submission/media/cover-baseline.png`, or a screenshot of the finished panel (better).

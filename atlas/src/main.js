@@ -10,6 +10,7 @@ import { layoutAtlas, LABEL_OFFSET } from './layout.js'
 import { dependentsOf, baselineIndex } from './state.js'
 import { buildStops, findingsAt, signalStateAt, blockIndex, faultsCaught, checkLamps, stripRoot } from './signal.js'
 import { reduce, describe, summary, timeline, verifyChain } from '../../chainguard/src/signalbox-state.js'
+import { blastRadius as blastOf, blockRisk as riskOf, crewStats, tourStep } from './insights.js'
 
 // A recorded ledger (from a real Bob run) ships with the static build for replay. Optional.
 const ledgerModules = import.meta.glob('./data/ledger.json', { eager: true, import: 'default' })
@@ -463,8 +464,10 @@ function buildTimeline() {
     }, h('span', { class: 'tick-dot' }), n <= 12 ? h('span', { class: 'tick-label' }, stop.kind === 'event' ? stop.label : stop.label) : null))
   const play = h('button', { class: 'play', id: 'play', 'aria-label': 'Replay', onclick: togglePlay, disabled: n < 2 },
     s('svg', { viewBox: '0 0 16 16', width: 14, height: 14 }, s('path', { d: 'M4 2.5v11l9-5.5z', fill: 'currentColor' })))
+  const tour = h('button', { class: 'tour-btn', id: 'tour', onclick: () => (model.tour ? stopTour() : startTour()), disabled: !view.opened, title: view.opened ? 'Guided replay with captions' : 'Available once the signal box has a run' }, 'Tour')
   $('#timeline').replaceChildren(
     play,
+    tour,
     h('div', { class: `track${n === 1 ? ' pending' : ''}` }, h('div', { class: 'track-fill', id: 'track-fill' }), ticks,
       n === 1 ? h('span', { class: 'track-note' }, 'Bob subagents arrive here →') : null),
     h('div', { class: 'commit', id: 'commit' }),
@@ -496,6 +499,64 @@ function goTo(i) {
   render()
 }
 
+// ------------------------------------------------------------------ guided tour
+// Replays the ledger like a film: dwells on faults, clears and held signals, opens the block in
+// question, and captions each step in plain words. Everything shown is the recorded run.
+
+function startTour() {
+  if (!view.opened) return
+  stopPlay()
+  stopTour()
+  document.body.classList.add('touring')
+  $('#tour').classList.add('on')
+  model.tour = { i: 0 }
+  goTo(0)
+  select(null)
+  tourTick()
+}
+
+function tourTick() {
+  if (!model.tour) return
+  const stop = view.stops[view.i]
+  const step = tourStep(model.events, stop.event)
+  const files = step.focus ? taskFiles(step.focus) : []
+  if (['fault', 'clear', 'held', 'rollback', 'recover'].includes(step.kind) && files[0]) select(files[0])
+  else if (step.kind === 'init') select(null)
+  showCaption(step)
+  model.tour.timer = setTimeout(() => {
+    if (!model.tour) return
+    if (view.i >= view.stops.length - 1) return finishTour()
+    goTo(view.i + 1)
+    tourTick()
+  }, step.dwell)
+}
+
+function finishTour() {
+  const base = Object.values(view.baseline).reduce((n, l) => n + l.length, 0)
+  const now = Object.values(view.findings).reduce((n, l) => n + l.length, 0)
+  const sum = summary(view.sb)
+  select(null)
+  showCaption({ kind: 'done', text: `${sum.cleared} of ${sum.total} blocks cleared by ${crewStats(model.events, view.stops[view.i].event).length} Bob subagents. Legacy call sites: ${base} → ${now}. Every step is in a hash-chained ledger.` })
+  model.tour.timer = setTimeout(stopTour, 6000)
+}
+
+function stopTour() {
+  if (model.tour?.timer) clearTimeout(model.tour.timer)
+  model.tour = null
+  document.body.classList.remove('touring')
+  $('#tour')?.classList.remove('on')
+  $('#caption')?.classList.remove('show')
+}
+
+function showCaption(step) {
+  const el = $('#caption')
+  el.dataset.kind = step.kind
+  el.replaceChildren(h('span', { class: 'cap-kind' }, { fault: 'Fault', held: 'Held at signal', clear: 'Cleared', done: 'Result', init: 'Signal box', rollback: 'Rolled back', recover: 'Recovered', claim: 'Claim', verify: 'Track circuit', extend: 'Extend' }[step.kind] || step.kind), h('span', { class: 'cap-text' }, step.text))
+  el.classList.remove('show')
+  void el.offsetWidth
+  el.classList.add('show')
+}
+
 function togglePlay() {
   if (model.playing) return stopPlay()
   if (view.i === view.stops.length - 1) goTo(0)
@@ -513,57 +574,21 @@ function stopPlay() {
 
 // ------------------------------------------------------------------ blast radius
 
-// Every file that depends on `id`, directly or through other files, with its distance in hops.
 function blastRadius(id) {
-  const users = {}
-  for (const f of model.atlas.files) for (const d of f.imports) (users[d] ||= []).push(f.id)
-  const dist = new Map([[id, 0]])
-  const queue = [id]
-  while (queue.length) {
-    const cur = queue.shift()
-    for (const u of users[cur] || []) if (!dist.has(u)) { dist.set(u, dist.get(cur) + 1); queue.push(u) }
-  }
-  return dist
+  return blastOf(model.atlas.files, id)
 }
 
 // ------------------------------------------------------------------ risk
 
-// Risk of a block = its legacy call sites + 3 × the files outside it that depend on it
-// (transitively). Ranked within the plan into thirds: HIGH / MED / LOW.
 function blockRisk() {
-  const tasks = Object.values(view.sb.tasks)
-  const scored = tasks.map((t) => {
-    const files = taskFiles(t.id)
-    const reach = new Set()
-    for (const f of files) for (const [d] of blastRadius(f)) if (!files.includes(d)) reach.add(d)
-    return { id: t.id, score: (t.findings || 0) + 3 * reach.size, reach: reach.size }
-  }).sort((a, b) => b.score - a.score)
-  const out = {}
-  scored.forEach((r, k) => { out[r.id] = { ...r, level: k < Math.ceil(scored.length / 3) ? 'high' : k < Math.ceil((2 * scored.length) / 3) ? 'med' : 'low' } })
-  return out
+  return riskOf(model.atlas.files, Object.values(view.sb.tasks), (t) => taskFiles(t.id))
 }
 
 // ------------------------------------------------------------------ crew roster
 
 function crew() {
   if (!view.opened) return []
-  const upto = view.stops[view.i].event
-  const tl = timeline(model.events.slice(0, upto + 1))
-  const full = timeline(model.events)
-  const order = [...new Set(full.runs.map((r) => r.agent))]
-  const now = Date.parse(model.events[upto].at)
-  const byAgent = new Map()
-  for (const r of tl.runs) {
-    const a = byAgent.get(r.agent) || { agent: r.agent, cleared: 0, releases: 0, faults: 0, ms: 0, active: null }
-    a.releases += r.verifies.length
-    a.faults += r.verifies.filter((v) => !v.ok).length
-    if (r.outcome === 'cleared') a.cleared++
-    if (r.outcome === 'open') a.active = r.task
-    a.ms += (r.end ?? now) - r.start
-    byAgent.set(r.agent, a)
-  }
-  return [...byAgent.values()].sort((x, y) => order.indexOf(x.agent) - order.indexOf(y.agent))
-    .map((a) => ({ ...a, color: AGENT_COLORS[order.indexOf(a.agent) % AGENT_COLORS.length] }))
+  return crewStats(model.events, view.stops[view.i].event).map((a) => ({ ...a, color: AGENT_COLORS[a.index % AGENT_COLORS.length] }))
 }
 
 function crewSection() {
@@ -781,9 +806,9 @@ function initTheme() {
 
 document.addEventListener('keydown', (e) => {
   if (e.target.closest('input, textarea')) return
-  if (e.key === 'ArrowLeft') goTo(view.i - 1)
-  else if (e.key === 'ArrowRight') goTo(view.i + 1)
-  else if (e.key === 'Escape') select(null)
+  if (e.key === 'ArrowLeft') { stopTour(); goTo(view.i - 1) }
+  else if (e.key === 'ArrowRight') { stopTour(); goTo(view.i + 1) }
+  else if (e.key === 'Escape') { if (model.tour) stopTour(); else select(null) }
 })
 
 // Live mode: the page is served by `signalbox serve`. Anywhere else the fetch fails and the
@@ -850,6 +875,8 @@ async function start() {
   const hash = decodeURIComponent(location.hash.slice(1))
   model.selected = layout.stations[hash] ? hash : null
   render()
+  // ?tour starts the guided replay on load (handy for recording the demo video).
+  if (new URLSearchParams(location.search).has('tour')) setTimeout(startTour, 700)
 }
 
 let resizeTimer

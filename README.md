@@ -64,6 +64,8 @@ npm run -s sb -- status | log | prompt <block>
 - **Review every agent's change.** Each cleared block's real diff ships with the panel. Open a
   block and click "Review bob-N's change".
 - **Blast radius.** Pick a file to see every file that depends on it, ripple by ripple.
+- **Guided tour.** Press "Tour" (or open the panel with `?tour`) to replay the run like a film:
+  captions in plain words, dwelling on faults, held signals and clears, opening the block in question.
 - **Risk scores.** Each block is ranked HIGH, MED or LOW by its legacy call sites plus 3 × the files that
   depend on it, so reviewers know where to look hardest.
 - **Pull request bot.** `.github/workflows/signalbox-pr.yml` keeps one Signalbox comment updated on every

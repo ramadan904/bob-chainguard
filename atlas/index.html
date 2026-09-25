@@ -21,8 +21,9 @@
           <rect x="1" y="19.5" width="46" height="9" rx="1" />
         </svg>
         <div>
-          <h1>Chainguard Signalbox <span class="mode" id="mode" data-mode="baseline">Baseline</span> <span class="ledger" id="ledger" role="status"></span></h1>
+          <h1>Chainguard Signalbox <span class="mode" id="mode" data-mode="baseline">Baseline</span></h1>
           <p class="route" id="route"></p>
+          <span class="ledger" id="ledger" role="status"></span>
         </div>
       </div>
       <dl class="stats" id="stats"></dl>
@@ -75,6 +76,7 @@
       <div class="graph-wrap" id="graph"></div>
     </section>
 
+    <div class="caption" id="caption" role="status" aria-live="polite"></div>
     <dialog class="diff" id="diff" aria-label="Bob's change"></dialog>
 
     <footer class="foot">
