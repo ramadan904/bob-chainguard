@@ -105,6 +105,7 @@ if (cmd === 'prep') {
   sh('node chainguard/bin/signalbox.js init --force', { stdio: 'ignore' }).status === 0 ? ok('fresh signal box (old ledger archived in .signalbox/)') : fail('signalbox init failed')
   rmSync(join(root, '.signalbox', 'checkpoints'), { recursive: true, force: true })
   ok('black-box checkpoints cleared')
+  sh('node chainguard/bin/signalbox.js install-hook', { stdio: 'ignore' }).status === 0 ? ok('pre-commit guard installed') : warn('could not install the pre-commit guard')
   console.log('')
   sh('node chainguard/bin/signalbox.js doctor')
   console.log('\nReload the panel (or restart npm run bob:open), then paste the dispatcher prompt into Bob again.')
