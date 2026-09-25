@@ -348,3 +348,25 @@ export function hookCheck(root, env = process.env) {
   const staged = git(root, ['diff', '--cached', '--name-only']).split('\n').filter(Boolean)
   return staged.filter((f) => guarded.has(f))
 }
+
+// ------------------------------------------------------------------ preflight
+
+export function doctor(root, { runTests = true } = {}) {
+  const checks = []
+  const add = (name, ok, detail) => checks.push({ name, ok, detail })
+  const events = readLedger(root)
+  const state = reduce(events)
+  add('signal box opened', Boolean(state), state ? `${Object.keys(state.tasks).length} blocks, base ${state.base.slice(0, 7)}` : 'run: npm run -s sb -- init')
+  const dirty = modifiedFiles(root).filter((f) => !state || ownerOf(state, f) === null)
+  add('no unowned changes', dirty.length === 0, dirty.length ? `would be SPADs: ${dirty.slice(0, 5).join(', ')}${dirty.length > 5 ? '...' : ''}` : 'working tree clean outside blocks')
+  const hook = resolve(root, git(root, ['rev-parse', '--git-path', 'hooks']).trim(), 'pre-commit')
+  add('pre-commit guard', existsSync(hook) && readFileSync(hook, 'utf8').includes('signalbox'), existsSync(hook) ? hook : 'run: npm run -s sb -- install-hook')
+  const nm = nodeModuleDirs(root)
+  add('dependencies installed', nm.some((d) => d.startsWith('legacy-dapp')), nm.join(', ') || 'run: npm ci --prefix legacy-dapp')
+  add('live panel built', existsSync(join(root, 'atlas', 'dist', 'index.html')), 'npm run signalbox builds it')
+  if (runTests && state) {
+    const t = checkTests(root, state, [])
+    add('tests pass on HEAD (isolated)', t.ok, t.summary || `exit ${t.exitCode}`)
+  }
+  return checks
+}

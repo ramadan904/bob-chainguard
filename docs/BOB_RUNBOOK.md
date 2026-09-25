@@ -28,6 +28,7 @@ Open the signal box and put the live panel on screen:
 ```bash
 npm run -s sb -- init          # scans, plans 6 blocks in 3 waves, writes .signalbox/ledger.jsonl
 npm run -s sb -- install-hook  # block files can only be committed by `release` (no bypass)
+npm run -s sb -- doctor        # preflight: clean tree, hook, deps, UI built, tests green on HEAD
 npm run signalbox              # builds the UI and serves it live at http://localhost:4700
 ```
 

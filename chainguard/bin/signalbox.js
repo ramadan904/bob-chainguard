@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { init, claim, extend, release, rollback, loadState, readLedger, repoRoot, writeReplay, installHook, hookCheck, SignalboxError, DEFAULT_TEST } from '../src/signalbox.js'
+import { init, claim, extend, release, rollback, loadState, readLedger, repoRoot, writeReplay, installHook, hookCheck, doctor, SignalboxError, DEFAULT_TEST } from '../src/signalbox.js'
 import { summary, describe, metrics, timeline } from '../src/signalbox-state.js'
 import { writeFileSync } from 'node:fs'
 import { resolve as resolvePath } from 'node:path'
@@ -15,6 +15,7 @@ Usage:
   signalbox next [--json]                                blocks a dispatcher may start now, with prompts
   signalbox report [--out file]                          impact report from the ledger (Markdown)
   signalbox install-hook                                 pre-commit guard: block files only via release
+  signalbox doctor [--no-tests]                          preflight before a run or a recording
   signalbox prompt <block>                               the subagent prompt for a block
   signalbox status                                       the signal box panel, as text
   signalbox log                                          the train describer (every event)
@@ -188,6 +189,11 @@ async function main() {
         console.log(`wrote ${opts.out}`)
       } else console.log(md)
       return 0
+    }
+    case 'doctor': {
+      const checks = doctor(root, { runTests: opts.tests !== false })
+      for (const c of checks) console.log(`  ${c.ok ? 'ok  ' : 'FAIL'}  ${c.name.padEnd(30)} ${c.detail}`)
+      return checks.every((c) => c.ok) ? 0 : 1
     }
     case 'install-hook':
       console.log(`installed ${installHook(root)}`)
