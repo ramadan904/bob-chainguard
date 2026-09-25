@@ -34,7 +34,7 @@ Name them `<yourname>-<what>.png`, where <what> is `onboarding`, `expand`, `disp
 `review`, `cleanup` or a block id (`w1-lib-1`). The names become the captions of the
 **Bob at work** gallery on the site and in the deck, and fill the evidence column of the statements.
 
-If something goes wrong mid-run, the retake steps are at the bottom of the runbook.
+If something goes wrong mid-run: `npm run bob:retake` shows what goes back, and `npm run bob:retake -- --yes` keeps the attempt on a `practice-HHMM` branch, resets to Bob's expand commit and opens a fresh signal box. Then paste the dispatcher prompt again.
 
 ## 2. Finalize (one command)
 
