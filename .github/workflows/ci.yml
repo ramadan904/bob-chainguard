@@ -18,13 +18,20 @@ jobs:
           cache-dependency-path: |
             legacy-dapp/package-lock.json
             atlas/package-lock.json
+            samples/moment-billing/package-lock.json
       - run: npm ci --prefix legacy-dapp
       - run: npm ci --prefix atlas
+      - run: npm ci --prefix samples/moment-billing
       - run: npm test
       - run: npm run build --prefix legacy-dapp
       - run: npm run atlas
       # The ledger must be intact and must match git (no-op before the Bob run).
       - run: node chainguard/bin/signalbox.js audit
+      # The same interlocking on a second rule pack (Moment.js -> date-fns), end to end.
+      - name: prove the Moment.js pack
+        run: |
+          node scripts/prove-pack.mjs | tee pack.txt
+          { echo '```'; cat pack.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       # Reporting only while the migration is in progress. After Bob's cleanup step,
       # replace with `npm run guard` so new ethers/web3.js code fails CI.
       - name: chainguard scan
@@ -49,7 +56,9 @@ jobs:
           node-version: 22
       - run: npm ci --prefix legacy-dapp
       - run: npm ci --prefix atlas
+      - run: npm ci --prefix samples/moment-billing
       - run: npm test
       - run: npm run build
       - run: npm run atlas
       - run: node chainguard/bin/signalbox.js audit
+      - run: node scripts/prove-pack.mjs

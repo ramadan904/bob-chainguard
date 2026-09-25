@@ -4,7 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Interlocking for parallel IBM Bob subagents: a live signal box that lets many agents change one codebase safely, block by block." />
-    <title>Chainguard Signalbox</title>
+    <title>Signalbox</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Signalbox: interlocking for parallel IBM Bob subagents" />
+    <meta property="og:description" content="Many Bob agents, one codebase, no collisions. Every change is proven before it's committed, live on a transit map." />
+    <meta property="og:image" content="https://bob-chainguard.vercel.app/og.png" />
+    <meta property="og:image:width" content="1440" />
+    <meta property="og:image:height" content="756" />
+    <meta property="og:url" content="https://bob-chainguard.vercel.app/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://bob-chainguard.vercel.app/og.png" />
     <meta name="theme-color" content="#070b14" />
     <script>
       // Night signal box by default; set before first paint so there is no flash.
@@ -21,7 +30,7 @@
           <rect x="1" y="19.5" width="46" height="9" rx="1" />
         </svg>
         <div>
-          <h1>Chainguard Signalbox <span class="mode" id="mode" data-mode="baseline">Baseline</span></h1>
+          <h1>Signalbox <span class="mode" id="mode" data-mode="baseline">Baseline</span></h1>
           <p class="route" id="route"></p>
           <div class="packs" id="packs" role="group" aria-label="Rule pack"></div>
           <span class="ledger" id="ledger" role="status"></span>

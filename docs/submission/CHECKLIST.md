@@ -29,8 +29,8 @@ Aim to submit by **Sep 27, 09:00 EDT** to leave a buffer for upload problems.
 - [ ] Slides: problem, solution architecture (scan, plan, Bob waves, tests, guard), Bob usage, results table, generalization, team
 
 ## Written statements (500 words max each)
-- [ ] Problem & Solution: docs/submission/PROBLEM_SOLUTION.md with [brackets] replaced (recount words after filling)
-- [ ] IBM Bob Usage: docs/submission/IBM_BOB_USAGE.md with [brackets] replaced
+- [ ] Problem & Solution: paste docs/submission/final/PROBLEM_SOLUTION.md (written by `npm run finalize`, word count printed)
+- [ ] IBM Bob Usage: paste docs/submission/final/IBM_BOB_USAGE.md (no missing-value warnings)
 
 ## After submitting
 - [ ] Fill in the post-hackathon feedback form (needed for the $100 participant reward)

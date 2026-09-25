@@ -21,7 +21,11 @@ Record the Bob IDE on the left and the live Signalbox panel (`npm run signalbox`
 drill) and self-correction (fault → fix → clear).
 
 Recording tips:
-- Short on time? Open `https://ramadan904.github.io/bob-chainguard/?tour` after `npm run finalize` and a
+- **Ready-made clips:** after `npm run finalize`, run `npm run record:tour` (the whole guided replay,
+  1920×1080, about 60–90 s) and `npm run record:deck` (every slide, 5 s each). They land in
+  `docs/submission/media/` as .webm, plus .mp4 if ffmpeg is installed. First time only:
+  `npm i --no-save playwright && npx playwright install chromium`.
+- Short on time? Open `https://bob-chainguard.vercel.app/?tour` after `npm run finalize` and a
   merge. The tour narrates the real run by itself (about 45–90 seconds), which gives you a clean segment.
 - Speed up long Bob thinking segments, but show the real subagent names and timestamps.
 - Do the chaos drill **between two releases** so no agent's release lands in the 6-second window.

@@ -6,6 +6,18 @@ block is released only after a track circuit proves it clear. Signalbox does the
 subagents changing one codebase at the same time, and shows it live on a transit-map signal box.
 Built for the IBM Bob 2.0 Hackathon (Sep 25–27, 2026).
 
+## Judge it in 60 seconds
+
+| Try this | What you'll see |
+| --- | --- |
+| Open **https://bob-chainguard.vercel.app/?tour** | The recorded Bob run replays itself with captions: subagents claiming blocks, a claim refused at a red signal, a fault caught before commit, the chaos drill |
+| Click **Ledger verified** under the title, then **Tamper test** | Your browser re-hashes every event; editing one event in memory breaks the chain right there |
+| Type *why is w2-lib at danger?* in the **Dispatcher** bar | An answer computed from the ledger, and the block lights up |
+| Toggle **Risk heatmap** on the map | Every unfinished block glows by risk |
+| Switch the **Rule pack** to *Moment → date-fns* | The same interlocking planning a different migration |
+| Open **[the deck](https://bob-chainguard.vercel.app/deck.html)** | 11 slides; the results slide reads the real ledger |
+| Locally: `npm ci --prefix samples/moment-billing && npm run prove:pack` | The whole protocol on the second pack, 9 checks, in a throwaway worktree |
+
 ```
  chainguard scan+plan ──► signal box ──► Bob dispatcher ──► Bob subagents (parallel, one per block)
  72 legacy call sites     6 blocks,      reads status,      claim ─► edit ─► release
@@ -70,7 +82,9 @@ node chainguard/bin/signalbox.js mcp                    # MCP server: the signal
 - **Verify it yourself.** Click the "Ledger verified" badge: the browser re-hashes every event with
   SHA-256, then a tamper test edits one event in memory and shows the chain break at that event.
 - **Rule-pack switcher.** The panel switches between the Web3 plan and the Moment.js → date-fns
-  plan of `samples/moment-billing`, a small sample app scanned with the second pack.
+  plan of `samples/moment-billing`, a small sample app with its own behavior tests.
+  `npm run prove:pack` runs the whole protocol on it (claim, refusal, track circuit, chaos drill,
+  audit) in a throwaway worktree; CI runs it on Linux and Windows.
 - **MCP tools for Bob.** `signalbox mcp` serves claim, release, rollback, next, ask and more as
   Model Context Protocol tools over stdio (zero dependencies), so Bob's agents use the signal box
   natively. Faults come back as tool errors naming every failing check.

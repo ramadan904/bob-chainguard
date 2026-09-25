@@ -18,10 +18,11 @@ import { reduce, ownerOf } from './signalbox-state.js'
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.woff2': 'font/woff2', '.woff': 'font/woff', '.svg': 'image/svg+xml', '.png': 'image/png' }
 
-export async function serve(root, { port = 4700, dist = join(root, 'atlas', 'dist'), scanPath, drillHoldMs = 6000 } = {}) {
+export async function serve(root, { port = 4700, host = '127.0.0.1', dist = join(root, 'atlas', 'dist'), scanPath, drillHoldMs = 6000 } = {}) {
   const ledger = ledgerPath(root)
-  mkdirSync(dirname(ledger), { recursive: true })
   const scanRoot = () => scanPath || reduce(readLedger(root))?.scanDir || 'legacy-dapp/src'
+  if (!existsSync(join(root, scanRoot()))) throw new Error(`nothing to watch: ${scanRoot()} does not exist. Open the signal box first (signalbox init --scan <dir>).`)
+  mkdirSync(dirname(ledger), { recursive: true })
   const clients = new Set()
   const send = (type, data) => {
     const msg = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`
@@ -79,12 +80,13 @@ export async function serve(root, { port = 4700, dist = join(root, 'atlas', 'dis
     }, 250)
   }
 
-  watch(dirname(ledger), () => pumpLedger())
+  const watchers = [watch(dirname(ledger), () => pumpLedger())]
   const srcDir = join(root, scanRoot())
-  watch(srcDir, { recursive: true }, (_, file) => {
+  watchers.push(watch(srcDir, { recursive: true }, (_, file) => {
     if (file && !String(file).includes('node_modules')) scheduleScan()
-  })
-  setInterval(pumpLedger, 1000).unref() // belt and braces for filesystems without reliable events
+  }))
+  const pump = setInterval(pumpLedger, 1000) // belt and braces for filesystems without reliable events
+  pump.unref()
 
   const server = createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost')
@@ -101,6 +103,12 @@ export async function serve(root, { port = 4700, dist = join(root, 'atlas', 'dis
     if (url.pathname === '/api/drill' && req.method === 'POST') {
       const kind = url.searchParams.get('kind') || 'spad'
       const reply = (code, body) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)) }
+      // The drill writes to the working tree, so only this panel may trigger it: a custom header
+      // (cross-site pages can't send one without a CORS preflight, which this server never grants),
+      // a same-origin Origin, and a loopback Host (no DNS rebinding).
+      const hostOk = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(req.headers.host || '')
+      const originOk = !req.headers.origin || req.headers.origin === `http://${req.headers.host}`
+      if (req.headers['x-signalbox'] !== 'drill' || !hostOk || !originOk) return reply(403, { error: 'drills can only be started from the signal box panel on this machine' })
       try {
         const e = drill(root, { kind, by: 'operator (panel)' })
         pumpLedger()
@@ -143,8 +151,15 @@ export async function serve(root, { port = 4700, dist = join(root, 'atlas', 'dis
     res.end(readFileSync(file))
   })
 
-  await new Promise((resolve) => server.listen(port, resolve))
+  // Loopback only by default: the panel can start drills that edit files.
+  await new Promise((resolve) => server.listen(port, host, resolve))
+  server.on('close', () => {
+    for (const w of watchers) w.close()
+    clearInterval(pump)
+    clearTimeout(scanTimer)
+    for (const res of clients) res.end()
+  })
   const head = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
-  console.log(`signal box live at http://localhost:${port}  (repo ${head}, watching ${scanRoot()} and .signalbox/ledger.jsonl)`)
+  console.log(`signal box live at http://${host === '127.0.0.1' ? 'localhost' : host}:${port}  (repo ${head}, watching ${scanRoot()} and .signalbox/ledger.jsonl)`)
   return server
 }

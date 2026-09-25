@@ -320,10 +320,17 @@ export function checkTests(root, state, files, { timeoutMs = 300_000 } = {}) {
     const r = spawnSync(state.testCmd, { shell: true, cwd: wt, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 32 << 20, env: { ...process.env, CI: '1', FORCE_COLOR: '0', NO_COLOR: '1' } })
     const out = `${r.stdout || ''}\n${r.stderr || ''}`.replace(/\x1b\[[0-9;]*m/g, '')
     const lines = out.split('\n').map((l) => l.trimEnd()).filter((l) => l.trim())
-    const summaryLine = [...lines].reverse().find((l) => /^\s*Tests\s+/.test(l)) || ''
-    const passed = Number(summaryLine.match(/(\d+) passed/)?.[1] || 0)
-    const failed = Number(summaryLine.match(/(\d+) failed/)?.[1] || 0)
-    const failures = [...new Set(lines.filter((l) => /^\s*(×|✗|FAIL)\s/.test(l)).map((l) => l.trim()))].slice(0, 12)
+    // Vitest prints " Tests  2 failed | 20 passed (22)"; node:test prints "# pass 20" / "# fail 2".
+    let summaryLine = [...lines].reverse().find((l) => /^\s*Tests\s+/.test(l)) || ''
+    let passed = Number(summaryLine.match(/(\d+) passed/)?.[1] || 0)
+    let failed = Number(summaryLine.match(/(\d+) failed/)?.[1] || 0)
+    const nodePass = [...lines].reverse().find((l) => /^# pass \d+/.test(l))
+    if (!summaryLine && nodePass) {
+      passed = Number(nodePass.match(/\d+/)[0])
+      failed = Number([...lines].reverse().find((l) => /^# fail \d+/.test(l))?.match(/\d+/)[0] || 0)
+      summaryLine = `Tests  ${failed ? `${failed} failed | ` : ''}${passed} passed (${passed + failed})`
+    }
+    const failures = [...new Set(lines.filter((l) => /^\s*(×|✗|FAIL)\s/.test(l) || /^\s*not ok \d+ - /.test(l)).map((l) => l.trim().replace(/^not ok \d+ - /, '× ')))].slice(0, 12)
     return { ok: r.status === 0, exitCode: r.status, passed, failed, summary: summaryLine.trim(), failures, tail: lines.slice(-30), ms: Date.now() - started }
   } finally {
     try { git(root, ['worktree', 'remove', '--force', wt], { stdio: 'ignore' }) } catch { /* already gone */ }
@@ -334,8 +341,14 @@ export function checkTests(root, state, files, { timeoutMs = 300_000 } = {}) {
 function nodeModuleDirs(root) {
   const out = []
   if (existsSync(join(root, 'node_modules'))) out.push('node_modules')
+  // Two levels deep: legacy-dapp/node_modules, samples/moment-billing/node_modules.
+  const skip = (name) => name.startsWith('.') || name === 'node_modules'
   for (const d of readdirSync(root, { withFileTypes: true })) {
-    if (d.isDirectory() && !d.name.startsWith('.') && existsSync(join(root, d.name, 'node_modules'))) out.push(`${d.name}/node_modules`)
+    if (!d.isDirectory() || skip(d.name)) continue
+    if (existsSync(join(root, d.name, 'node_modules'))) out.push(`${d.name}/node_modules`)
+    for (const e of readdirSync(join(root, d.name), { withFileTypes: true })) {
+      if (e.isDirectory() && !skip(e.name) && existsSync(join(root, d.name, e.name, 'node_modules'))) out.push(`${d.name}/${e.name}/node_modules`)
+    }
   }
   return out
 }
@@ -448,7 +461,9 @@ export function doctor(root, { runTests = true } = {}) {
   add('pre-commit guard', existsSync(hook) && readFileSync(hook, 'utf8').includes('signalbox'), existsSync(hook) ? hook : 'run: npm run -s sb -- install-hook')
   const nm = nodeModuleDirs(root)
   add('dependencies installed', nm.some((d) => d.startsWith('legacy-dapp')), nm.join(', ') || 'run: npm ci --prefix legacy-dapp')
-  add('live panel built', existsSync(join(root, 'atlas', 'dist', 'index.html')), 'npm run signalbox builds it')
+  const built = existsSync(join(root, 'atlas', 'dist', 'index.html'))
+  const buildable = existsSync(join(root, 'atlas', 'node_modules'))
+  add('live panel ready', built || buildable, built ? 'atlas/dist built' : buildable ? '`npm run signalbox` builds and serves it' : 'run: npm ci --prefix atlas')
   if (runTests && state) {
     const t = checkTests(root, state, [])
     add('tests pass on HEAD (isolated)', t.ok, t.summary || `exit ${t.exitCode}`)

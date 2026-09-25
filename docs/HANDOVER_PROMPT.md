@@ -11,10 +11,10 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
 
 ## The project: "Signalbox: interlocking for parallel IBM Bob subagents"
 - Repo (public): https://github.com/ramadan904/bob-chainguard
-- Live site (GitHub Pages, deployed from `main`): https://ramadan904.github.io/bob-chainguard/
-- Deck: https://ramadan904.github.io/bob-chainguard/deck.html
-- Guided replay: https://ramadan904.github.io/bob-chainguard/?tour
-- Vercel is also connected to the repo and deploys previews of the branch (a second hosting option).
+- Live site (Vercel, deployed from `main`): https://bob-chainguard.vercel.app/ (backup: https://ramadan904.github.io/bob-chainguard/ on GitHub Pages)
+- Deck: https://bob-chainguard.vercel.app/deck.html
+- Guided replay: https://bob-chainguard.vercel.app/?tour
+- Vercel deploys `main` to production and every branch push as a preview. GitHub Pages also deploys `main` (the backup link).
 - Works on Windows, macOS and Linux (CI runs the full suite on Windows too). Needs Node.js 20+ (22 LTS recommended); `sb doctor` checks it.
 - Working branch: `claude/dazzling-ptolemy-c288r3`. `main` gets updated by merging a pull request from that branch, and every push to `main` redeploys the site automatically (workflow `deploy panel`, about 1 minute).
 
@@ -52,12 +52,14 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
   - `deck.html` + `src/deck.js`: the 11-slide pitch deck. Its results slide reads the real ledger.
   - Data: `atlas/src/data/atlas-data.json` and `atlas/src/data/ledger.json`, written by `npm run atlas` / `npm run finalize`.
 - `legacy-dapp/`: the dApp being migrated. Its tests are the behavior contract.
-- `scripts/finalize.mjs` (`npm run finalize`): guard, tests, a check that test files are unchanged since tag `before-bob`, build + gzip bundle size against `reports/baseline-bundle.json` (549 kB), audit, reports, replay bundle. Writes `reports/submission-numbers.md`.
+- `scripts/record-tour.mjs` (`npm run record:tour` / `record:deck`): 1920×1080 clips of the guided replay and the deck for the video (needs `npm i --no-save playwright && npx playwright install chromium` once).
+- `scripts/prove-pack.mjs` (`npm run prove:pack`): runs the whole protocol on `samples/moment-billing` with the Moment.js pack; CI runs it.
+- `scripts/finalize.mjs` (`npm run finalize`): also writes paste-ready statements to `docs/submission/final/`; guard, tests, a check that test files are unchanged since tag `before-bob`, build + gzip bundle size against `reports/baseline-bundle.json` (549 kB), audit, reports, replay bundle. Writes `reports/submission-numbers.md`.
 - `docs/BOB_RUNBOOK.md`: the exact Bob prompts: expand step, dispatcher, cleanup, review, retakes.
 - `docs/MIGRATION_PLAYBOOK.md`: the ethers/web3 → viem/wagmi mapping and traps.
 - `docs/REHEARSAL.md`: a full dry run done by hand on a throwaway clone. It proved the tooling works end to end.
 - `docs/submission/`:
-  - `PROBLEM_SOLUTION.md` and `IBM_BOB_USAGE.md` (each **≤ 500 words**, with `[bracket]` placeholders)
+  - `PROBLEM_SOLUTION.md` and `IBM_BOB_USAGE.md` (each **≤ 500 words**, with `{{value}}` placeholders that `npm run finalize` fills into `docs/submission/final/`)
   - `DEMO_SCRIPT.md` (video ≤ 3 min)
   - `CHECKLIST.md`
   - `Signalbox-deck.pdf` (the pre-run version)
@@ -69,7 +71,7 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
   - `signalbox-pr.yml`: bot comment on pull requests.
 
 ## Status right now
-- Done, tested (79 tests: 39 chainguard/signalbox, 22 dApp, 18 panel) and pushed on the branch: everything above.
+- Done, tested (87 tests: 41 chainguard/signalbox, 22 dApp, 18 panel, 6 Moment.js sample) and pushed on the branch: everything above.
 - Already live on `main`: the panel with the night colours.
 - **Not yet on `main`** (needs one more PR merge): the deck, the hash-chained ledger + audit + "Ledger verified" badge, "Review bob-N's change" diffs, blast radius, crew roster, risk scores, the PR bot, and the guided tour. To merge: open https://github.com/ramadan904/bob-chainguard/compare/main...claude/dazzling-ptolemy-c288r3 → Create pull request → Merge pull request → Confirm merge.
 - **Not done yet:** the real Bob run. **The migration must be done by IBM Bob, not by you or by me**, because it's what the judges score. `legacy-dapp/src` is still the untouched "before" code, and that's correct.
@@ -97,12 +99,12 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
    git push
    ```
    Then merge to `main` again (a PR from the branch I pushed to).
-5. Put the numbers from `reports/submission-numbers.md` into the `[brackets]` in `docs/submission/PROBLEM_SOLUTION.md` and `IBM_BOB_USAGE.md`. Recount the words: each must be **≤ 500**.
+5. `npm run finalize` wrote paste-ready statements to `docs/submission/final/` with every number filled in. It prints their word counts (each must be **≤ 500**) and warns if a screenshot is missing. Name screenshots by what they show: `name-onboarding.png`, `name-dispatcher.png`, `name-mcp.png`, `name-review.png`, `name-<block>.png`.
 6. Media:
    - Video ≤ 3 min, following `DEMO_SCRIPT.md`. An easy segment: record `…/bob-chainguard/?tour`.
    - Slides: open `deck.html` → "Save as PDF" with background graphics on.
    - Cover image: use `media/cover-baseline.png`, or a screenshot of the finished panel.
-7. Fill in the lablab.ai form using the text in `SUBMIT_TOMORROW.md`: title, short and long description, tags, repo URL, application URL `https://ramadan904.github.io/bob-chainguard/`, the statements, and the Bob screenshots. Then fill in the post-hackathon feedback form (needed for the $100 reward).
+7. Fill in the lablab.ai form using the text in `SUBMIT_TOMORROW.md`: title, short and long description, tags, repo URL, application URL `https://bob-chainguard.vercel.app/`, the statements, and the Bob screenshots. Then fill in the post-hackathon feedback form (needed for the $100 reward).
 
 ## Rules and gotchas you must respect
 - **Never fake data** in the final version: no invented numbers, no pre-written ledgers.

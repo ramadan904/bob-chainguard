@@ -7,8 +7,8 @@ Deadline: **Sun Sep 27, 11:00 AM EDT / 15:00 UTC**. Aim to be done by 09:00 EDT.
 Open https://github.com/ramadan904/bob-chainguard/compare/main...claude/dazzling-ptolemy-c288r3
 → **Create pull request** → **Merge pull request** → **Confirm merge**.
 About a minute later these are live:
-- Panel: https://ramadan904.github.io/bob-chainguard/
-- Deck: https://ramadan904.github.io/bob-chainguard/deck.html
+- Panel: https://bob-chainguard.vercel.app/ (backup: https://ramadan904.github.io/bob-chainguard/)
+- Deck: https://bob-chainguard.vercel.app/deck.html
 
 ## 1. The Bob run (the core of the video)
 
@@ -50,7 +50,9 @@ Then merge to `main` again (step 0's link). The live panel and the deck's result
 ## 3. Media
 
 - **Video (≤ 3 min):** follow docs/submission/DEMO_SCRIPT.md. Upload to YouTube (unlisted is fine).
-  Easy segment: open `https://ramadan904.github.io/bob-chainguard/?tour` and record it. It narrates your real run by itself.
+  Easy segment: `npm run record:tour` records the guided replay of your real run as a 1920×1080 clip
+  (`docs/submission/media/tour.webm`), and `npm run record:deck` records the slides. First time only:
+  `npm i --no-save playwright && npx playwright install chromium`.
 - **Slides:** open the deck link → **Save as PDF** button (in the print dialog, turn on "Background graphics").
   `docs/submission/Signalbox-deck.pdf` is the pre-run version, if you're short on time.
 - **Cover image:** `docs/submission/media/cover-baseline.png`, or a screenshot of the finished panel (better).
@@ -82,11 +84,15 @@ viem/wagmi. Rule packs make it work for any migration (a Moment.js → date-fns 
 **Tags:** IBM Bob, Agentic AI, Multi-agent, Developer Tools, Code Migration, Web3, viem
 
 **Repository:** https://github.com/ramadan904/bob-chainguard
-**Application URL:** https://ramadan904.github.io/bob-chainguard/
+**Application URL:** https://bob-chainguard.vercel.app/
 
-**Problem & Solution statement:** docs/submission/PROBLEM_SOLUTION.md
-**IBM Bob Usage statement:** docs/submission/IBM_BOB_USAGE.md
-Replace every [bracket] with the numbers from `reports/submission-numbers.md`. Keep each under 500 words.
+**Problem & Solution statement:** paste `docs/submission/final/PROBLEM_SOLUTION.md`
+**IBM Bob Usage statement:** paste `docs/submission/final/IBM_BOB_USAGE.md`
+`npm run finalize` writes both with every number filled in from the ledger and prints their word
+counts (each must be ≤ 500). Name Bob screenshots in `bob_sessions/` by what they show, e.g.
+`alice-onboarding.png`, `alice-dispatcher.png`, `alice-mcp.png`, `alice-review.png`,
+`bob-w1-lib-1.png`, so they land in the right rows. Optional: put your Bobcoins total in
+`bob_sessions/bobcoins.txt`.
 
 ## 5. After submitting
 

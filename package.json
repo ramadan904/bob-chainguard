@@ -9,14 +9,17 @@
     "report": "node chainguard/bin/chainguard.js scan legacy-dapp/src --baseline reports/baseline.json --format md --out reports/after.md",
     "plan": "node chainguard/bin/chainguard.js plan legacy-dapp/src --out reports/bob-task-plan.md",
     "guard": "node chainguard/bin/chainguard.js scan legacy-dapp/src --fail-on warning",
-    "test": "npm test --prefix chainguard && npm test --prefix legacy-dapp && npm test --prefix atlas",
+    "test": "npm test --prefix chainguard && npm test --prefix legacy-dapp && npm test --prefix atlas && npm test --prefix samples/moment-billing",
     "dev": "npm run dev --prefix legacy-dapp",
     "build": "npm run build --prefix legacy-dapp && npm run build --prefix atlas",
     "atlas": "node scripts/atlas.mjs",
     "atlas:dev": "npm run data --prefix atlas && npm run dev --prefix atlas",
     "sb": "node chainguard/bin/signalbox.js",
     "signalbox": "npm run build --prefix atlas && node chainguard/bin/signalbox.js serve",
-    "finalize": "node scripts/finalize.mjs"
+    "finalize": "node scripts/finalize.mjs",
+    "record:tour": "node scripts/record-tour.mjs",
+    "record:deck": "node scripts/record-tour.mjs --deck",
+    "prove:pack": "node scripts/prove-pack.mjs"
   },
   "license": "MIT"
 }
