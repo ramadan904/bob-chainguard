@@ -36,7 +36,8 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
 ## Repository map
 - `chainguard/`: zero-dependency Node CLI and engine.
   - `bin/chainguard.js`: `scan | plan | atlas | rules`, with `--pack` for rule packs.
-  - `bin/signalbox.js`: `init | claim | extend | release | rollback | next | ask | why | risk | drill | drill-end | prompt | status | log | report | audit | doctor | install-hook | checkpoints | recover | export | serve`.
+  - `bin/signalbox.js`: `init | claim | extend | release | rollback | next | ask | why | risk | drill | drill-end | mcp | prompt | status | log | report | audit | doctor | install-hook | checkpoints | recover | export | serve`.
+  - `src/signalbox-mcp.js`: `sb mcp`, an MCP server (stdio) exposing the signal box as tools for Bob. Setup in `docs/BOB_MCP.md`.
   - `src/dispatch.js`: the dispatcher desk behind `sb ask` and the panel's command bar (keyword intents over the ledger, no model). Also blast radius and block risk.
   - `src/signalbox.js`: operations (ledger, locks, the four checks, isolated worktree tests, commits, checkpoints, audit).
   - `src/signalbox-state.js`: a pure reducer shared by the CLI and the browser (states, `canClaim`, `metrics`, `timeline`, `verifyChain`, `describe`).
@@ -68,7 +69,7 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
   - `signalbox-pr.yml`: bot comment on pull requests.
 
 ## Status right now
-- Done, tested (78 tests: 38 chainguard/signalbox, 22 dApp, 18 panel) and pushed on the branch: everything above.
+- Done, tested (79 tests: 39 chainguard/signalbox, 22 dApp, 18 panel) and pushed on the branch: everything above.
 - Already live on `main`: the panel with the night colours.
 - **Not yet on `main`** (needs one more PR merge): the deck, the hash-chained ledger + audit + "Ledger verified" badge, "Review bob-N's change" diffs, blast radius, crew roster, risk scores, the PR bot, and the guided tour. To merge: open https://github.com/ramadan904/bob-chainguard/compare/main...claude/dazzling-ptolemy-c288r3 → Create pull request → Merge pull request → Confirm merge.
 - **Not done yet:** the real Bob run. **The migration must be done by IBM Bob, not by you or by me**, because it's what the judges score. `legacy-dapp/src` is still the untouched "before" code, and that's correct.

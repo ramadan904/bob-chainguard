@@ -30,6 +30,7 @@ Usage:
   signalbox prompt <block>                               the subagent prompt for a block
   signalbox status                                       the signal box panel, as text
   signalbox log                                          the train describer (every event)
+  signalbox mcp [--root <repo>]                          MCP server on stdio: the signal box as tools for Bob
   signalbox serve [--port 4700] [--dist atlas/dist]       live signal box panel in the browser
   signalbox export [--out atlas/src/data/ledger.json]     ledger for the static replay build
 
@@ -139,7 +140,7 @@ function reportMarkdown(events) {
 
 async function main() {
   const { cmd, opts } = parseArgs(process.argv.slice(2))
-  const root = repoRoot()
+  const root = cmd === 'mcp' && opts.root ? null : repoRoot()
   const [block, ...files] = opts._
   switch (cmd) {
     case 'init': {
@@ -296,6 +297,11 @@ async function main() {
       const out = resolvePath(opts.out || `${root}/atlas/src/data/ledger.json`)
       writeReplay(root, out)
       console.log(`wrote ${readLedger(root).length} events to ${out}`)
+      return 0
+    }
+    case 'mcp': {
+      const { serveMcp } = await import('../src/signalbox-mcp.js')
+      await serveMcp(opts.root ? repoRoot(resolvePath(opts.root)) : root)
       return 0
     }
     case 'serve': {

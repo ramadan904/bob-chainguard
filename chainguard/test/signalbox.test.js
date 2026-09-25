@@ -360,3 +360,36 @@ test('dispatcher desk: plain questions answered from the ledger', () => {
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+test('mcp: the signal box as tools over stdio JSON-RPC', async () => {
+  const { root } = makeRepo()
+  try {
+    init(root, { scanPath: 'src', testCmd: 'node check.js', allow: [] })
+    const state = loadState(root)
+    const a = Object.values(state.tasks).find((t) => t.files.includes('src/a.js'))
+    const c = Object.values(state.tasks).find((t) => t.files.includes('src/c.js'))
+    const bin = fileURLToPath(new URL('../bin/signalbox.js', import.meta.url))
+    const msgs = [
+      { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } } },
+      { jsonrpc: '2.0', method: 'notifications/initialized' },
+      { jsonrpc: '2.0', id: 2, method: 'tools/list' },
+      { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'signalbox_claim', arguments: { block: c.id, agent: 'bob-2' } } },
+      { jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'signalbox_claim', arguments: { block: a.id, agent: 'bob-1' } } },
+      { jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'signalbox_ask', arguments: { question: 'who is working?' } } },
+      { jsonrpc: '2.0', id: 6, method: 'nope' },
+    ]
+    const out = execFileSync(process.execPath, [bin, 'mcp'], { cwd: root, input: msgs.map((m) => JSON.stringify(m)).join('\n') + '\n', encoding: 'utf8' })
+    const replies = out.trim().split('\n').map((l) => JSON.parse(l))
+    assert.deepEqual(replies.map((r) => r.id), [1, 2, 3, 4, 5, 6], 'one reply per request, none for the notification, nothing else on stdout')
+    assert.equal(replies[0].result.serverInfo.name, 'signalbox')
+    assert.ok(replies[1].result.tools.some((t) => t.name === 'signalbox_release'))
+    assert.equal(replies[2].result.isError, true)
+    assert.match(replies[2].result.content[0].text, /DENIED .*signal at danger/)
+    assert.match(replies[3].result.content[0].text, /^GREEN /)
+    assert.match(replies[4].result.content[0].text, /1 agent in section/)
+    assert.equal(replies[5].error.code, -32601)
+    assert.deepEqual(readLedger(root).map((e) => e.t), ['init', 'deny', 'claim'])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})

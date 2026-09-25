@@ -54,6 +54,10 @@ List the three riskiest parts of a viem/wagmi migration.
 
 ## 2. The dispatcher: one Bob agent orchestrates the subagents
 
+> **Optional, recommended:** connect Signalbox to Bob as MCP tools first (`docs/BOB_MCP.md`).
+> Then Bob claims, releases and asks with native tool calls (`signalbox_claim`,
+> `signalbox_release`, `signalbox_ask`…) instead of shell commands. Same ledger, same checks.
+
 Give this to Bob's top-level agent (Agent mode, subagents / parallel tasks enabled):
 
 ```text

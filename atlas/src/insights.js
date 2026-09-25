@@ -52,7 +52,7 @@ export function tourStep(events, i) {
       step.text = `${e.agent} claims ${e.task}. No other agent can touch these files now.`
       break
     case 'deny':
-      step.text = `${e.agent} tries to jump ahead and is held at the signal: ${e.reason}.`
+      step.text = `${e.agent} tries to jump ahead and is held at the signal: ${e.reason.replace(/^signal at danger: /, '')}.`
       step.kind = 'held'
       step.dwell = 3200
       break

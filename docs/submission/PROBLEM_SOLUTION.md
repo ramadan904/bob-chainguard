@@ -6,11 +6,10 @@
 
 AI agents can now change code in parallel, and every team that tries it hits the same wall.
 Two agents edit the same file. One agent quietly renames a function another agent's code depends
-on. A third "fixes" a failing test by changing the test. The result is one huge diff that nobody
-can review, with no record of which agent did what or whether any single change was safe on its own.
+on. A third "fixes" a failing test by changing the test. The result is one huge diff nobody can review.
 
-So teams fall back to one agent at a time. Large, risky changes such as migrations, upgrades and
-API renames stay slow, exactly where parallel agents should help most.
+So teams fall back to one agent at a time, and large migrations stay slow, exactly where
+parallel agents should help most.
 
 ## Solution: Signalbox, interlocking for parallel Bob subagents
 
@@ -31,11 +30,12 @@ subagents working on one repository:
 4. **Commit or roll back.** A clear block is committed on its own and tagged with its agent. A
    faulty block stays uncommitted until the agent fixes it or rolls it back, and the other agents
    keep working.
-5. **Live panel.** Every step is appended to a ledger and streamed to a transit-map signal box:
-   blocks light up as agents enter, files shrink as Bob edits, faults flash with the failing test.
+5. **Live control tower.** Every step lands in a hash-chained ledger, streamed to a transit-map
+   panel: one lane per Bob subagent, refused claims flash amber, faults show the failing test. A
+   chaos button makes a real stray edit; the checks catch it in milliseconds and git restores it.
 
 We proved it on a real ERC-20 wallet dApp: Bob migrates it from ethers v5 + web3.js (web3.js was
-sunset in 2025) to viem/wagmi. That's 72 legacy call sites in 10 files, split into 6 blocks in 3 waves.
+sunset in 2025) to viem/wagmi. That's 72 legacy call sites in 10 files, split into 6 blocks in 2 waves.
 
 ## Impact
 
@@ -44,8 +44,8 @@ sunset in 2025) to viem/wagmi. That's 72 legacy call sites in 10 files, split in
 | Legacy call sites | 72 → [0] |
 | Blocks cleared by Bob subagents | [6 / 6], [N] agents, up to [N] in parallel |
 | Faults caught before commit | [N] (e.g. viem `parseUnits` silently rounding where ethers threw) |
-| SPADs and rollbacks | [N] / [N], none reached a commit |
+| Refused claims / chaos drills caught | [N] / [N], none reached a commit |
 | Behavior tests | 22 / 22, never modified |
 | Wall-clock time | [X min] vs [manual estimate] |
 
-Swap the rule set and playbook, and the same interlocking protects any large parallel-agent change.
+Swap the rule pack (a Moment.js → date-fns pack ships too) and the same interlocking protects any large parallel-agent change.
