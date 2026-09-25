@@ -12,7 +12,7 @@ Built for the IBM Bob 2.0 Hackathon (Sep 25–27, 2026).
 | --- | --- |
 | Open **https://bob-chainguard.vercel.app/?tour** | The recorded Bob run replays itself with captions: subagents claiming blocks, a claim refused at a red signal, a fault caught before commit, the chaos drill |
 | Click **Ledger verified** under the title, then **Tamper test** | Your browser re-hashes every event; editing one event in memory breaks the chain right there |
-| Type *why is w2-lib at danger?* in the **Dispatcher** bar | An answer computed from the ledger, and the block lights up |
+| Type *why w2-lib* in the **Desk** bar under the control tower | An answer computed from the ledger, and the block lights up |
 | Toggle **Risk heatmap** on the map | Every unfinished block glows by risk |
 | Switch the **Rule pack** to *Moment → date-fns* | The same interlocking planning a different migration |
 | Open **[the deck](https://bob-chainguard.vercel.app/deck.html)** | 11 slides; the results slide reads the real ledger |

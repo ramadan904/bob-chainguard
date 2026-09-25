@@ -30,7 +30,8 @@
           <rect x="1" y="19.5" width="46" height="9" rx="1" />
         </svg>
         <div>
-          <h1>Signalbox <span class="mode" id="mode" data-mode="baseline">Baseline</span></h1>
+          <h1>Signalbox <span class="mode" id="mode" data-mode="baseline">Mode · Plan open</span></h1>
+          <p class="claim">Parallel IBM Bob subagents. One block per agent. A signal clears only when every earlier wave has cleared. Release only after scope · contract · scan · isolated tests pass.</p>
           <p class="route" id="route"></p>
           <div class="packs" id="packs" role="group" aria-label="Rule pack"></div>
           <span class="ledger" id="ledger" role="status"></span>
@@ -52,9 +53,16 @@
     <section class="tower" id="tower" aria-labelledby="tower-title">
       <div class="tower-head">
         <h2 id="tower-title"><span class="tower-dot" aria-hidden="true"></span>Control tower</h2>
-        <p id="tower-sub"></p>
+        <p id="tower-sub" class="tower-counts"></p>
         <div class="tower-actions" id="tower-actions"></div>
       </div>
+      <ol class="rules-strip" id="tower-rules" aria-label="Interlocking rules">
+        <li><b>1</b> agent per block</li>
+        <li><b>W<sub>n</sub></b> opens when W<sub>n−1</sub> clears</li>
+        <li><b>S·C·L·T</b> before release</li>
+        <li><b>1</b> commit per block</li>
+        <li><b>SHA-256</b> chained ledger</li>
+      </ol>
       <ol class="lanes" id="lanes" aria-live="polite"></ol>
       <div class="ask" id="ask"></div>
     </section>
@@ -80,7 +88,7 @@
     <section class="board" id="board" aria-labelledby="board-title">
       <div class="board-top">
         <h2 id="board-title">Signal box</h2>
-        <p>One block per Bob subagent task. A block's signal clears only when every earlier wave has cleared. A block releases only when scope, contract, scan and isolated tests all pass.</p>
+        <p class="key"><b>S</b> scope <b>C</b> contract <b>L</b> legacy scan <b>T</b> isolated tests</p>
       </div>
       <div class="board-grid">
         <div class="board-rows" id="board-rows" role="table" aria-label="Blocks"></div>
@@ -94,7 +102,14 @@
     <section class="graph-card" aria-labelledby="graph-title">
       <div class="board-top">
         <h2 id="graph-title">Train graph</h2>
-        <p>Time runs left to right, one row per block. Each bar is a Bob subagent occupying a block. Bars that overlap are agents working in parallel. Marks are track circuit runs: green passed, red fault.</p>
+        <ul class="key g-key" aria-label="Legend">
+          <li><i class="k-bar"></i>agent in block</li>
+          <li><i class="k-par"></i>agents in parallel</li>
+          <li><i class="k-ok"></i>circuit clear</li>
+          <li><i class="k-fault"></i>fault</li>
+          <li><i class="k-deny"></i>claim refused</li>
+          <li><i class="k-clear"></i>committed</li>
+        </ul>
       </div>
       <div class="graph-wrap" id="graph"></div>
     </section>
@@ -104,7 +119,7 @@
     <dialog class="diff verify" id="verify" aria-label="Verify the ledger"></dialog>
 
     <footer class="foot">
-      <p>Everything here comes from the signal box ledger and real <code>chainguard</code> scans of real commits. The agents are IBM Bob subagents. Keys: ← → step through events, Esc returns to the overview. · <a href="./deck.html">Pitch deck</a></p>
+      <p><b>Ledger is append-only and SHA-256 chained. Every clear is a real commit. Nothing is mocked.</b> <span class="foot-keys">← → step · / desk · Esc overview · <a href="./deck.html">Deck</a></span></p>
     </footer>
     <script type="module" src="/src/main.js"></script>
   </body>
