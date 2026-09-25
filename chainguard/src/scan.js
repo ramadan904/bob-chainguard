@@ -5,6 +5,15 @@ import { RULES } from './rules.js'
 const SOURCE_EXTS = new Set(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.vue', '.svelte'])
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', '.git', 'coverage', '.next', '__tests__'])
 
+// True for a scannable source path (posix, relative): right extension, not a test,
+// not under a skipped directory.
+export function isSourcePath(rel) {
+  const parts = rel.split('/')
+  if (parts.slice(0, -1).some((p) => SKIP_DIRS.has(p))) return false
+  const name = parts[parts.length - 1]
+  return SOURCE_EXTS.has(extname(name)) && !/\.(test|spec)\.\w+$/.test(name)
+}
+
 export function listSourceFiles(root) {
   const out = []
   const walk = (dir) => {
@@ -13,7 +22,7 @@ export function listSourceFiles(root) {
       const full = join(dir, name)
       const st = statSync(full)
       if (st.isDirectory()) walk(full)
-      else if (SOURCE_EXTS.has(extname(name)) && !/\.(test|spec)\.\w+$/.test(name)) out.push(full)
+      else if (isSourcePath(name)) out.push(full)
     }
   }
   walk(root)
@@ -71,18 +80,24 @@ function resolveImport(fromFile, spec, known) {
   return null
 }
 
-export function scanDir(root, rules = RULES) {
-  const files = listSourceFiles(root)
-  const rels = files.map((full) => relative(root, full).split(sep).join('/'))
-  const known = new Set(rels)
+// Scan in-memory sources: entries = [{ rel, text }], rel posix-relative to root.
+export function scanEntries(root, entries, rules = RULES) {
+  const known = new Set(entries.map((e) => e.rel))
   const findings = []
   const imports = {}
-  files.forEach((full, i) => {
-    const text = readFileSync(full, 'utf8')
-    findings.push(...scanSource(text, rels[i], rules))
-    imports[rels[i]] = localImports(text).map((s) => resolveImport(rels[i], s, known)).filter(Boolean)
-  })
-  return { ...summarize(root, files.length, findings, rules), imports }
+  for (const { rel, text } of entries) {
+    findings.push(...scanSource(text, rel, rules))
+    imports[rel] = localImports(text).map((s) => resolveImport(rel, s, known)).filter(Boolean)
+  }
+  return { ...summarize(root, entries.length, findings, rules), imports }
+}
+
+export function scanDir(root, rules = RULES) {
+  const entries = listSourceFiles(root).map((full) => ({
+    rel: relative(root, full).split(sep).join('/'),
+    text: readFileSync(full, 'utf8'),
+  }))
+  return scanEntries(root, entries, rules)
 }
 
 export function summarize(root, filesScanned, findings, rules = RULES) {

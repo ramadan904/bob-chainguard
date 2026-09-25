@@ -13,10 +13,13 @@ Aim to submit by **Sep 27, 09:00 EDT** to leave a buffer for upload problems.
 - [ ] `git log -p | grep -iE "api[_-]?key|private[_-]?key|mnemonic"` shows only docs and placeholders
 - [ ] `bob_sessions/` has session summary screenshots from **every** team member
 - [ ] `reports/baseline.md`, `reports/after.md`, `reports/timings.md` filled in
-- [ ] Demo platform + **Application URL**: deploy `legacy-dapp` (Vercel/Netlify: root `legacy-dapp`, build `npm run build`, output `dist`, env `VITE_RPC_URL`, `VITE_ERC20_ADDRESS`)
+- [ ] Demo platform + **Application URL**: deploy **Chainguard Atlas** as a static site.
+  First run `npm run atlas` locally and commit `atlas/src/data/atlas-data.json`, because hosts clone shallow and can't rebuild the history.
+  Then use Vercel or Netlify with root `atlas`, build `npm run build`, output `dist`.
+- [ ] Optional second URL: the migrated `legacy-dapp` (root `legacy-dapp`, build `npm run build`, output `dist`, env `VITE_RPC_URL`, `VITE_ERC20_ADDRESS`)
 
 ## Media
-- [ ] Cover image (1920x1080 recommended): "72 → 0" plus the ethers/web3.js to viem logos idea, no third-party logos you can't use
+- [ ] Cover image (1920x1080 recommended): a screenshot of the finished Atlas map (dark theme) with "72 → 0" set large
 - [ ] Video of 3:00 or less (docs/submission/DEMO_SCRIPT.md), uploaded (YouTube unlisted works)
 - [ ] Slides: problem, solution architecture (scan, plan, Bob waves, tests, guard), Bob usage, results table, generalization, team
 

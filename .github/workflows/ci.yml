@@ -9,17 +9,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Atlas scans every commit of the migration
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: legacy-dapp/package-lock.json
+          cache-dependency-path: |
+            legacy-dapp/package-lock.json
+            atlas/package-lock.json
       - run: npm ci --prefix legacy-dapp
+      - run: npm ci --prefix atlas
       - run: npm test
-      - run: npm run build
+      - run: npm run build --prefix legacy-dapp
+      - run: npm run atlas
       # Reporting only while the migration is in progress. After Bob's cleanup step,
       # replace with `npm run guard` so new ethers/web3.js code fails CI.
       - name: chainguard scan
         run: |
           npm run -s scan
           node chainguard/bin/chainguard.js scan legacy-dapp/src --baseline reports/baseline.json --format md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atlas
+          path: atlas/dist

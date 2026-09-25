@@ -38,6 +38,8 @@ bob-chainguard turns that migration into a measured, parallel, test-guarded work
    and never modified, so a pass means the behavior was preserved, not just that the code compiles.
 5. **Guard.** Once the scan reaches zero, CI switches to `npm run guard`, and any new ethers or
    web3.js call fails the pull request.
+6. **See it.** **Chainguard Atlas** draws the codebase as a transit map and replays every commit,
+   so reviewers watch the migration happen instead of reading a long diff.
 
 ## Impact
 
@@ -50,6 +52,4 @@ bob-chainguard turns that migration into a measured, parallel, test-guarded work
 | Bundle size (gzip) | [550 kB] | [after] |
 | Silent-bug traps caught by tests | n/a | [N] |
 
-The same workflow applies to any legacy-to-modern library migration. Swap the rule set and the
-playbook, and chainguard plus Bob handle a large, risky upgrade as a measured sequence of
-parallel, verified steps.
+Swap the rule set and the playbook, and the same workflow handles any risky library migration.

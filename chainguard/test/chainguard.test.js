@@ -101,3 +101,36 @@ test('CLI --fail-on error exits 1 when legacy code remains', () => {
   assert.throws(() => execFileSync('node', [cli, 'scan', fixture, '--fail-on', 'error'], { stdio: 'pipe' }), (e) => e.status === 1)
   execFileSync('node', [cli, 'scan', fixture], { stdio: 'pipe' })
 })
+
+test('atlas: importDepths is the longest import chain', async () => {
+  const { importDepths } = await import('../src/atlas.js')
+  assert.deepEqual(importDepths({ 'a.js': [], 'b.js': ['a.js'], 'c.js': ['b.js', 'a.js'] }), { 'a.js': 0, 'b.js': 1, 'c.js': 2 })
+})
+
+test('atlas: scans every commit that touched the directory', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const { gitSnapshots, buildAtlas } = await import('../src/atlas.js')
+  const repo = mkdtempSync(join(tmpdir(), 'cg-atlas-'))
+  const run = (...a) => execFileSync('git', a, { cwd: repo, stdio: 'pipe' })
+  try {
+    run('init', '-q')
+    run('config', 'user.email', 't@example.com')
+    run('config', 'user.name', 't')
+    mkdirSync(join(repo, 'src/lib'), { recursive: true })
+    writeFileSync(join(repo, 'src/lib/a.js'), "import { ethers } from 'ethers'\nexport const x = BigNumber.from(1)\n")
+    writeFileSync(join(repo, 'src/App.jsx'), "import { x } from './lib/a.js'\n")
+    run('add', '.')
+    run('commit', '-qm', 'legacy')
+    writeFileSync(join(repo, 'src/lib/a.js'), "import { parseEther } from 'viem'\nexport const x = 1n\n")
+    run('commit', '-qam', 'bob wave 1')
+    const atlas = buildAtlas(gitSnapshots(join(repo, 'src')))
+    assert.equal(atlas.root, 'src')
+    assert.deepEqual(atlas.snapshots.map((s) => [s.subject, s.totals.findings]), [['legacy', 2], ['bob wave 1', 0]])
+    assert.deepEqual(atlas.files.map((f) => [f.id, f.dir, f.depth]), [['App.jsx', 'app', 1], ['lib/a.js', 'lib', 0]])
+    assert.equal(atlas.plan.tasks.length, 1)
+  } finally {
+    rmSync(repo, { recursive: true, force: true })
+  }
+})

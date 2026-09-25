@@ -53,8 +53,10 @@ For each wave in `reports/bob-task-plan.md`:
 1. Start one Bob subagent / parallel task **per task block**, pasting its prompt as written.
 2. When every task in the wave finishes, run `npm run scan && npm test` yourself (or ask Bob to).
 3. Commit the wave: `git commit -am "Bob wave N: <task ids>"`. One commit per wave keeps the diff
-   story readable for judges.
-4. Log times and Bobcoins in `reports/timings.md`.
+   story readable for judges, and each commit becomes a stop on the Atlas timeline.
+   Commit partial progress too (e.g. one task of a wave). More stops make a smoother replay.
+4. `npm run atlas:dev`, press play, and check that the new stop looks right.
+5. Log times and Bobcoins in `reports/timings.md`.
 
 If a test fails, don't fix it by hand. Paste the failure into the same subagent:
 "Test X fails with: ... Fix the implementation per the playbook traps table." That loop is part of the demo.
@@ -86,3 +88,4 @@ Fix what it finds in a last wave. This covers the "code review" workflow too.
 - [ ] `reports/baseline.md`, `reports/after.md`, `reports/timings.md` committed.
 - [ ] `git diff --stat before-bob..HEAD -- legacy-dapp/src` pasted into `docs/submission/IBM_BOB_USAGE.md`.
 - [ ] Fill the numbers in `docs/submission/*.md` from the real run.
+- [ ] `npm run atlas`, commit `atlas/src/data/atlas-data.json`, and deploy `atlas/` (see docs/submission/CHECKLIST.md).

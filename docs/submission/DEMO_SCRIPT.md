@@ -1,18 +1,20 @@
 # Demo video script (target 2:50, hard limit 3:00)
 
 The rules require at least 90 seconds of the solution running and a clear demonstration of Bob.
-The 0:25–2:15 section below covers both.
+The Atlas is the stage: open it full-screen in the dark theme and keep coming back to it.
 
 | Time | On screen | Voice-over |
 | --- | --- | --- |
-| 0:00–0:25 | Legacy dApp running (connect, balance, send form). Then `reports/baseline.md` | "Most dApp frontends still run on web3.js and ethers v5. web3.js is sunset. Migrating to viem is risky, and teams postpone it. chainguard scanned our wallet dApp: 72 legacy call sites in 10 files." |
-| 0:25–0:45 | Terminal: `npm run plan`, then scroll `reports/bob-task-plan.md` | "chainguard reads the import graph and writes a Bob task plan: three waves of tasks that touch disjoint files, each one a ready-made prompt." |
-| 0:45–1:05 | Bob answering the onboarding prompt (speed up 4x) | "First, Bob reads the whole repo and our migration playbook and explains the code to us." |
-| 1:05–1:45 | Bob running wave 2 as parallel subagents; split screen of two tasks | "Each wave runs as parallel Bob subagents. Bob edits the files and runs the tests." |
-| 1:45–2:05 | A red test (e.g. parseUnits rounding), then Bob fixing it and the test turning green | "This is the dangerous part: viem silently rounds where ethers threw. Our behavior tests catch it and Bob fixes the implementation, not the test." |
-| 2:05–2:20 | `npm run scan` showing 72 -> 0, `npm test` green, `npm run guard` exit 0 | "72 to zero. All 22 behavior tests pass unchanged." |
-| 2:20–2:35 | Migrated dApp running: same UI, sending a Sepolia transfer | "Same app, now on viem and wagmi, [X]% smaller bundle." |
-| 2:35–2:50 | Impact table from PROBLEM_SOLUTION.md | "[Manual estimate] of work done in [measured time]. And CI now blocks any new legacy code. That's bob-chainguard." |
+| 0:00–0:20 | Atlas at the baseline stop: rust stations everywhere, **72** in the masthead | "This is a real ERC-20 wallet dApp drawn as a transit map. Folders are lines, files are stations. Every rust ring is a call into web3.js or ethers v5: 72 of them in 10 files. web3.js is sunset, and teams keep putting this migration off." |
+| 0:20–0:40 | Click `units.js`: call sites with source lines and viem replacements. Hover a tunnel | "chainguard found every call site and knows the viem replacement. It also reads the import graph, so it knows units.js must be migrated before the files that use it." |
+| 0:40–0:55 | Scroll to the departures board, hover a wave-2 row so its stations light up | "That graph becomes Bob's timetable: six tasks in three waves. Tasks in a wave touch different files, so they run as parallel Bob subagents. Each row carries a ready-made prompt." |
+| 0:55–1:10 | Bob IDE: onboarding answer, then the playbook opened as context (4x speed) | "Bob reads the whole repo and our migration playbook before it touches anything." |
+| 1:10–1:40 | Bob running wave 2 as two parallel tasks (split screen) | "Wave two: two Bob subagents at once, each editing its own files and running the tests." |
+| 1:40–2:00 | A red test (viem `parseUnits` rounding), then Bob fixing the implementation and the test turning green | "The dangerous part: viem silently rounds where ethers threw. Our behavior tests catch it, and Bob fixes the code, not the test." |
+| 2:00–2:30 | Back to Atlas: press **play**. Stations turn from rust to steel checks, the board flips from SCHEDULED to BOARDING to ARRIVED, and 72 counts down to 0 | "Every stop on this timeline is a real commit, scanned by chainguard. Here is Bob's migration, replayed." |
+| 2:30–2:50 | Terminal: `npm test` green, `npm run guard` exit 0. Then the impact table | "All 22 behavior tests pass unchanged. [Manual estimate] of work done in [measured time]. And CI now blocks any new legacy code. That's bob-chainguard." |
 
-Recording tips: use Sepolia with a faucet-funded demo wallet, hide browser extensions and
-bookmarks, and never show `.env` or the wallet's seed or private key screens.
+Recording tips:
+- Record the Atlas at 1440×900 or larger.
+- Use Sepolia with a faucet-funded demo wallet, and hide browser extensions and bookmarks.
+- Never show `.env` or the wallet's seed or private key screens.

@@ -4,12 +4,14 @@ import { scanDir, compare } from '../src/scan.js'
 import { toText, toMarkdown } from '../src/format.js'
 import { buildPlan, planToMarkdown } from '../src/plan.js'
 import { RULES } from '../src/rules.js'
+import { gitSnapshots, buildAtlas } from '../src/atlas.js'
 
 const USAGE = `chainguard - find legacy ethers v5 / web3.js usage and plan its migration to viem/wagmi
 
 Usage:
   chainguard scan <dir> [--format text|json|md] [--out file] [--baseline report.json] [--fail-on error|warning|none]
   chainguard plan <dir> [--format md|json] [--out file]
+  chainguard atlas <dir> [--out file]      git history of <dir>, scanned per commit, for the Atlas UI
   chainguard rules
 
 Exit codes: 0 ok, 1 findings at or above --fail-on severity, 2 usage error.`
@@ -42,9 +44,15 @@ function main() {
     for (const r of RULES) console.log(`${r.id.padEnd(7)} ${r.severity.padEnd(7)} ${r.lib.padEnd(9)} ${r.title}  ->  ${r.replacement}`)
     return 0
   }
-  if (!['scan', 'plan'].includes(cmd) || !dir) {
+  if (!['scan', 'plan', 'atlas'].includes(cmd) || !dir) {
     console.error(USAGE)
     return 2
+  }
+
+  if (cmd === 'atlas') {
+    const atlas = buildAtlas(gitSnapshots(dir))
+    emit(JSON.stringify(atlas), opts.out)
+    return 0
   }
 
   const report = scanDir(dir)

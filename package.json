@@ -1,7 +1,7 @@
 {
   "name": "bob-chainguard",
   "private": true,
-  "description": "IBM Bob migrates a web3.js + ethers v5 dApp to viem/wagmi; chainguard measures, plans and guards the migration.",
+  "description": "IBM Bob migrates a web3.js + ethers v5 dApp to viem/wagmi; chainguard measures, plans and guards the migration, and Atlas replays it as a transit map.",
   "type": "module",
   "scripts": {
     "scan": "node chainguard/bin/chainguard.js scan legacy-dapp/src --baseline reports/baseline.json",
@@ -9,9 +9,11 @@
     "report": "node chainguard/bin/chainguard.js scan legacy-dapp/src --baseline reports/baseline.json --format md --out reports/after.md",
     "plan": "node chainguard/bin/chainguard.js plan legacy-dapp/src --out reports/bob-task-plan.md",
     "guard": "node chainguard/bin/chainguard.js scan legacy-dapp/src --fail-on warning",
-    "test": "npm test --prefix chainguard && npm test --prefix legacy-dapp",
+    "test": "npm test --prefix chainguard && npm test --prefix legacy-dapp && npm test --prefix atlas",
     "dev": "npm run dev --prefix legacy-dapp",
-    "build": "npm run build --prefix legacy-dapp"
+    "build": "npm run build --prefix legacy-dapp && npm run build --prefix atlas",
+    "atlas": "npm run data --prefix atlas && npm run build --prefix atlas",
+    "atlas:dev": "npm run data --prefix atlas && npm run dev --prefix atlas"
   },
   "license": "MIT"
 }
