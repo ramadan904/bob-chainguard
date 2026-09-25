@@ -8,7 +8,8 @@ export const LABEL_OFFSET = 32
 // Rough rendered width of a station label (IBM Plex Sans Condensed 500, 13.5px).
 export const labelWidth = (name) => name.length * 7 + 4
 
-export const LINE_COLORS = ['#0f62fe', '#198038', '#d12771', '#b28600', '#007d79', '#8a3800', '#6f6f6f']
+// Luminous line colours that hold up on the night (default) and day themes alike.
+export const LINE_COLORS = ['#4589ff', '#24c26a', '#ff5fa2', '#f5b301', '#12c7c3', '#ff8a3d', '#a78bfa']
 
 // Lines ordered by the directory-level import graph: a directory comes after every directory
 // it imports from. Ties break on mean file depth, then name.
