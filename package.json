@@ -15,7 +15,8 @@
     "atlas": "npm run data --prefix atlas && (test -f .signalbox/ledger.jsonl && node chainguard/bin/signalbox.js export || true) && npm run build --prefix atlas",
     "atlas:dev": "npm run data --prefix atlas && npm run dev --prefix atlas",
     "sb": "node chainguard/bin/signalbox.js",
-    "signalbox": "npm run build --prefix atlas && node chainguard/bin/signalbox.js serve"
+    "signalbox": "npm run build --prefix atlas && node chainguard/bin/signalbox.js serve",
+    "finalize": "node scripts/finalize.mjs"
   },
   "license": "MIT"
 }

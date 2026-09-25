@@ -13,9 +13,14 @@ Aim to submit by **Sep 27, 09:00 EDT** to leave a buffer for upload problems.
 - [ ] `git log -p | grep -iE "api[_-]?key|private[_-]?key|mnemonic"` shows only docs and placeholders
 - [ ] `bob_sessions/` has session summary screenshots from **every** team member
 - [ ] `reports/baseline.md`, `reports/after.md`, `reports/timings.md` filled in
-- [ ] Demo platform + **Application URL**: deploy **Chainguard Atlas** as a static site.
-  First run `npm run atlas` locally and commit `atlas/src/data/atlas-data.json`, because hosts clone shallow and can't rebuild the history.
-  Then use Vercel or Netlify with root `atlas`, build `npm run build`, output `dist`.
+- [ ] `npm run finalize` after the recorded run. It must end with "Warnings: None". It writes
+  `reports/submission-numbers.md` with every number for the statements, and the replay bundle.
+- [ ] Commit `.signalbox/ledger.jsonl reports/ atlas/src/data/ bob_sessions/`, push, merge to `main`.
+- [ ] Demo platform + **Application URL**. Pick one:
+  - **GitHub Pages:** Settings → Pages → Source "GitHub Actions". The `deploy panel` workflow
+    publishes on every push to `main`. URL: `https://<user>.github.io/<repo>/`
+  - **Netlify:** import the repo. `netlify.toml` already sets base `atlas`, build and publish.
+  - **Vercel:** import the repo. `vercel.json` already sets install, build and output.
 - [ ] Optional second URL: the migrated `legacy-dapp` (root `legacy-dapp`, build `npm run build`, output `dist`, env `VITE_RPC_URL`, `VITE_ERC20_ADDRESS`)
 
 ## Media

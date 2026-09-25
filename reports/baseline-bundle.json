@@ -1,0 +1,1 @@
+{ "measuredAt": "2026-09-25", "commit": "before Bob (ethers v5 + web3.js)", "assets": "legacy-dapp/dist/assets/*.{js,css}", "rawBytes": 1790298, "gzipBytes": 549421 }

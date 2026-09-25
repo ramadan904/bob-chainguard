@@ -116,13 +116,13 @@ receipt status handling). List findings with file:line.
 
 - [ ] Bob session summary screenshots for the dispatcher and every subagent, from **every** team
       member, in `bob_sessions/`.
-- [ ] `npm run -s sb -- report --out reports/signalbox-report.md`,
-      `npm run -s sb -- log > reports/signalbox-log.txt` and `npm run report`, then commit
-      `.signalbox/ledger.jsonl` and `reports/`. The report has every number the statements need.
-- [ ] `npm run atlas` (exports the ledger into the static build), commit `atlas/src/data/`, then
-      deploy `atlas/` (docs/submission/CHECKLIST.md). The deployed site replays the real run.
-- [ ] Fill the numbers in `docs/submission/*.md` from the ledger: blocks, agents, faults caught,
-      SPADs, rollbacks, wall-clock time.
+- [ ] `npm run finalize`. It runs the guard, tests and build, measures the bundle against
+      `reports/baseline-bundle.json`, and writes the Signalbox report, the log, `reports/after.md` and
+      `reports/submission-numbers.md` (every number for the statements). It also bundles the ledger
+      for the deployed replay. Fix anything under "Warnings" first.
+- [ ] Commit `.signalbox/ledger.jsonl reports/ atlas/src/data/ bob_sessions/`, push, merge to
+      `main`, and deploy (docs/submission/CHECKLIST.md: GitHub Pages, Netlify or Vercel).
+- [ ] Paste the numbers into `docs/submission/*.md` and recount the words.
 
 ## Retakes (recording often takes a few attempts)
 
