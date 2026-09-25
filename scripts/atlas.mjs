@@ -13,7 +13,8 @@ if (existsSync('.signalbox/ledger.jsonl')) run('node chainguard/bin/signalbox.js
 // bob_sessions/*.png -> atlas/public/bob/ + atlas/src/data/bob-shots.json ("Bob at work").
 const shots = existsSync('bob_sessions') ? readdirSync('bob_sessions').filter((f) => /\.(png|jpe?g|webp)$/i.test(f)).sort() : []
 rmSync(join('atlas', 'public', 'bob'), { recursive: true, force: true })
-if (shots.length) mkdirSync(join('atlas', 'public', 'bob'), { recursive: true })
+mkdirSync(join('atlas', 'public', 'bob'), { recursive: true })
+writeFileSync(join('atlas', 'public', 'bob', '.gitkeep'), '') // `git add atlas/public/bob/` always works
 for (const f of shots) copyFileSync(join('bob_sessions', f), join('atlas', 'public', 'bob', f))
 const manifest = shots.map((f) => ({ src: `bob/${f}`, ...shotCaption(f) })).sort((a, b) => a.order - b.order || a.src.localeCompare(b.src))
 writeFileSync(join('atlas', 'src', 'data', 'bob-shots.json'), `${JSON.stringify(manifest, null, 2)}\n`)

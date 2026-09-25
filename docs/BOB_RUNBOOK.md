@@ -9,6 +9,10 @@ safe and makes everything they do visible and replayable. This runbook is the de
 
 ## 0. Setup (≈20 min)
 
+> Shortcut: `npm run bob:prep` does everything in this section up to the prompts and prints them;
+> after Bob's expand commit, `npm run bob:open` opens the signal box, runs doctor, prints the
+> dispatcher prompt and starts the live panel.
+
 ```bash
 cp .env.example .env
 npm ci --prefix legacy-dapp && npm ci --prefix atlas

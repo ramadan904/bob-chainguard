@@ -154,7 +154,7 @@ writeFileSync(join(root, 'reports/submission-numbers.md'), numbers.replace(/## W
 step('Done')
 console.log(readFileSync(join(root, 'reports/submission-numbers.md'), 'utf8').split('\n').slice(5).join('\n'))
 console.log(`Commit and deploy:
-  git add .signalbox/ledger.jsonl reports/ atlas/src/data/ bob_sessions/ docs/submission/final/
+  git add .signalbox/ledger.jsonl reports/ atlas/src/data/ atlas/public/bob/ bob_sessions/ docs/submission/final/
   git commit -m "Finalize: Bob run reports and replay"
   git push   # then merge to main; the Pages workflow deploys the panel`)
 process.exitCode = warnings.length ? 1 : 0
