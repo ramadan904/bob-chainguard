@@ -1,0 +1,699 @@
+{
+  "tool": "chainguard",
+  "root": "legacy-dapp/src",
+  "scannedAt": "2026-09-25T17:26:28.652Z",
+  "rulesActive": 25,
+  "filesScanned": 18,
+  "filesAffected": 10,
+  "legacyFreePercent": 44.4,
+  "totals": {
+    "findings": 72,
+    "errors": 58,
+    "warnings": 14
+  },
+  "byLib": {
+    "ethers-v5": 57,
+    "web3js": 15
+  },
+  "byRule": {
+    "ETH016": 1,
+    "ETH001": 9,
+    "ETH004": 10,
+    "ETH008": 7,
+    "ETH015": 4,
+    "ETH005": 1,
+    "ETH013": 1,
+    "ETH007": 7,
+    "W3J001": 2,
+    "W3J005": 3,
+    "ETH010": 2,
+    "ETH003": 1,
+    "W3J002": 2,
+    "ETH002": 1,
+    "ETH006": 4,
+    "W3J003": 2,
+    "W3J004": 1,
+    "ETH012": 2,
+    "ETH011": 2,
+    "W3J006": 3,
+    "W3J008": 2,
+    "ETH009": 4,
+    "ETH014": 1
+  },
+  "byFile": {
+    "components/TransferForm.jsx": 1,
+    "hooks/useErc20.js": 3,
+    "hooks/useWallet.js": 8,
+    "lib/address.js": 6,
+    "lib/clients.js": 6,
+    "lib/erc20.js": 12,
+    "lib/events.js": 10,
+    "lib/gas.js": 7,
+    "lib/signing.js": 4,
+    "lib/units.js": 15
+  },
+  "findings": [
+    {
+      "ruleId": "ETH016",
+      "lib": "ethers-v5",
+      "severity": "warning",
+      "file": "components/TransferForm.jsx",
+      "line": 41,
+      "snippet": "setStatus({ kind: 'error', text: err.reason || err.message })"
+    },
+    {
+      "ruleId": "ETH001",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "hooks/useErc20.js",
+      "line": 2,
+      "snippet": "import { BigNumber } from 'ethers'"
+    },
+    {
+      "ruleId": "ETH004",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "hooks/useErc20.js",
+      "line": 32,
+      "snippet": "const isEmpty = balance != null && BigNumber.from(balance).isZero()"
+    },
+    {
+      "ruleId": "ETH008",
+      "lib": "ethers-v5",
+      "severity": "warning",
+      "file": "hooks/useErc20.js",
+      "line": 32,
+      "snippet": "const isEmpty = balance != null && BigNumber.from(balance).isZero()"
+    },
+    {
+      "ruleId": "ETH001",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "hooks/useWallet.js",
+      "line": 2,
+      "snippet": "import { ethers } from 'ethers'"
+    },
+    {
+      "ruleId": "ETH015",
+      "lib": "ethers-v5",
+      "severity": "warning",
+      "file": "hooks/useWallet.js",
+      "line": 15,
+      "snippet": "const accounts = await provider.listAccounts()"
+    },
+    {
+      "ruleId": "ETH015",
+      "lib": "ethers-v5",
+      "severity": "warning",
+      "file": "hooks/useWallet.js",
+      "line": 16,
+      "snippet": "const network = await provider.getNetwork()"
+    },
+    {
+      "ruleId": "ETH005",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "hooks/useWallet.js",
+      "line": 23,
+      "snippet": "const s = provider.getSigner()"
+    },
+    {
+      "ruleId": "ETH013",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "hooks/useWallet.js",
+      "line": 27,
+      "snippet": "provider.lookupAddress(accounts[0]).then(setEnsName).catch(() => setEnsName(null))"
+    },
+    {
+      "ruleId": "ETH015",
+      "lib": "ethers-v5",
+      "severity": "warning",
+      "file": "hooks/useWallet.js",
+      "line": 33,
+      "snippet": "await getBrowserProvider().send('eth_requestAccounts', [])"
+    },
+    {
+      "ruleId": "ETH007",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "hooks/useWallet.js",
+      "line": 41,
+      "snippet": "await getBrowserProvider().send('wallet_switchEthereumChain', [{ chainId: ethers.utils.hexValue(CHAIN_ID) }])"
+    },
+    {
+      "ruleId": "ETH015",
+      "lib": "ethers-v5",
+      "severity": "warning",
+      "file": "hooks/useWallet.js",
+      "line": 41,
+      "snippet": "await getBrowserProvider().send('wallet_switchEthereumChain', [{ chainId: ethers.utils.hexValue(CHAIN_ID) }])"
+    },
+    {
+      "ruleId": "W3J001",
+      "lib": "web3js",
+      "severity": "error",
+      "file": "lib/address.js",
+      "line": 1,
+      "snippet": "import Web3 from 'web3'"
+    },
+    {
+      "ruleId": "ETH001",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/address.js",
+      "line": 2,
+      "snippet": "import { ethers } from 'ethers'"
+    },
+    {
+      "ruleId": "ETH007",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/address.js",
+      "line": 5,
+      "snippet": "return typeof value === 'string' && Web3.utils.isAddress(value)"
+    },
+    {
+      "ruleId": "W3J005",
+      "lib": "web3js",
+      "severity": "error",
+      "file": "lib/address.js",
+      "line": 5,
+      "snippet": "return typeof value === 'string' && Web3.utils.isAddress(value)"
+    },
+    {
+      "ruleId": "W3J005",
+      "lib": "web3js",
+      "severity": "error",
+      "file": "lib/address.js",
+      "line": 10,
+      "snippet": "return Web3.utils.toChecksumAddress(value)"
+    },
+    {
+      "ruleId": "ETH010",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/address.js",
+      "line": 14,
+      "snippet": "return isValidAddress(value) && toChecksum(value) === ethers.constants.AddressZero"
+    },
+    {
+      "ruleId": "ETH001",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/clients.js",
+      "line": 1,
+      "snippet": "import { ethers } from 'ethers'"
+    },
+    {
+      "ruleId": "W3J001",
+      "lib": "web3js",
+      "severity": "error",
+      "file": "lib/clients.js",
+      "line": 2,
+      "snippet": "import Web3 from 'web3'"
+    },
+    {
+      "ruleId": "ETH003",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/clients.js",
+      "line": 6,
+      "snippet": "export const readProvider = new ethers.providers.StaticJsonRpcProvider(RPC_URL, CHAIN_ID)"
+    },
+    {
+      "ruleId": "W3J002",
+      "lib": "web3js",
+      "severity": "error",
+      "file": "lib/clients.js",
+      "line": 10,
+      "snippet": "export const web3 = new Web3(RPC_URL)"
+    },
+    {
+      "ruleId": "ETH002",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/clients.js",
+      "line": 21,
+      "snippet": "if (!browserProvider) browserProvider = new ethers.providers.Web3Provider(window.ethereum, 'any')"
+    },
+    {
+      "ruleId": "W3J002",
+      "lib": "web3js",
+      "severity": "error",
+      "file": "lib/clients.js",
+      "line": 27,
+      "snippet": "return new Web3(window.ethereum)"
+    },
+    {
+      "ruleId": "ETH001",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/erc20.js",
+      "line": 1,
+      "snippet": "import { ethers } from 'ethers'"
+    },
+    {
+      "ruleId": "ETH006",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/erc20.js",
+      "line": 6,
+      "snippet": "return new ethers.Contract(address, ERC20_ABI, readProvider)"
+    },
+    {
+      "ruleId": "W3J003",
+      "lib": "web3js",
+      "severity": "error",
+      "file": "lib/erc20.js",
+      "line": 22,
+      "snippet": "const legacy = new web3.eth.Contract(ERC20_ABI, address)"
+    },
+    {
+      "ruleId": "W3J004",
+      "lib": "web3js",
+      "severity": "error",
+      "file": "lib/erc20.js",
+      "line": 23,
+      "snippet": "return legacy.methods.allowance(owner, spender).call()"
+    },
+    {
+      "ruleId": "ETH006",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/erc20.js",
+      "line": 33,
+      "snippet": "const c = new ethers.Contract(address, ERC20_ABI, signer)"
+    },
+    {
+      "ruleId": "ETH012",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/erc20.js",
+      "line": 34,
+      "snippet": "await c.callStatic.transfer(to, amountRaw)"
+    },
+    {
+      "ruleId": "ETH012",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/erc20.js",
+      "line": 35,
+      "snippet": "const gas = await c.estimateGas.transfer(to, amountRaw)"
+    },
+    {
+      "ruleId": "ETH008",
+      "lib": "ethers-v5",
+      "severity": "warning",
+      "file": "lib/erc20.js",
+      "line": 36,
+      "snippet": "const tx = await c.transfer(to, amountRaw, { gasLimit: gas.mul(120).div(100) })"
+    },
+    {
+      "ruleId": "ETH011",
+      "lib": "ethers-v5",
+      "severity": "warning",
+      "file": "lib/erc20.js",
+      "line": 37,
+      "snippet": "const receipt = await tx.wait(1)"
+    },
+    {
+      "ruleId": "ETH010",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/erc20.js",
+      "line": 41,
+      "snippet": "export async function approveSpender(signer, address, spender, amountRaw = ethers.constants.MaxUint256) {"
+    },
+    {
+      "ruleId": "ETH006",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/erc20.js",
+      "line": 42,
+      "snippet": "const c = new ethers.Contract(address, ERC20_ABI, signer)"
+    },
+    {
+      "ruleId": "ETH011",
+      "lib": "ethers-v5",
+      "severity": "warning",
+      "file": "lib/erc20.js",
+      "line": 44,
+      "snippet": "await tx.wait()"
+    },
+    {
+      "ruleId": "ETH001",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/events.js",
+      "line": 1,
+      "snippet": "import { ethers } from 'ethers'"
+    },
+    {
+      "ruleId": "W3J003",
+      "lib": "web3js",
+      "severity": "error",
+      "file": "lib/events.js",
+      "line": 11,
+      "snippet": "const contract = new web3.eth.Contract(ERC20_ABI, address)"
+    },
+    {
+      "ruleId": "W3J006",
+      "lib": "web3js",
+      "severity": "error",
+      "file": "lib/events.js",
+      "line": 12,
+      "snippet": "const latest = await web3.eth.getBlockNumber()"
+    },
+    {
+      "ruleId": "W3J008",
+      "lib": "web3js",
+      "severity": "error",
+      "file": "lib/events.js",
+      "line": 15,
+      "snippet": "contract.getPastEvents('Transfer', { filter: { from: account }, fromBlock, toBlock: 'latest' }),"
+    },
+    {
+      "ruleId": "W3J008",
+      "lib": "web3js",
+      "severity": "error",
+      "file": "lib/events.js",
+      "line": 16,
+      "snippet": "contract.getPastEvents('Transfer', { filter: { to: account }, fromBlock, toBlock: 'latest' }),"
+    },
+    {
+      "ruleId": "ETH006",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/events.js",
+      "line": 25,
+      "snippet": "const contract = new ethers.Contract(address, ERC20_ABI, readProvider)"
+    },
+    {
+      "ruleId": "ETH009",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/events.js",
+      "line": 30,
+      "snippet": "contract.on('Transfer', handler)"
+    },
+    {
+      "ruleId": "ETH009",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/events.js",
+      "line": 31,
+      "snippet": "return () => contract.off('Transfer', handler)"
+    },
+    {
+      "ruleId": "ETH009",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/events.js",
+      "line": 35,
+      "snippet": "readProvider.on('block', onBlock)"
+    },
+    {
+      "ruleId": "ETH009",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/events.js",
+      "line": 36,
+      "snippet": "return () => readProvider.off('block', onBlock)"
+    },
+    {
+      "ruleId": "ETH001",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/gas.js",
+      "line": 1,
+      "snippet": "import { BigNumber } from 'ethers'"
+    },
+    {
+      "ruleId": "ETH004",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/gas.js",
+      "line": 6,
+      "snippet": "return BigNumber.from(gasLimit).mul(BigNumber.from(gasPriceWei)).toString()"
+    },
+    {
+      "ruleId": "ETH004",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/gas.js",
+      "line": 11,
+      "snippet": "return BigNumber.from(gasLimit).mul(100 + percent).div(100).toString()"
+    },
+    {
+      "ruleId": "ETH008",
+      "lib": "ethers-v5",
+      "severity": "warning",
+      "file": "lib/gas.js",
+      "line": 11,
+      "snippet": "return BigNumber.from(gasLimit).mul(100 + percent).div(100).toString()"
+    },
+    {
+      "ruleId": "W3J005",
+      "lib": "web3js",
+      "severity": "error",
+      "file": "lib/gas.js",
+      "line": 15,
+      "snippet": "return Number(web3.utils.fromWei(String(wei), 'gwei'))"
+    },
+    {
+      "ruleId": "W3J006",
+      "lib": "web3js",
+      "severity": "error",
+      "file": "lib/gas.js",
+      "line": 19,
+      "snippet": "return web3.eth.getGasPrice()"
+    },
+    {
+      "ruleId": "W3J006",
+      "lib": "web3js",
+      "severity": "error",
+      "file": "lib/gas.js",
+      "line": 23,
+      "snippet": "const gas = await web3.eth.estimateGas({ from, to, value: valueWei })"
+    },
+    {
+      "ruleId": "ETH001",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/signing.js",
+      "line": 1,
+      "snippet": "import { ethers } from 'ethers'"
+    },
+    {
+      "ruleId": "ETH007",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/signing.js",
+      "line": 4,
+      "snippet": "return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(message))"
+    },
+    {
+      "ruleId": "ETH007",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/signing.js",
+      "line": 8,
+      "snippet": "return ethers.utils.verifyMessage(message, signature)"
+    },
+    {
+      "ruleId": "ETH014",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/signing.js",
+      "line": 12,
+      "snippet": "const signature = await signer.signMessage(message)"
+    },
+    {
+      "ruleId": "ETH001",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/units.js",
+      "line": 1,
+      "snippet": "import { ethers, BigNumber } from 'ethers'"
+    },
+    {
+      "ruleId": "ETH004",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/units.js",
+      "line": 5,
+      "snippet": "const value = ethers.utils.formatUnits(BigNumber.from(raw), decimals)"
+    },
+    {
+      "ruleId": "ETH007",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/units.js",
+      "line": 5,
+      "snippet": "const value = ethers.utils.formatUnits(BigNumber.from(raw), decimals)"
+    },
+    {
+      "ruleId": "ETH007",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/units.js",
+      "line": 16,
+      "snippet": "return ethers.utils.parseUnits(cleaned, decimals).toString()"
+    },
+    {
+      "ruleId": "ETH007",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/units.js",
+      "line": 24,
+      "snippet": "return ethers.utils.parseEther(String(input)).toString()"
+    },
+    {
+      "ruleId": "ETH004",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/units.js",
+      "line": 28,
+      "snippet": "return BigNumber.from(raw).isZero()"
+    },
+    {
+      "ruleId": "ETH008",
+      "lib": "ethers-v5",
+      "severity": "warning",
+      "file": "lib/units.js",
+      "line": 28,
+      "snippet": "return BigNumber.from(raw).isZero()"
+    },
+    {
+      "ruleId": "ETH004",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/units.js",
+      "line": 33,
+      "snippet": "return BigNumber.from(balance).gte(BigNumber.from(amount))"
+    },
+    {
+      "ruleId": "ETH004",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/units.js",
+      "line": 38,
+      "snippet": "const t = BigNumber.from(total)"
+    },
+    {
+      "ruleId": "ETH008",
+      "lib": "ethers-v5",
+      "severity": "warning",
+      "file": "lib/units.js",
+      "line": 39,
+      "snippet": "if (t.isZero()) return 0"
+    },
+    {
+      "ruleId": "ETH004",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/units.js",
+      "line": 40,
+      "snippet": "return BigNumber.from(part).mul(10000).div(t).toNumber()"
+    },
+    {
+      "ruleId": "ETH008",
+      "lib": "ethers-v5",
+      "severity": "warning",
+      "file": "lib/units.js",
+      "line": 40,
+      "snippet": "return BigNumber.from(part).mul(10000).div(t).toNumber()"
+    },
+    {
+      "ruleId": "ETH004",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/units.js",
+      "line": 45,
+      "snippet": "const b = BigNumber.from(balance)"
+    },
+    {
+      "ruleId": "ETH004",
+      "lib": "ethers-v5",
+      "severity": "error",
+      "file": "lib/units.js",
+      "line": 46,
+      "snippet": "const r = BigNumber.from(reserve)"
+    },
+    {
+      "ruleId": "ETH008",
+      "lib": "ethers-v5",
+      "severity": "warning",
+      "file": "lib/units.js",
+      "line": 47,
+      "snippet": "return b.lte(r) ? '0' : b.sub(r).toString()"
+    }
+  ],
+  "imports": {
+    "App.jsx": [
+      "hooks/useWallet.js",
+      "hooks/useErc20.js",
+      "components/WalletPanel.jsx",
+      "components/TransferForm.jsx",
+      "components/SignMessage.jsx",
+      "components/ActivityFeed.jsx",
+      "config.js"
+    ],
+    "components/ActivityFeed.jsx": [
+      "hooks/useTransferFeed.js",
+      "lib/address.js",
+      "lib/units.js",
+      "config.js"
+    ],
+    "components/SignMessage.jsx": [
+      "lib/signing.js",
+      "lib/address.js"
+    ],
+    "components/TransferForm.jsx": [
+      "lib/address.js",
+      "lib/units.js",
+      "lib/erc20.js",
+      "lib/gas.js",
+      "config.js"
+    ],
+    "components/WalletPanel.jsx": [
+      "lib/address.js",
+      "lib/units.js",
+      "config.js"
+    ],
+    "config.js": [],
+    "hooks/useErc20.js": [
+      "lib/erc20.js",
+      "lib/events.js"
+    ],
+    "hooks/useTransferFeed.js": [
+      "lib/events.js"
+    ],
+    "hooks/useWallet.js": [
+      "lib/clients.js",
+      "config.js"
+    ],
+    "lib/abi.js": [],
+    "lib/address.js": [],
+    "lib/clients.js": [
+      "config.js"
+    ],
+    "lib/erc20.js": [
+      "lib/clients.js",
+      "lib/abi.js"
+    ],
+    "lib/events.js": [
+      "lib/clients.js",
+      "lib/abi.js"
+    ],
+    "lib/gas.js": [
+      "lib/clients.js"
+    ],
+    "lib/signing.js": [],
+    "lib/units.js": [],
+    "main.jsx": [
+      "App.jsx"
+    ]
+  }
+}

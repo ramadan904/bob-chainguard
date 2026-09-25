@@ -1,0 +1,44 @@
+name: deploy panel
+
+# Publishes the Signalbox panel (atlas/) to GitHub Pages. The build uses the committed
+# atlas/src/data/ (the real run's ledger and scans, written by `npm run finalize`), so the
+# deployed site replays exactly what happened. One-time setup: Settings -> Pages -> Source:
+# "GitHub Actions".
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: atlas/package-lock.json
+      - run: npm ci --prefix atlas
+      - run: npm run build --prefix atlas
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: atlas/dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

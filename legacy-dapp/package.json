@@ -1,0 +1,24 @@
+{
+  "name": "legacy-dapp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Sample ERC-20 wallet dApp built on ethers v5 + web3.js 1.x - the 'before' state that IBM Bob migrates to viem/wagmi.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "ethers": "^5.8.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "web3": "^1.10.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "vite": "^5.4.21",
+    "vitest": "^2.1.9"
+  }
+}

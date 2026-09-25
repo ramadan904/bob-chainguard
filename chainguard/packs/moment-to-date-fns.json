@@ -1,0 +1,21 @@
+{
+  "name": "moment-to-date-fns",
+  "from": "Moment.js",
+  "to": "date-fns",
+  "playbook": "docs/playbooks/moment-to-date-fns.md",
+  "rules": [
+    { "id": "MOM001", "lib": "moment", "severity": "error", "title": "moment import", "pattern": "from\\s+['\"]moment(-timezone)?['\"]|require\\(\\s*['\"]moment(-timezone)?['\"]\\s*\\)", "replacement": "import { format, parseISO, ... } from 'date-fns'" },
+    { "id": "MOM002", "lib": "moment", "severity": "error", "title": "moment() constructor", "pattern": "\\bmoment\\(", "replacement": "new Date(), parseISO(str), parse(str, fmt, ref)" },
+    { "id": "MOM003", "lib": "moment", "severity": "error", "title": "format() with Moment tokens", "pattern": "\\.format\\(\\s*['\"`][^'\"`]*(YYYY|YY|DD|Do|dddd|A)", "replacement": "format(date, 'yyyy-MM-dd'): tokens differ (YYYY→yyyy, DD→dd, Do→do, A→a)" },
+    { "id": "MOM004", "lib": "moment", "severity": "error", "title": "add/subtract with a unit string", "pattern": "\\.(add|subtract)\\(\\s*[^,()]+,\\s*['\"](ms|milliseconds?|s|seconds?|m|minutes?|h|hours?|d|days?|w|weeks?|M|months?|y|years?)['\"]", "replacement": "addDays / addMonths / subHours ... (return a new Date; Moment mutated in place)" },
+    { "id": "MOM005", "lib": "moment", "severity": "error", "title": "diff()", "pattern": "\\.diff\\(", "replacement": "differenceInDays / differenceInMinutes ... (argument order: later, earlier)" },
+    { "id": "MOM006", "lib": "moment", "severity": "error", "title": "isBefore / isAfter / isSame / isBetween", "pattern": "\\.(isBefore|isAfter|isSame|isSameOrBefore|isSameOrAfter|isBetween)\\(", "replacement": "isBefore / isAfter / isSameDay / isWithinInterval" },
+    { "id": "MOM007", "lib": "moment", "severity": "error", "title": "startOf / endOf", "pattern": "\\.(startOf|endOf)\\(\\s*['\"]", "replacement": "startOfDay / endOfMonth / startOfWeek ..." },
+    { "id": "MOM008", "lib": "moment", "severity": "error", "title": "fromNow / toNow / calendar", "pattern": "\\.(fromNow|toNow|from|to|calendar)\\(\\s*\\)", "replacement": "formatDistanceToNow(date, { addSuffix: true }) / formatRelative" },
+    { "id": "MOM009", "lib": "moment", "severity": "error", "title": "moment.duration", "pattern": "\\bmoment\\.duration\\(", "replacement": "intervalToDuration / formatDuration" },
+    { "id": "MOM010", "lib": "moment", "severity": "warning", "title": "UTC / timezone handling", "pattern": "\\bmoment\\.(utc|tz)\\(|\\.(utc|tz|utcOffset)\\(", "replacement": "@date-fns/utc (UTCDate) or @date-fns/tz (TZDate)" },
+    { "id": "MOM011", "lib": "moment", "severity": "error", "title": "unix timestamps", "pattern": "\\bmoment\\.unix\\(|\\.unix\\(\\s*\\)", "replacement": "fromUnixTime(sec) / getUnixTime(date)" },
+    { "id": "MOM012", "lib": "moment", "severity": "warning", "title": "global locale", "pattern": "\\bmoment\\.locale\\(|\\.locale\\(\\s*['\"]", "replacement": "pass { locale } per call: format(date, fmt, { locale: fr })" },
+    { "id": "MOM013", "lib": "moment", "severity": "warning", "title": "isValid / clone", "pattern": "\\.(isValid|clone)\\(\\s*\\)", "replacement": "isValid(date); cloning is unnecessary (date-fns never mutates)" }
+  ]
+}

@@ -1,0 +1,8 @@
+# Deploys the Signalbox panel. The site replays the committed atlas/src/data/ (npm run finalize).
+[build]
+  base = "atlas"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"

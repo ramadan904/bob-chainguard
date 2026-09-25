@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "npm ci --prefix atlas",
+  "buildCommand": "npm run build --prefix atlas",
+  "outputDirectory": "atlas/dist",
+  "framework": null
+}
