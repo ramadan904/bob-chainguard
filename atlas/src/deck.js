@@ -155,7 +155,7 @@ const slides = [
   `<section class="slide title close">
     <div class="signals">${lamp('green')}${lamp('green')}${lamp('green')}</div>
     <h2 class="huge">Parallel Bob subagents<br>you can actually trust.</h2>
-    <p class="sub">github.com/ramadan904/bob-chainguard · ramadan904.github.io/bob-chainguard</p>
+    <p class="sub">bob-chainguard.vercel.app · github.com/ramadan904/bob-chainguard</p>
   </section>`,
 ]
 

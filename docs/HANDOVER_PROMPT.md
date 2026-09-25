@@ -11,10 +11,10 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
 
 ## The project: "Signalbox: interlocking for parallel IBM Bob subagents"
 - Repo (public): https://github.com/ramadan904/bob-chainguard
-- Live site (GitHub Pages, deployed from `main`): https://ramadan904.github.io/bob-chainguard/
-- Deck: https://ramadan904.github.io/bob-chainguard/deck.html
-- Guided replay: https://ramadan904.github.io/bob-chainguard/?tour
-- Vercel is also connected to the repo and deploys previews of the branch (a second hosting option).
+- Live site (Vercel, deployed from `main`): https://bob-chainguard.vercel.app/ (backup: https://ramadan904.github.io/bob-chainguard/ on GitHub Pages)
+- Deck: https://bob-chainguard.vercel.app/deck.html
+- Guided replay: https://bob-chainguard.vercel.app/?tour
+- Vercel deploys `main` to production and every branch push as a preview. GitHub Pages also deploys `main` (the backup link).
 - Works on Windows, macOS and Linux (CI runs the full suite on Windows too). Needs Node.js 20+ (22 LTS recommended); `sb doctor` checks it.
 - Working branch: `claude/dazzling-ptolemy-c288r3`. `main` gets updated by merging a pull request from that branch, and every push to `main` redeploys the site automatically (workflow `deploy panel`, about 1 minute).
 
@@ -102,7 +102,7 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
    - Video ≤ 3 min, following `DEMO_SCRIPT.md`. An easy segment: record `…/bob-chainguard/?tour`.
    - Slides: open `deck.html` → "Save as PDF" with background graphics on.
    - Cover image: use `media/cover-baseline.png`, or a screenshot of the finished panel.
-7. Fill in the lablab.ai form using the text in `SUBMIT_TOMORROW.md`: title, short and long description, tags, repo URL, application URL `https://ramadan904.github.io/bob-chainguard/`, the statements, and the Bob screenshots. Then fill in the post-hackathon feedback form (needed for the $100 reward).
+7. Fill in the lablab.ai form using the text in `SUBMIT_TOMORROW.md`: title, short and long description, tags, repo URL, application URL `https://bob-chainguard.vercel.app/`, the statements, and the Bob screenshots. Then fill in the post-hackathon feedback form (needed for the $100 reward).
 
 ## Rules and gotchas you must respect
 - **Never fake data** in the final version: no invented numbers, no pre-written ledgers.
