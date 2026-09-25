@@ -115,7 +115,7 @@ function buildMap() {
   const gGrid = s('rect', { x: 0, y: 0, width: layout.width, height: layout.height, fill: 'url(#grid)' })
   const gEdges = s('g', { class: 'edges' })
   for (const e of layout.edges) {
-    const p = s('path', { d: e.path, class: 'edge' })
+    const p = s('path', { d: e.path, class: 'edge', stroke: lineColorOf(e.to) })
     edgeNodes.push({ ...e, node: p })
     gEdges.append(p)
   }
@@ -125,10 +125,10 @@ function buildMap() {
     const bw = 22 + label.length * 9
     gLines.append(
       s('line', { x1: l.x, x2: l.x, y1: l.y1, y2: l.y2, class: 'line-casing' }),
-      s('line', { x1: l.x, x2: l.x, y1: l.y1, y2: l.y2, class: 'line', stroke: l.color }),
+      s('line', { x1: l.x, x2: l.x, y1: l.y1, y2: l.y2, class: 'line', stroke: l.color, style: `color:${l.color}` }),
       s('g', { class: 'line-badge', transform: `translate(${l.x},${l.y1 - 26})` },
-        s('rect', { x: -bw / 2, y: -14, width: bw, height: 28, rx: 14, fill: l.color }),
-        s('text', { x: 0, y: 4.5, 'text-anchor': 'middle' }, label)),
+        s('rect', { x: -bw / 2, y: -14, width: bw, height: 28, rx: 14, fill: l.color, style: `color:${l.color}` }),
+        s('text', { x: 0, y: 4.5, 'text-anchor': 'middle', fill: readableOn(l.color) }, label)),
     )
   }
   const gStations = s('g', { class: 'stations' })
@@ -155,6 +155,16 @@ function buildMap() {
     gStations.append(g)
   }
   svg.append(defs, gGrid, gEdges, gLines, gStations)
+}
+
+function lineColorOf(stationId) {
+  return lineColor[layout.stations[stationId]?.dir] || '#888'
+}
+
+// Dark or light label text, whichever reads better on a line colour (WCAG relative luminance).
+function readableOn(hex) {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.3 ? '#0b0f19' : '#ffffff'
 }
 
 function peek(id) {
@@ -200,7 +210,7 @@ function updateMap() {
   for (const e of edgeNodes) {
     const on = model.selected && (e.from === model.selected || e.to === model.selected)
     e.node.classList.toggle('on', Boolean(on))
-    e.node.style.stroke = on ? lineColor[layout.stations[e.to].dir] : ''
+    e.node.style.stroke = ''
   }
 }
 
@@ -254,6 +264,12 @@ function updateStats() {
   tween('faults', $('#stat-faults'), view.faults)
   $('#stat-faults-sub').textContent = view.faults ? 'stopped before commit' : ''
   document.body.dataset.done = String(calls === 0)
+  const files = Object.keys(view.findings).length || 1
+  const clean = Object.values(view.findings).filter((l) => l.length === 0).length
+  const pct = Math.round((clean / files) * 100)
+  $('#health-fill').style.width = `${pct}%`
+  $('#health-label').textContent = `Network health ${pct}% · ${clean} of ${files} stations free of legacy calls`
+  $('#health').setAttribute('aria-valuenow', String(pct))
   const badge = $('#mode')
   badge.dataset.mode = model.mode
   badge.textContent = model.mode === 'live' ? (view.atHead ? 'Live' : 'Live · paused') : model.mode === 'replay' ? 'Replay' : 'Baseline'
@@ -375,7 +391,7 @@ function updateGraph() {
     const y = rowY[r.task] + 7
     const end = r.end ?? now
     const bar = s('g', { class: `g-run o-${r.outcome}` },
-      s('rect', { x: x(r.start), y, width: Math.max(3, x(end) - x(r.start)), height: rowH - 14, rx: 3, fill: color(r.agent) }),
+      s('rect', { x: x(r.start), y, width: Math.max(3, x(end) - x(r.start)), height: rowH - 14, rx: 3, fill: color(r.agent), style: `color:${color(r.agent)}` }),
       x(end) - x(r.start) > 44 ? s('text', { x: x(r.start) + 6, y: y + 12, class: 'g-agent' }, r.agent.toUpperCase()) : null,
       r.verifies.map((v) => s('rect', { x: x(v.at) - 2, y: y - 4, width: 4, height: rowH - 6, rx: 1, class: v.ok ? 'g-ok' : 'g-fault' }, s('title', {}, v.ok ? 'track circuit clear' : `fault: ${v.failed.join(', ')}`))),
       r.outcome === 'cleared' ? s('circle', { cx: x(end), cy: y + (rowH - 14) / 2, r: 5, class: 'g-clear' }) : null,
@@ -626,7 +642,7 @@ function rebuild() {
 
 function initTheme() {
   const saved = (() => { try { return localStorage.getItem('atlas-theme') } catch { return null } })()
-  if (saved) document.documentElement.dataset.theme = saved
+  document.documentElement.dataset.theme = saved || 'dark'
   $('#theme').addEventListener('click', () => {
     const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
     const next = dark ? 'light' : 'dark'

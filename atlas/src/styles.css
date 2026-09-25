@@ -29,38 +29,44 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --paper: #0e1013;
-    --paper-2: #1b1f25;
-    --card: #15181d;
-    --ink: #f0ede5;
-    --ink-2: #b3afa5;
-    --ink-3: #7d7a72;
-    --rule: #2b3038;
-    --grid: rgba(255, 255, 255, 0.035);
-    --rust: #ff7a45;
-    --rust-soft: rgba(255, 122, 69, 0.14);
-    --amber-ink: #f1c21b;
-    --steel: #c6d3dc;
-    --on-steel: #0e1013;
-    --focus: #78a9ff;
+    --paper: #070b14;
+    --paper-2: #111a2c;
+    --card: #0b1222;
+    --ink: #edf1fb;
+    --ink-2: #a9b3c9;
+    --ink-3: #6c7894;
+    --rule: #1b2740;
+    --grid: rgba(110, 150, 255, 0.07);
+    --rust: #ff6a3d;
+    --rust-soft: rgba(255, 106, 61, 0.14);
+    --amber-ink: #ffc53d;
+    --steel: #3ee6a8;
+    --on-steel: #03140c;
+    --focus: #7aa2ff;
+    --board: #050912;
+    --flap: #111a2b;
+    --flap-line: #03060d;
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --paper: #0e1013;
-  --paper-2: #1b1f25;
-  --card: #15181d;
-  --ink: #f0ede5;
-  --ink-2: #b3afa5;
-  --ink-3: #7d7a72;
-  --rule: #2b3038;
-  --grid: rgba(255, 255, 255, 0.035);
-  --rust: #ff7a45;
-  --rust-soft: rgba(255, 122, 69, 0.14);
-  --amber-ink: #f1c21b;
-  --steel: #c6d3dc;
-  --on-steel: #0e1013;
-  --focus: #78a9ff;
+  --paper: #070b14;
+  --paper-2: #111a2c;
+  --card: #0b1222;
+  --ink: #edf1fb;
+  --ink-2: #a9b3c9;
+  --ink-3: #6c7894;
+  --rule: #1b2740;
+  --grid: rgba(110, 150, 255, 0.07);
+  --rust: #ff6a3d;
+  --rust-soft: rgba(255, 106, 61, 0.14);
+  --amber-ink: #ffc53d;
+  --steel: #3ee6a8;
+  --on-steel: #03140c;
+  --focus: #7aa2ff;
+  --board: #050912;
+  --flap: #111a2b;
+  --flap-line: #03060d;
   color-scheme: dark;
 }
 
@@ -220,7 +226,7 @@ body[data-done='true'] .stat-calls .num { color: var(--ink); }
 /* ------------------------------------------------------------ map */
 
 .grid-line { fill: none; stroke: var(--grid); stroke-width: 1; }
-.edge { fill: none; stroke: var(--ink); stroke-width: 1.3; stroke-linejoin: round; opacity: 0.16; transition: opacity 0.25s, stroke-width 0.25s; }
+.edge { fill: none; stroke-width: 1.3; stroke-linejoin: round; opacity: 0.3; transition: opacity 0.25s, stroke-width 0.25s; }
 .edge.peek { opacity: 0.65; }
 .edge.on { opacity: 1; stroke-width: 3; }
 .line { stroke-width: 9; stroke-linecap: round; }
@@ -634,3 +640,93 @@ body[data-done='true'] .stat-calls .num { color: var(--ink); }
 
 .td-recover .td-text { color: #78a9ff; font-weight: 600; }
 .tick.k-recover .tick-dot { border-color: var(--sig-blue); background: var(--sig-blue); }
+
+
+/* ============================================================ night signal box: colour & light */
+
+/* Control room at night: deep navy, a faint blueprint grid, and the glow of distant signals. */
+:root[data-theme='dark'] body {
+  background:
+    radial-gradient(1100px 520px at 12% -8%, rgba(69, 137, 255, 0.16), transparent 62%),
+    radial-gradient(900px 480px at 96% 2%, rgba(255, 106, 61, 0.11), transparent 60%),
+    radial-gradient(1000px 700px at 50% 110%, rgba(62, 230, 168, 0.07), transparent 60%),
+    var(--paper);
+}
+:root[data-theme='dark'] .masthead { border-bottom-color: #22314f; }
+:root[data-theme='dark'] .map-card,
+:root[data-theme='dark'] .panel {
+  background: linear-gradient(180deg, rgba(17, 26, 44, 0.92), rgba(11, 18, 34, 0.96));
+  border-color: #1b2740;
+  box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+:root[data-theme='dark'] .panel { border-top-color: var(--steel); }
+
+/* Lines, badges and tunnels light up in their own colour. */
+:root[data-theme='dark'] .line { filter: drop-shadow(0 0 5px currentColor); }
+:root[data-theme='dark'] .line-casing { stroke: #0b1222; }
+:root[data-theme='dark'] .line-badge rect { filter: drop-shadow(0 0 8px currentColor); }
+:root[data-theme='dark'] .edge { opacity: 0.34; }
+:root[data-theme='dark'] .edge.peek { opacity: 0.8; }
+:root[data-theme='dark'] .edge.on { opacity: 1; filter: drop-shadow(0 0 4px currentColor); }
+:root[data-theme='dark'] .st-label { stroke: #0b1222; }
+
+/* Legacy code glows hot; migrated stations glow mint; blocks in use glow amber. */
+:root[data-theme='dark'] .station[data-status='legacy'] .st-ring { fill: #1a0f0c; filter: drop-shadow(0 0 7px rgba(255, 106, 61, 0.75)); }
+:root[data-theme='dark'] .st-count { fill: #ff8d66; }
+:root[data-theme='dark'] .station[data-status='migrated'] .st-ring { fill: var(--steel); stroke: #0b1222; filter: drop-shadow(0 0 8px rgba(62, 230, 168, 0.8)); }
+:root[data-theme='dark'] .station[data-block='occupied'] .st-block { filter: drop-shadow(0 0 6px var(--sig-amber)); }
+:root[data-theme='dark'] .station[data-block='fault'] .st-block,
+:root[data-theme='dark'] .station[data-block='spad'] .st-block { filter: drop-shadow(0 0 8px var(--sig-red)); }
+:root[data-theme='dark'] .st-wave rect { fill: #1f2d4a; }
+:root[data-theme='dark'] .st-wave text { fill: #cfe0ff; }
+:root[data-theme='dark'] .station[data-status='migrated'] .st-wave rect { fill: var(--steel); }
+.station[data-status='migrated'] .st-check { stroke: var(--on-steel); }
+:root[data-theme='dark'] .station[data-status='migrated'] .st-label { fill: #bdf5de; }
+
+/* Masthead numbers in their signal colours. */
+.stat-blocks .num { color: var(--steel); }
+.stat-agents .num { color: var(--sig-amber); }
+.stat-faults .num { color: var(--sig-red); }
+:root[data-theme='dark'] .num { text-shadow: 0 0 18px currentColor; }
+:root[data-theme='dark'] h1 { text-shadow: 0 0 22px rgba(122, 162, 255, 0.35); }
+:root[data-theme='dark'] .roundel circle { filter: drop-shadow(0 0 6px rgba(255, 106, 61, 0.8)); }
+:root[data-theme='dark'] body[data-done='true'] .roundel circle { filter: drop-shadow(0 0 6px rgba(62, 230, 168, 0.8)); }
+:root[data-theme='dark'] .roundel rect { fill: #cfe0ff; }
+body[data-done='true'] .stat-calls .num { color: var(--steel); }
+
+/* Network health: legacy (orange) giving way to cleared track (mint). */
+.health { display: flex; align-items: center; gap: 14px; padding: 12px 32px 0; }
+.health-track {
+  position: relative; flex: 1; height: 8px; border-radius: 4px; overflow: hidden;
+  background: repeating-linear-gradient(-45deg, rgba(255, 106, 61, 0.55) 0 6px, rgba(255, 106, 61, 0.25) 6px 12px);
+}
+.health-fill {
+  height: 100%; width: 0;
+  background: linear-gradient(90deg, #ff6a3d 0%, #f5b301 35%, #3ee6a8 100%);
+  background-size: 100vw 100%;
+  box-shadow: 0 0 12px rgba(62, 230, 168, 0.55);
+  transition: width 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.health-label { font: 12px var(--f-mono); color: var(--ink-2); white-space: nowrap; }
+:root:not([data-theme='dark']) .health-track { background: repeating-linear-gradient(-45deg, rgba(184, 65, 14, 0.35) 0 6px, rgba(184, 65, 14, 0.15) 6px 12px); }
+
+/* Boards: blueprint navy rather than flat black, lamps with real glow. */
+:root[data-theme='dark'] .board,
+:root[data-theme='dark'] .graph-card {
+  background: linear-gradient(180deg, #0a1120, #060a14);
+  box-shadow: inset 0 0 0 1px #1b2740, 0 30px 60px -35px rgba(0, 0, 0, 0.9);
+}
+:root[data-theme='dark'] .board-row { border-top-color: #152036; }
+:root[data-theme='dark'] .board-row:not(.board-head):hover,
+:root[data-theme='dark'] .board-row.focus { background: #0f1a30; }
+:root[data-theme='dark'] .flap i { background: linear-gradient(to bottom, #13203a 0 49%, #04080f 49% 53%, #172542 53%); }
+:root[data-theme='dark'] .g-grid { stroke: #14203a; }
+:root[data-theme='dark'] .g-run rect:first-child { filter: drop-shadow(0 0 6px currentColor); }
+:root[data-theme='dark'] .alert { background: rgba(11, 18, 34, 0.9); }
+:root[data-theme='dark'] .timeline { border-bottom-color: #1b2740; }
+:root[data-theme='dark'] .track::before { background: #1b2740; }
+:root[data-theme='dark'] .track-fill { background: linear-gradient(90deg, #ff6a3d, #f5b301, #3ee6a8); box-shadow: 0 0 10px rgba(62, 230, 168, 0.5); }
+:root[data-theme='dark'] .play { background: var(--steel); color: var(--on-steel); box-shadow: 0 0 16px rgba(62, 230, 168, 0.5); }
+:root[data-theme='dark'] .mode[data-mode='replay'] { color: var(--steel); border-color: var(--steel); }
+
+@media (max-width: 640px) { .health { padding: 10px 16px 0; } .health-label { white-space: normal; } }

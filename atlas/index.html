@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Interlocking for parallel IBM Bob subagents: a live signal box that lets many agents change one codebase safely, block by block." />
     <title>Chainguard Signalbox</title>
+    <meta name="theme-color" content="#070b14" />
+    <script>
+      // Night signal box by default; set before first paint so there is no flash.
+      try { document.documentElement.dataset.theme = localStorage.getItem('atlas-theme') || 'dark' } catch { document.documentElement.dataset.theme = 'dark' }
+    </script>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%23b8410e' stroke-width='5'/%3E%3Crect x='2' y='13' width='28' height='6' fill='%230f62fe'/%3E%3C/svg%3E" />
   </head>
   <body>
@@ -26,6 +31,10 @@
       </button>
     </header>
 
+    <div class="health" id="health" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="health-label">
+      <div class="health-track"><div class="health-fill" id="health-fill"></div></div>
+      <span class="health-label" id="health-label"></span>
+    </div>
     <nav class="timeline" id="timeline" aria-label="Signal box history"></nav>
     <div class="alert-strip" id="alert" role="status" aria-live="polite"></div>
 
