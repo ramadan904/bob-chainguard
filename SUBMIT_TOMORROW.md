@@ -16,20 +16,25 @@ On your computer, in the repo folder:
 
 ```bash
 git pull
-npm ci --prefix legacy-dapp && npm ci --prefix atlas
-git tag before-bob
+npm run bob:prep
 ```
 
-Then follow **docs/BOB_RUNBOOK.md**:
-1. Give Bob the "expand step" prompt (section 0), and let it commit.
-2. `npm run -s sb -- init` → `npm run -s sb -- install-hook` → `npm run -s sb -- doctor` (all lines must say ok).
-3. `npm run signalbox`, then open http://localhost:4700 next to Bob.
-4. Start screen recording. Give Bob the **dispatcher prompt** (section 2).
-5. When everything is cleared: the cleanup prompt (section 4).
+`bob:prep` checks Node, installs every dependency, runs all tests, tags `before-bob`, and prints
+the first two prompts to paste into Bob (onboarding, then the expand step). Then:
+1. Paste the **onboarding** prompt, then the **expand step** prompt into Bob (Agent mode); let it commit.
+2. `npm run bob:open`: it refuses to start until the expand commit is in, then opens the signal
+   box, installs the guard, runs doctor (every line must say ok), prints the **dispatcher prompt**
+   and starts the live panel at http://localhost:4700.
+3. Put the panel next to Bob, start screen recording, and paste the dispatcher prompt into Bob.
+4. During wave 1, between two releases: click **⚡ Simulate chaos**.
+5. When everything is cleared: the cleanup prompt (runbook section 4), then the review prompt (section 5).
 
 Save Bob's session summary screenshots into `bob_sessions/` as you go. **Every team member** needs them.
+Name them `<yourname>-<what>.png`, where <what> is `onboarding`, `expand`, `dispatcher`, `mcp`,
+`review`, `cleanup` or a block id (`w1-lib-1`). The names become the captions of the
+**Bob at work** gallery on the site and in the deck, and fill the evidence column of the statements.
 
-If something goes wrong mid-run, the retake steps are at the bottom of the runbook.
+If something goes wrong mid-run: `npm run bob:retake` shows what goes back, and `npm run bob:retake -- --yes` keeps the attempt on a `practice-HHMM` branch, resets to Bob's expand commit and opens a fresh signal box. Then paste the dispatcher prompt again.
 
 ## 2. Finalize (one command)
 
@@ -40,7 +45,7 @@ npm run finalize
 It must end with "Warnings: None". It writes `reports/submission-numbers.md`. Those are your numbers.
 
 ```bash
-git add .signalbox/ledger.jsonl reports/ atlas/src/data/ bob_sessions/
+git add .signalbox/ledger.jsonl reports/ atlas/src/data/ atlas/public/bob/ bob_sessions/ docs/submission/final/
 git commit -m "Finalize: Bob run reports and replay"
 git push
 ```

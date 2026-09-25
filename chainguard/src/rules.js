@@ -217,12 +217,32 @@ export const RULES_BY_ID = Object.fromEntries(RULES.map((r) => [r.id, r]))
 // the detection rules. The Web3 pack above is the default; any other migration is a JSON file:
 //   { "name", "from", "to", "playbook", "rules": [{ "id", "lib", "severity", "title",
 //     "pattern" (regex source), "flags"?, "replacement" }] }
+// Known traps (docs/MIGRATION_PLAYBOOK.md), keyed by the rule that brings a block into contact with
+// them. The planner puts the relevant ones straight into each block's prompt.
+export const TRAPS = {
+  ETH007: [
+    "viem's parseUnits silently rounds extra decimals where ethers and web3 threw: check the fraction length against decimals and throw yourself.",
+    'formatUnits needs a bigint: formatUnits(BigInt(raw), decimals).',
+  ],
+  W3J005: [
+    "viem's parseUnits silently rounds extra decimals where ethers and web3 threw: check the fraction length against decimals and throw yourself.",
+    'isAddress is checksum-strict for mixed case: isAddress(x, { strict: false }) keeps the old leniency.',
+  ],
+  ETH014: ['recoverMessageAddress is async: recoverSigner becomes async (callers already await it).'],
+  ETH006: ["Receipt status is 'success' / 'reverted', not 1 / 0; a revert reason is err.shortMessage || err.message."],
+  ETH009: ['watchContractEvent delivers a batch: onLogs(logs), read log.args.{from,to,value}; blockNumber is a bigint (Number() for UI objects).'],
+  W3J007: ['watchContractEvent delivers a batch: onLogs(logs), read log.args.{from,to,value}; blockNumber is a bigint (Number() for UI objects).'],
+  W3J008: ['getContractEvents returns bigint blockNumber: use bigint math for ranges, Number() for UI objects.'],
+  W3J006: ['Gas price and balances come back as bigint, not strings.'],
+}
+
 export const DEFAULT_PACK = withIndex({
   name: 'web3-to-viem',
   from: 'ethers v5 / web3.js',
   to: 'viem + wagmi',
   playbook: 'docs/MIGRATION_PLAYBOOK.md',
   rules: RULES,
+  traps: TRAPS,
 })
 
 function withIndex(pack) {
@@ -245,5 +265,6 @@ export function compilePack(json, source = 'rule pack') {
     }
     return { id: r.id, lib: r.lib || json.name, severity: r.severity === 'warning' ? 'warning' : 'error', title: r.title, pattern, replacement: r.replacement }
   })
-  return withIndex({ name: json.name, from: json.from, to: json.to, playbook: json.playbook, rules })
+  const traps = Object.fromEntries(Object.entries(json.traps || {}).map(([id, t]) => [id, [].concat(t).map(String)]))
+  return withIndex({ name: json.name, from: json.from, to: json.to, playbook: json.playbook, rules, traps })
 }

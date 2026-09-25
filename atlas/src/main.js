@@ -7,6 +7,7 @@ import '@fontsource/ibm-plex-mono/600.css'
 import './styles.css'
 import staticAtlas from './data/atlas-data.json'
 import momentAtlas from './data/atlas-moment.json'
+import bobShots from './data/bob-shots.json'
 import { layoutAtlas, LABEL_OFFSET } from './layout.js'
 import { dependentsOf, baselineIndex } from './state.js'
 import { buildStops, findingsAt, signalStateAt, blockIndex, faultsCaught, checkLamps, stripRoot } from './signal.js'
@@ -1080,6 +1081,31 @@ function rebuild() {
   render()
 }
 
+// ------------------------------------------------------------------ Bob at work
+// The team's Bob session screenshots (bob_sessions/, published by `npm run atlas`): the evidence
+// that IBM Bob did the work. Hidden until there are any.
+
+function buildBobWork() {
+  if (!bobShots.length) return
+  const members = [...new Set(bobShots.map((x) => x.member).filter(Boolean))]
+  $('#bobwork').hidden = false
+  $('#bobwork-sub').textContent = `${bobShots.length} IBM Bob session${bobShots.length > 1 ? 's' : ''}${members.length ? ` · ${members.join(' · ')}` : ''}`
+  $('#shots').replaceChildren(...bobShots.map((x) => h('li', {},
+    h('button', { class: 'shot', onclick: () => openShot(x) },
+      h('img', { src: `./${x.src}`, alt: x.caption, loading: 'lazy' }),
+      h('span', { class: 'shot-cap' }, x.caption, x.member ? h('small', {}, ` · ${x.member}`) : null)))))
+}
+
+function openShot(x) {
+  const d = $('#shot')
+  d.replaceChildren(
+    h('div', { class: 'diff-head' },
+      h('div', {}, h('p', { class: 'eyebrow' }, x.member ? `IBM Bob session · ${x.member}` : 'IBM Bob session'), h('h2', {}, x.caption)),
+      h('button', { class: 'back', 'aria-label': 'Close', onclick: () => d.close() }, '✕')),
+    h('img', { class: 'shot-full', src: `./${x.src}`, alt: x.caption }))
+  d.showModal()
+}
+
 // ------------------------------------------------------------------ rule packs
 // The same interlocking on a different migration: the Moment.js → date-fns pack, planned on the
 // sample app in samples/moment-billing. Its plan is real (a real scan of real code); it has no
@@ -1211,6 +1237,7 @@ async function start() {
   initHeat()
   buildStats()
   buildDesk()
+  buildBobWork()
   const live = await connectLive()
   if (!live) {
     model.mode = model.events.length ? 'replay' : 'baseline'

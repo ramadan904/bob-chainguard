@@ -19,7 +19,10 @@
     "finalize": "node scripts/finalize.mjs",
     "record:tour": "node scripts/record-tour.mjs",
     "record:deck": "node scripts/record-tour.mjs --deck",
-    "prove:pack": "node scripts/prove-pack.mjs"
+    "prove:pack": "node scripts/prove-pack.mjs",
+    "bob:prep": "node scripts/bob.mjs prep",
+    "bob:open": "node scripts/bob.mjs open",
+    "bob:retake": "node scripts/bob.mjs retake"
   },
   "license": "MIT"
 }

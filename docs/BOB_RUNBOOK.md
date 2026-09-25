@@ -9,6 +9,10 @@ safe and makes everything they do visible and replayable. This runbook is the de
 
 ## 0. Setup (≈20 min)
 
+> Shortcut: `npm run bob:prep` does everything in this section up to the prompts and prints them;
+> after Bob's expand commit, `npm run bob:open` opens the signal box, runs doctor, prints the
+> dispatcher prompt and starts the live panel.
+
 ```bash
 cp .env.example .env
 npm ci --prefix legacy-dapp && npm ci --prefix atlas
@@ -159,7 +163,14 @@ receipt status handling). List findings with file:line.
 ## Retakes (recording often takes a few attempts)
 
 The ledger and the code must go back together, or the replay will show events that don't match
-the commits. From the repo root, with nothing you want to keep uncommitted:
+the commits. One command does all of it (it shows what it will reset; add `--yes` to do it):
+
+```bash
+npm run bob:retake            # dry run: what goes back
+npm run bob:retake -- --yes   # keep the attempt on practice-HHMM, reset, fresh box, doctor
+```
+
+By hand, from the repo root, with nothing you want to keep uncommitted:
 
 ```bash
 git branch practice-$(date +%H%M)                 # keep the attempt, just in case

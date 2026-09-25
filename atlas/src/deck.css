@@ -126,3 +126,7 @@ em { color: var(--mint); font-style: normal; }
   #slides { height: auto; width: auto; }
   .slide { display: flex !important; position: relative; left: 0; top: 0; transform: none; break-after: page; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+.shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.shots figure { margin: 0; }
+.shots img { width: 100%; height: 300px; object-fit: cover; object-position: top left; border-radius: 12px; border: 2px solid var(--line); }
+.shots figcaption { margin-top: 10px; font-size: 24px; color: var(--ink-2); }

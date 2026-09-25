@@ -84,6 +84,10 @@ export function buildPlan(report, { pack = DEFAULT_PACK, scanPath = report.root 
   }
   tasks.sort((a, b) => a.wave - b.wave || b.findings - a.findings)
 
+  const traps = (t) => {
+    const list = [...new Set(t.rules.flatMap((r) => pack.traps?.[r.id] || []))]
+    return list.length ? ['Traps the tests catch in these files:', ...list.map((x) => `- ${x}`)] : []
+  }
   for (const t of tasks) {
     t.prompt = [
       `Migrate these files from ${from} to ${target}: ${t.files.map((f) => `@${f}`).join(' ')}`,
@@ -92,7 +96,8 @@ export function buildPlan(report, { pack = DEFAULT_PACK, scanPath = report.root 
       t.contracts.length
         ? `Contract step: ${t.contracts.map((f) => `\`${f}\``).join(', ')} exports legacy objects. Its callers were migrated in earlier waves; remove the legacy exports (or the whole file) now. The signal box refuses the release if anything still imports a removed name.`
         : 'Keep every exported name and call signature stable. Raw amounts become bigint; functions that returned strings still return strings.',
-      `Done when \`node chainguard/bin/chainguard.js scan ${scanPath}\` lists none of these files and \`npm test --prefix legacy-dapp\` passes.`,
+      ...traps(t),
+      `Done when \`node chainguard/bin/chainguard.js scan ${scanPath}\` lists none of these files. Judge the tests by \`release\`, not by running the test suite in the shared folder: other agents' unfinished edits can break it there. release runs the tests on an isolated copy with only your block.`,
     ].join('\n')
   }
   return { pack: pack.name, from, target, playbook, totalFindings: report.totals.findings, waves: Math.max(0, ...tasks.map((t) => t.wave)), tasks }

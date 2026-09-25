@@ -15,7 +15,15 @@ Migrate these files from ethers v5 / web3.js to viem + wagmi: @legacy-dapp/src/l
 Follow @docs/MIGRATION_PLAYBOOK.md (mapping table and rules). Do not edit any other file.
 chainguard found 28 legacy call sites: ETH001 ethers import, ETH006 ethers Contract instance, ETH007 ethers.utils.*, ETH008 BigNumber instance method, ETH009 contract/provider event listener, ETH010 ethers.constants, ETH011 tx.wait() / waitForTransaction, ETH012 callStatic / populateTransaction / estimateGas namespace, W3J001 web3 import, W3J003 web3.eth.Contract, W3J004 contract.methods.x().call/send, W3J005 web3.utils.*, W3J006 web3.eth RPC call, W3J008 getPastEvents.
 Keep every exported name and call signature stable. Raw amounts become bigint; functions that returned strings still return strings.
-Done when `node chainguard/bin/chainguard.js scan legacy-dapp/src` lists none of these files and `npm test --prefix legacy-dapp` passes.
+Traps the tests catch in these files:
+- Receipt status is 'success' / 'reverted', not 1 / 0; a revert reason is err.shortMessage || err.message.
+- viem's parseUnits silently rounds extra decimals where ethers and web3 threw: check the fraction length against decimals and throw yourself.
+- formatUnits needs a bigint: formatUnits(BigInt(raw), decimals).
+- watchContractEvent delivers a batch: onLogs(logs), read log.args.{from,to,value}; blockNumber is a bigint (Number() for UI objects).
+- isAddress is checksum-strict for mixed case: isAddress(x, { strict: false }) keeps the old leniency.
+- Gas price and balances come back as bigint, not strings.
+- getContractEvents returns bigint blockNumber: use bigint math for ranges, Number() for UI objects.
+Done when `node chainguard/bin/chainguard.js scan legacy-dapp/src` lists none of these files. Judge the tests by `release`, not by running the test suite in the shared folder: other agents' unfinished edits can break it there. release runs the tests on an isolated copy with only your block.
 ```
 
 ### w1-lib-2 (26 findings)
@@ -25,7 +33,13 @@ Migrate these files from ethers v5 / web3.js to viem + wagmi: @legacy-dapp/src/l
 Follow @docs/MIGRATION_PLAYBOOK.md (mapping table and rules). Do not edit any other file.
 chainguard found 26 legacy call sites: ETH001 ethers import, ETH004 BigNumber, ETH007 ethers.utils.*, ETH008 BigNumber instance method, ETH014 signMessage via signer, W3J005 web3.utils.*, W3J006 web3.eth RPC call.
 Keep every exported name and call signature stable. Raw amounts become bigint; functions that returned strings still return strings.
-Done when `node chainguard/bin/chainguard.js scan legacy-dapp/src` lists none of these files and `npm test --prefix legacy-dapp` passes.
+Traps the tests catch in these files:
+- viem's parseUnits silently rounds extra decimals where ethers and web3 threw: check the fraction length against decimals and throw yourself.
+- formatUnits needs a bigint: formatUnits(BigInt(raw), decimals).
+- recoverMessageAddress is async: recoverSigner becomes async (callers already await it).
+- isAddress is checksum-strict for mixed case: isAddress(x, { strict: false }) keeps the old leniency.
+- Gas price and balances come back as bigint, not strings.
+Done when `node chainguard/bin/chainguard.js scan legacy-dapp/src` lists none of these files. Judge the tests by `release`, not by running the test suite in the shared folder: other agents' unfinished edits can break it there. release runs the tests on an isolated copy with only your block.
 ```
 
 ### w1-hooks (8 findings)
@@ -35,7 +49,10 @@ Migrate these files from ethers v5 / web3.js to viem + wagmi: @legacy-dapp/src/h
 Follow @docs/MIGRATION_PLAYBOOK.md (mapping table and rules). Do not edit any other file.
 chainguard found 8 legacy call sites: ETH001 ethers import, ETH005 getSigner(), ETH007 ethers.utils.*, ETH013 ENS lookup via provider, ETH015 raw provider RPC (send / listAccounts / getNetwork).
 Keep every exported name and call signature stable. Raw amounts become bigint; functions that returned strings still return strings.
-Done when `node chainguard/bin/chainguard.js scan legacy-dapp/src` lists none of these files and `npm test --prefix legacy-dapp` passes.
+Traps the tests catch in these files:
+- viem's parseUnits silently rounds extra decimals where ethers and web3 threw: check the fraction length against decimals and throw yourself.
+- formatUnits needs a bigint: formatUnits(BigInt(raw), decimals).
+Done when `node chainguard/bin/chainguard.js scan legacy-dapp/src` lists none of these files. Judge the tests by `release`, not by running the test suite in the shared folder: other agents' unfinished edits can break it there. release runs the tests on an isolated copy with only your block.
 ```
 
 ## Wave 2 (3 parallel tasks)
@@ -47,7 +64,7 @@ Migrate these files from ethers v5 / web3.js to viem + wagmi: @legacy-dapp/src/l
 Follow @docs/MIGRATION_PLAYBOOK.md (mapping table and rules). Do not edit any other file.
 chainguard found 6 legacy call sites: ETH001 ethers import, ETH002 Web3Provider (browser wallet), ETH003 JsonRpcProvider / StaticJsonRpcProvider, W3J001 web3 import, W3J002 new Web3().
 Contract step: `legacy-dapp/src/lib/clients.js` exports legacy objects. Its callers were migrated in earlier waves; remove the legacy exports (or the whole file) now. The signal box refuses the release if anything still imports a removed name.
-Done when `node chainguard/bin/chainguard.js scan legacy-dapp/src` lists none of these files and `npm test --prefix legacy-dapp` passes.
+Done when `node chainguard/bin/chainguard.js scan legacy-dapp/src` lists none of these files. Judge the tests by `release`, not by running the test suite in the shared folder: other agents' unfinished edits can break it there. release runs the tests on an isolated copy with only your block.
 ```
 
 ### w2-hooks (3 findings)
@@ -57,7 +74,7 @@ Migrate these files from ethers v5 / web3.js to viem + wagmi: @legacy-dapp/src/h
 Follow @docs/MIGRATION_PLAYBOOK.md (mapping table and rules). Do not edit any other file.
 chainguard found 3 legacy call sites: ETH001 ethers import, ETH004 BigNumber, ETH008 BigNumber instance method.
 Keep every exported name and call signature stable. Raw amounts become bigint; functions that returned strings still return strings.
-Done when `node chainguard/bin/chainguard.js scan legacy-dapp/src` lists none of these files and `npm test --prefix legacy-dapp` passes.
+Done when `node chainguard/bin/chainguard.js scan legacy-dapp/src` lists none of these files. Judge the tests by `release`, not by running the test suite in the shared folder: other agents' unfinished edits can break it there. release runs the tests on an isolated copy with only your block.
 ```
 
 ### w2-components (1 findings)
@@ -67,5 +84,5 @@ Migrate these files from ethers v5 / web3.js to viem + wagmi: @legacy-dapp/src/c
 Follow @docs/MIGRATION_PLAYBOOK.md (mapping table and rules). Do not edit any other file.
 chainguard found 1 legacy call sites: ETH016 ethers error shape (err.reason).
 Keep every exported name and call signature stable. Raw amounts become bigint; functions that returned strings still return strings.
-Done when `node chainguard/bin/chainguard.js scan legacy-dapp/src` lists none of these files and `npm test --prefix legacy-dapp` passes.
+Done when `node chainguard/bin/chainguard.js scan legacy-dapp/src` lists none of these files. Judge the tests by `release`, not by running the test suite in the shared folder: other agents' unfinished edits can break it there. release runs the tests on an isolated copy with only your block.
 ```

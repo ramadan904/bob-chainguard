@@ -52,6 +52,7 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
   - `deck.html` + `src/deck.js`: the 11-slide pitch deck. Its results slide reads the real ledger.
   - Data: `atlas/src/data/atlas-data.json` and `atlas/src/data/ledger.json`, written by `npm run atlas` / `npm run finalize`.
 - `legacy-dapp/`: the dApp being migrated. Its tests are the behavior contract.
+- `scripts/bob.mjs` (`npm run bob:prep` / `bob:open` / `bob:retake`): the run helpers; retake goes back to the expand commit with a fresh signal box after a failed take. Prep checks the machine, installs, tests, tags `before-bob` and prints the onboarding + expand prompts; open (only after Bob's expand commit) opens the box, runs doctor, prints the dispatcher prompt and starts the panel.
 - `scripts/record-tour.mjs` (`npm run record:tour` / `record:deck`): 1920×1080 clips of the guided replay and the deck for the video (needs `npm i --no-save playwright && npx playwright install chromium` once).
 - `scripts/prove-pack.mjs` (`npm run prove:pack`): runs the whole protocol on `samples/moment-billing` with the Moment.js pack; CI runs it.
 - `scripts/finalize.mjs` (`npm run finalize`): also writes paste-ready statements to `docs/submission/final/`; guard, tests, a check that test files are unchanged since tag `before-bob`, build + gzip bundle size against `reports/baseline-bundle.json` (549 kB), audit, reports, replay bundle. Writes `reports/submission-numbers.md`.
@@ -94,7 +95,7 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
    6. Save **Bob session summary screenshots from every team member** into `bob_sessions/` (the hackathon requires them).
 4. `npm run finalize`. It must end with "Warnings: None". Then:
    ```bash
-   git add .signalbox/ledger.jsonl reports/ atlas/src/data/ bob_sessions/
+   git add .signalbox/ledger.jsonl reports/ atlas/src/data/ atlas/public/bob/ bob_sessions/ docs/submission/final/
    git commit -m "Finalize: Bob run reports and replay"
    git push
    ```

@@ -7,6 +7,7 @@ import '@fontsource/ibm-plex-mono/600.css'
 import './deck.css'
 import atlas from './data/atlas-data.json'
 import momentAtlas from './data/atlas-moment.json'
+import bobShots from './data/bob-shots.json'
 import { baselineIndex } from './state.js'
 import { metrics } from '../../chainguard/src/signalbox-state.js'
 
@@ -96,6 +97,13 @@ const slides = [
     </table>
   </section>`,
 
+  // 6b. Bob at work: only when the team's session screenshots are in bob_sessions/
+  bobShots.length ? `<section class="slide">
+    <div class="kicker">IBM Bob at work</div>
+    <h2>${bobShots.length} Bob session${bobShots.length > 1 ? 's' : ''}, straight from the run.</h2>
+    <div class="shots">${bobShots.slice(0, 6).map((x) => `<figure><img src="./${x.src}" alt="${x.caption}"><figcaption>${x.caption}${x.member ? ` · ${x.member}` : ''}</figcaption></figure>`).join('')}</div>
+  </section>` : '',
+
   // 7. panel
   `<section class="slide shot">
     <div class="kicker">The live panel</div>
@@ -162,7 +170,7 @@ const slides = [
 ]
 
 const root = document.getElementById('slides')
-root.innerHTML = slides.join('')
+root.innerHTML = slides.filter(Boolean).join('')
 const all = [...root.querySelectorAll('.slide')]
 let i = Math.max(0, Math.min(all.length - 1, Number(location.hash.slice(1)) - 1 || 0))
 
