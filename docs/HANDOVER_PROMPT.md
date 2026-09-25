@@ -44,7 +44,7 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
   - `src/plan.js`: waves from the import graph. "Provider" files, which export legacy objects, go *after* their callers: expand → migrate → contract.
   - `src/rules.js`: 25 Web3 rules plus rule-pack loading. `packs/moment-to-date-fns.json` is a second pack.
 - `atlas/`: the web panel (Vite, plain JS + SVG, IBM Plex fonts, night theme by default).
-  - `src/main.js`: the panel, including the **control tower** (one lane per Bob subagent, amber when a claim is refused), the **⚡ Simulate chaos** buttons (live mode: a real stray edit or contract break, caught, restored from git after 6 s, recorded as `drill`/`drill-end` in the ledger) and the **dispatcher desk**.
+  - `src/main.js`: the panel, including the **control tower** (one lane per Bob subagent, amber when a claim is refused), the **⚡ Simulate chaos** buttons (live mode: a real stray edit or contract break, caught, restored from git after 6 s, recorded as `drill`/`drill-end` in the ledger) and the **dispatcher desk**, the **risk heatmap** toggle on the map, the **Verify it yourself** dialog (click the ledger badge; includes a tamper test on an in-memory copy) and the **rule-pack switcher** (Web3 ↔ Moment → date-fns on `samples/moment-billing`, a sample app).
   - `src/insights.js`: blast radius, risk, crew stats, tour captions.
   - `src/signal.js`: joins the ledger with git history.
   - `src/layout.js`: the transit-map layout.

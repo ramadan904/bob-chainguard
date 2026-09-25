@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Transit-map view of a Bob-driven Web3 frontend migration, built from real chainguard scans of every commit.",
   "scripts": {
-    "data": "node ../chainguard/bin/chainguard.js atlas ../legacy-dapp/src --out src/data/atlas-data.json",
+    "data": "node ../chainguard/bin/chainguard.js atlas ../legacy-dapp/src --out src/data/atlas-data.json && node ../chainguard/bin/chainguard.js atlas ../samples/moment-billing/src --pack ../chainguard/packs/moment-to-date-fns.json --out src/data/atlas-moment.json",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",

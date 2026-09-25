@@ -6,10 +6,11 @@ import '@fontsource/ibm-plex-mono/400.css'
 import '@fontsource/ibm-plex-mono/600.css'
 import './styles.css'
 import staticAtlas from './data/atlas-data.json'
+import momentAtlas from './data/atlas-moment.json'
 import { layoutAtlas, LABEL_OFFSET } from './layout.js'
 import { dependentsOf, baselineIndex } from './state.js'
 import { buildStops, findingsAt, signalStateAt, blockIndex, faultsCaught, checkLamps, stripRoot } from './signal.js'
-import { reduce, describe, summary, timeline, verifyChain } from '../../chainguard/src/signalbox-state.js'
+import { reduce, describe, summary, timeline, verifyChain, canonical } from '../../chainguard/src/signalbox-state.js'
 import { ask, EXAMPLES } from '../../chainguard/src/dispatch.js'
 import { blastRadius as blastOf, blockRisk as riskOf, crewStats, tourStep, towerLanes } from './insights.js'
 
@@ -198,6 +199,7 @@ function updateMap() {
     for (const f of model.atlas.files.find((f) => f.id === model.selected)?.imports || []) related.add(f)
     for (const f of dependentsOf(model.atlas, model.selected)) related.add(f)
   }
+  const risk = model.heat ? blockRisk() : null
   for (const [id, n] of Object.entries(stationNodes)) {
     const { status, count } = stationStatus(id)
     const b = view.blocks[id]
@@ -205,6 +207,9 @@ function updateMap() {
     n.g.dataset.block = spadNow.has(id) ? 'spad' : b ? b.state : 'none'
     n.g.classList.toggle('held', heldNow.has(id))
     n.g.classList.toggle('broken', broken.has(id))
+    const r = risk && b && view.sb.tasks[b.task]?.state !== 'cleared' ? risk[b.task] : null
+    if (r) n.g.dataset.risk = r.level
+    else delete n.g.dataset.risk
     n.ring.setAttribute('r', stationRadius(count))
     n.count.textContent = count > 0 ? String(count) : ''
     const task = b && view.sb.tasks[b.task]
@@ -793,14 +798,73 @@ function openDiff(task) {
 
 // ------------------------------------------------------------------ ledger integrity badge
 
+const sha256hex = async (t) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map((b) => b.toString(16).padStart(2, '0')).join('')
+
 async function updateLedgerBadge() {
   const el = $('#ledger')
   if (!model.events.length || !globalThis.crypto?.subtle) return el.replaceChildren()
-  const hex = async (t) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map((b) => b.toString(16).padStart(2, '0')).join('')
-  const r = await verifyChain(model.events, hex)
+  const r = await verifyChain(model.events, sha256hex)
+  el.onclick = openVerifier
+  el.tabIndex = 0
+  el.onkeydown = (e) => { if (e.key === 'Enter') openVerifier() }
   el.dataset.state = !r.chained ? 'unchained' : r.ok ? 'ok' : 'broken'
   el.replaceChildren(!r.chained ? 'Ledger unsigned' : r.ok ? `Ledger verified · ${r.checked} events · ${r.head.slice(0, 8)}` : `Ledger tampered at event ${r.brokenAt + 1}`)
   el.title = !r.chained ? 'Written by an older signalbox without a hash chain' : r.ok ? 'Every event is SHA-256 chained to the previous one and re-verified in your browser' : r.reason
+}
+
+// Verify it yourself: re-hash every event in this browser, one by one, then tamper with a copy.
+async function openVerifier() {
+  const dialog = $('#verify')
+  const rows = model.events.map((e, k) => h('li', { class: 'v-row', 'data-k': k },
+    h('span', { class: 'v-n' }, String(k + 1).padStart(3, '0')),
+    h('span', { class: 'v-text' }, describe(e)),
+    h('code', { class: 'v-h' }, (e.h || '—').slice(0, 12))))
+  const status = h('p', { class: 'v-status' }, 'Re-hashing every event with SHA-256 in your browser…')
+  const tamper = h('button', { class: 'chaos-btn alt', disabled: true, onclick: () => runChain(true) }, 'Tamper test: edit one event')
+  dialog.replaceChildren(
+    h('div', { class: 'diff-head' },
+      h('div', {}, h('p', { class: 'eyebrow' }, 'Tamper-evident ledger'), h('h2', {}, 'Verify it yourself'),
+        h('p', { class: 'diff-stat' }, 'Each event stores the hash of the one before it. Change any past event and every hash after it stops matching.')),
+      h('button', { class: 'back', 'aria-label': 'Close', onclick: () => dialog.close() }, '✕')),
+    status,
+    h('ol', { class: 'v-list' }, rows),
+    h('div', { class: 'v-actions' }, tamper, h('button', { class: 'heat-btn', onclick: () => runChain(false) }, 'Verify again')))
+  dialog.showModal()
+  const fast = matchMedia('(prefers-reduced-motion: reduce)').matches
+  async function runChain(tampered) {
+    tamper.disabled = true
+    const events = model.events.map((e) => ({ ...e }))
+    // The tamper test rewrites a fault as a pass (or, with no fault, renames an agent) in a copy.
+    let victim = -1
+    if (tampered) {
+      victim = events.findIndex((e) => e.t === 'verify' && !e.ok)
+      if (victim >= 0) events[victim].ok = true
+      else { victim = events.findIndex((e) => e.agent); if (victim >= 0) events[victim].agent = 'someone-else' }
+    }
+    rows.forEach((r) => { r.className = 'v-row' })
+    let prev = null
+    let broken = -1
+    for (let k = 0; k < events.length; k++) {
+      const e = events[k]
+      const want = await sha256hex(`${prev ?? ''}${canonical(e)}`)
+      const ok = broken < 0 && (e.prev ?? null) === prev && e.h === want
+      if (!ok && broken < 0) broken = k
+      rows[k].classList.add(ok ? 'ok' : 'bad')
+      if (k === victim) rows[k].classList.add('victim')
+      rows[k].querySelector('.v-h').textContent = want.slice(0, 12)
+      if (!fast && k % 2 === 0) await new Promise((r) => setTimeout(r, 18))
+      if (k === broken || k === victim) rows[k].scrollIntoView({ block: 'nearest' })
+      prev = e.h
+    }
+    status.className = `v-status ${broken < 0 ? 'ok' : 'bad'}`
+    status.textContent = broken < 0
+      ? `All ${events.length} events verified. Head ${prev?.slice(0, 16)}. This is the same check \`sb audit\` runs in CI.`
+      : tampered
+        ? `Tampered copy: event ${victim + 1} was edited in memory ("${describe(model.events[victim])}"). The chain breaks at event ${broken + 1}. The real ledger is untouched.`
+        : `Chain broken at event ${broken + 1}.`
+    tamper.disabled = false
+  }
+  runChain(false)
 }
 
 // ------------------------------------------------------------------ side panel
@@ -953,6 +1017,57 @@ function rebuild() {
   render()
 }
 
+// ------------------------------------------------------------------ rule packs
+// The same interlocking on a different migration: the Moment.js → date-fns pack, planned on the
+// sample app in samples/moment-billing. Its plan is real (a real scan of real code); it has no
+// Bob run, so it opens as a baseline.
+
+function setRoute() {
+  const pack = model.atlas.pack || { from: 'ethers v5 / web3.js', to: 'viem + wagmi' }
+  $('#route').textContent = `${model.atlas.root} · ${pack.from} → ${pack.to}`
+}
+
+function buildPacks() {
+  if (model.mode === 'live') return
+  const packs = [
+    { key: 'home', label: model.home.atlas.pack?.name === 'moment-to-date-fns' ? 'Moment → date-fns' : 'Web3 → viem', atlas: model.home.atlas },
+    { key: 'moment', label: 'Moment → date-fns', atlas: momentAtlas, note: 'sample app' },
+  ].filter((p, k, all) => k === 0 || p.atlas.pack?.name !== all[0].atlas.pack?.name)
+  if (packs.length < 2) return
+  const current = model.pack || 'home'
+  $('#packs').replaceChildren(h('span', { class: 'packs-label' }, 'Rule pack'), ...packs.map((p) => h('button', {
+    class: `pack${p.key === current ? ' on' : ''}`, 'aria-pressed': String(p.key === current),
+    onclick: () => switchPack(p.key),
+  }, p.label, p.note ? h('small', {}, ` · ${p.note}`) : null)))
+}
+
+function switchPack(key) {
+  if ((model.pack || 'home') === key) return
+  stopTour()
+  stopPlay()
+  model.pack = key
+  if (key === 'home') Object.assign(model, { atlas: model.home.atlas, events: model.home.events, mode: model.home.mode, stop: model.home.stop })
+  else Object.assign(model, { atlas: momentAtlas, events: [], mode: 'baseline', stop: Infinity })
+  model.selected = null
+  model.blast = null
+  model.focusRule = null
+  model.focusTask = null
+  $('#ask-answer').hidden = true
+  setRoute()
+  buildPacks()
+  rebuild()
+}
+
+function initHeat() {
+  const btn = $('#heat')
+  btn.addEventListener('click', () => {
+    model.heat = !model.heat
+    btn.setAttribute('aria-pressed', String(model.heat))
+    $('#map-card').classList.toggle('heat', model.heat)
+    updateMap()
+  })
+}
+
 function initTheme() {
   const saved = (() => { try { return localStorage.getItem('atlas-theme') } catch { return null } })()
   document.documentElement.dataset.theme = saved || 'dark'
@@ -1023,6 +1138,7 @@ async function connectLive() {
 
 async function start() {
   initTheme()
+  initHeat()
   buildStats()
   buildDesk()
   const live = await connectLive()
@@ -1030,8 +1146,9 @@ async function start() {
     model.mode = model.events.length ? 'replay' : 'baseline'
     model.stop = model.events.length ? 0 : Infinity
   }
-  const pack = model.atlas.pack || { from: 'ethers v5 / web3.js', to: 'viem + wagmi' }
-  $('#route').textContent = `${model.atlas.root} · ${pack.from} → ${pack.to}`
+  model.home = { atlas: model.atlas, events: model.events, mode: model.mode, stop: model.stop }
+  buildPacks()
+  setRoute()
   view = derive()
   buildMap()
   buildTimeline()

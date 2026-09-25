@@ -134,7 +134,7 @@ const slides = [
     <h2>Safe even when an agent misbehaves. Useful beyond this demo.</h2>
     <div class="cards two">
       <div class="card"><b>Safety net</b><ul>
-        <li>Tamper-evident ledger: SHA-256 hash chain, audited against git in CI</li>
+        <li>Tamper-evident ledger: SHA-256 hash chain, audited against git in CI and re-verified in the browser, with a live tamper test</li>
         <li>Tests and the checker are protected: agents can't edit them</li>
         <li>Live SPAD alarm the second an unclaimed file changes, proven on demand by the chaos drill</li>
         <li>Pre-commit guard: no bypassing the signal box</li>
@@ -143,7 +143,7 @@ const slides = [
       </ul></div>
       <div class="card"><b>Any migration</b><ul>
         <li>Rule packs: Web3 (ethers/web3.js → viem) built in</li>
-        <li>Moment.js → date-fns pack included, 13 rules + playbook</li>
+        <li>Moment.js → date-fns pack included, 13 rules + playbook, switchable live in the panel on a real sample app (41 call sites, 4 blocks)</li>
         <li>Same interlocking for framework upgrades, API renames, library swaps</li>
         <li>Review each agent's exact diff, and see any file's blast radius</li>
         <li>One command after the run: <code>npm run finalize</code></li>

@@ -64,6 +64,12 @@ npm run -s sb -- drill spad --hold 6                    # chaos drill: real stra
   most-imported free file, or renames an export others still import. The checks catch it, every
   release is refused, and the file is restored from git after 6 s unless someone else changed it.
   Drills are ledger events, so the replay shows them.
+- **Risk heatmap.** One toggle colours every unfinished block by risk (legacy call sites + files
+  outside it that depend on it): red, amber, green.
+- **Verify it yourself.** Click the "Ledger verified" badge: the browser re-hashes every event with
+  SHA-256, then a tamper test edits one event in memory and shows the chain break at that event.
+- **Rule-pack switcher.** The panel switches between the Web3 plan and the Moment.js → date-fns
+  plan of `samples/moment-billing`, a small sample app scanned with the second pack.
 - **Dispatcher desk.** Plain-language questions ("start all green wave-1 blocks", "riskiest
   remaining block", "why is w2-lib at danger?") answered from the ledger by keyword intents, not a
   language model. The panel's command bar and `sb ask` share one module, so Bob Agent mode can use
