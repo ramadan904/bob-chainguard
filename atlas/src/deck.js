@@ -6,6 +6,7 @@ import '@fontsource/ibm-plex-mono/400.css'
 import '@fontsource/ibm-plex-mono/600.css'
 import './deck.css'
 import atlas from './data/atlas-data.json'
+import momentAtlas from './data/atlas-moment.json'
 import { baselineIndex } from './state.js'
 import { metrics } from '../../chainguard/src/signalbox-state.js'
 
@@ -16,6 +17,7 @@ const m = ledger.length ? metrics(ledger) : null
 const base = atlas.snapshots[baselineIndex(atlas)]
 const now = atlas.snapshots[atlas.snapshots.length - 1]
 const ran = Boolean(m && m.cleared)
+const momentNow = momentAtlas.snapshots[momentAtlas.snapshots.length - 1].totals.findings
 
 const dur = (ms) => (ms >= 3600e3 ? `${Math.floor(ms / 3600e3)} h ${Math.round((ms % 3600e3) / 60e3)} min` : `${Math.max(1, Math.round(ms / 60e3))} min`)
 const lamp = (c) => `<span class="lamp-big ${c}"></span>`
@@ -143,7 +145,7 @@ const slides = [
       </ul></div>
       <div class="card"><b>Any migration</b><ul>
         <li>Rule packs: Web3 (ethers/web3.js → viem) built in</li>
-        <li>Moment.js → date-fns pack included, 13 rules + playbook, switchable live in the panel on a real sample app (41 call sites, 4 blocks)</li>
+        <li>Moment.js → date-fns pack included, 13 rules + playbook, switchable live in the panel on a sample app (${momentNow} call sites, ${momentAtlas.plan.tasks.length} blocks) and proven end to end in CI</li>
         <li>Same interlocking for framework upgrades, API renames, library swaps</li>
         <li>Review each agent's exact diff, and see any file's blast radius</li>
         <li>One command after the run: <code>npm run finalize</code></li>

@@ -70,7 +70,9 @@ node chainguard/bin/signalbox.js mcp                    # MCP server: the signal
 - **Verify it yourself.** Click the "Ledger verified" badge: the browser re-hashes every event with
   SHA-256, then a tamper test edits one event in memory and shows the chain break at that event.
 - **Rule-pack switcher.** The panel switches between the Web3 plan and the Moment.js → date-fns
-  plan of `samples/moment-billing`, a small sample app scanned with the second pack.
+  plan of `samples/moment-billing`, a small sample app with its own behavior tests.
+  `npm run prove:pack` runs the whole protocol on it (claim, refusal, track circuit, chaos drill,
+  audit) in a throwaway worktree; CI runs it on Linux and Windows.
 - **MCP tools for Bob.** `signalbox mcp` serves claim, release, rollback, next, ask and more as
   Model Context Protocol tools over stdio (zero dependencies), so Bob's agents use the signal box
   natively. Faults come back as tool errors naming every failing check.
