@@ -132,3 +132,5 @@ chainguard-report.*
 .signalbox/lock/
 # Signalbox black-box copies of in-flight work (transient)
 .signalbox/checkpoints/
+# Recorder scratch (npm run record:tour)
+docs/submission/media/.rec-*/

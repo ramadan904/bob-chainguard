@@ -50,7 +50,9 @@ Then merge to `main` again (step 0's link). The live panel and the deck's result
 ## 3. Media
 
 - **Video (≤ 3 min):** follow docs/submission/DEMO_SCRIPT.md. Upload to YouTube (unlisted is fine).
-  Easy segment: open `https://bob-chainguard.vercel.app/?tour` and record it. It narrates your real run by itself.
+  Easy segment: `npm run record:tour` records the guided replay of your real run as a 1920×1080 clip
+  (`docs/submission/media/tour.webm`), and `npm run record:deck` records the slides. First time only:
+  `npm i --no-save playwright && npx playwright install chromium`.
 - **Slides:** open the deck link → **Save as PDF** button (in the print dialog, turn on "Background graphics").
   `docs/submission/Signalbox-deck.pdf` is the pre-run version, if you're short on time.
 - **Cover image:** `docs/submission/media/cover-baseline.png`, or a screenshot of the finished panel (better).
