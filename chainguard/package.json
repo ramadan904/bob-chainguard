@@ -1,0 +1,10 @@
+{
+  "name": "chainguard",
+  "version": "0.1.0",
+  "description": "Finds legacy ethers v5 / web3.js usage, plans a parallel IBM Bob migration to viem/wagmi, and guards CI against regressions.",
+  "type": "module",
+  "bin": { "chainguard": "bin/chainguard.js" },
+  "scripts": { "test": "node --test test/*.test.js" },
+  "engines": { "node": ">=18.17" },
+  "license": "MIT"
+}

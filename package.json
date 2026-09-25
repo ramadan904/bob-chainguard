@@ -1,0 +1,17 @@
+{
+  "name": "bob-chainguard",
+  "private": true,
+  "description": "IBM Bob migrates a web3.js + ethers v5 dApp to viem/wagmi; chainguard measures, plans and guards the migration.",
+  "type": "module",
+  "scripts": {
+    "scan": "node chainguard/bin/chainguard.js scan legacy-dapp/src --baseline reports/baseline.json",
+    "scan:baseline": "node chainguard/bin/chainguard.js scan legacy-dapp/src --format json --out reports/baseline.json && node chainguard/bin/chainguard.js scan legacy-dapp/src --format md --out reports/baseline.md",
+    "report": "node chainguard/bin/chainguard.js scan legacy-dapp/src --baseline reports/baseline.json --format md --out reports/after.md",
+    "plan": "node chainguard/bin/chainguard.js plan legacy-dapp/src --out reports/bob-task-plan.md",
+    "guard": "node chainguard/bin/chainguard.js scan legacy-dapp/src --fail-on warning",
+    "test": "npm test --prefix chainguard && npm test --prefix legacy-dapp",
+    "dev": "npm run dev --prefix legacy-dapp",
+    "build": "npm run build --prefix legacy-dapp"
+  },
+  "license": "MIT"
+}
