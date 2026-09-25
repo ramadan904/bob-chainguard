@@ -651,7 +651,36 @@ function updateAlert() {
 
 // ------------------------------------------------------------------ timeline
 
+// Before the box has any events the strip shows the schedule itself: waves in order, each block
+// with its signal and call count. Once there are events it becomes the replay timeline.
+function buildSchedule() {
+  const byWave = {}
+  for (const t of Object.values(view.sb.tasks).sort((a, b) => a.id.localeCompare(b.id))) (byWave[t.wave] ||= []).push(t)
+  const waves = Object.keys(byWave).map(Number).sort((a, b) => a - b)
+  const base = model.atlas.snapshots[baselineIndex(model.atlas)]
+  const now = model.atlas.snapshots[model.atlas.snapshots.length - 1]
+  $('#timeline').replaceChildren(
+    h('div', { class: 'schedule', role: 'list', 'aria-label': 'Wave schedule' },
+      h('span', { class: 'sch-label' }, 'Schedule'),
+      waves.map((w, k) => [
+        k ? h('span', { class: 'sch-gate', title: `Wave ${w} opens when wave ${waves[k - 1]} has cleared` }, `W${waves[k - 1]} clear ▸`) : null,
+        h('div', { class: `sch-wave${k === 0 ? ' open' : ''}`, role: 'listitem' },
+          h('span', { class: 'sch-w' }, `W${w}`),
+          byWave[w].map((t) => h('button', {
+            class: `sch-block s-${t.state}`, onclick: () => select(taskFiles(t.id)[0]),
+            onmouseenter: () => { model.focusTask = t.id; updateMap() },
+            onmouseleave: () => { model.focusTask = null; updateMap() },
+          }, h('i', { class: 'sch-lamp' }), t.id, h('small', {}, String(t.findings || 0))))),
+      ])),
+    h('div', { class: 'commit', id: 'commit' },
+      h('span', { class: 'subject' }, `${now.totals.findings} legacy call sites in ${now.filesAffected} of ${now.filesScanned} files`),
+      h('span', { class: 'when' }, `plan from ${base.short} · ${Object.keys(view.sb.tasks).length} blocks · ${view.sb.waves} waves`)),
+  )
+}
+
 function buildTimeline() {
+  $('#timeline').classList.toggle('plan', !view.opened)
+  if (!view.opened) return buildSchedule()
   const n = view.stops.length
   const ticks = view.stops.map((stop, i) =>
     h('button', {
@@ -672,6 +701,7 @@ function buildTimeline() {
 }
 
 function updateTimeline() {
+  if (!view.opened) return
   const n = view.stops.length
   document.querySelectorAll('.tick').forEach((t) => {
     const i = Number(t.dataset.i)
@@ -685,7 +715,6 @@ function updateTimeline() {
     ? [h('span', { class: 'subject' }, describe(model.events[stop.event])), h('span', { class: 'when' }, `${when} UTC · ${view.i + 1}/${n}`)]
     : [h('span', { class: 'mono' }, stop.label), ' ', h('span', { class: 'subject' }, stop.title), h('span', { class: 'when' }, `${view.i + 1}/${n}`)]
   if (model.mode === 'live' && !view.atHead) parts.push(h('button', { class: 'follow', onclick: () => { model.follow = true; goTo(n - 1) } }, 'Back to live'))
-  if (!view.opened && n === 1) parts.push(h('span', { class: 'hint' }, `Plan open · ${Object.keys(view.sb.tasks).length} blocks · ${view.sb.waves} waves · no claims yet`))
   $('#commit').replaceChildren(...parts)
 }
 
@@ -802,7 +831,7 @@ function crewSection() {
       h('span', { class: 'crew-stats' },
         h('b', {}, String(a.cleared)), ' cleared · ',
         h('b', {}, String(a.releases)), ' releases · ',
-        h('b', { class: a.faults ? 'f' : '' }, String(a.faults)), ' faults fixed · ',
+        h('b', { class: a.faults ? 'f' : '' }, String(a.faults)), ` fault${a.faults === 1 ? '' : 's'} · `,
         h('b', {}, fmt(a.ms)))))),
   ]
 }

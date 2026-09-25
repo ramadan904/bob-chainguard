@@ -1064,3 +1064,26 @@ body.chaos::after {
 .foot-keys { font: 12px var(--f-mono); color: var(--ink-3); }
 .stats { width: min(100%, 780px); }
 .stat dt { white-space: nowrap; }
+
+/* wave schedule (plan open, before any event) */
+.schedule { grid-column: 1 / 4; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-width: 0; }
+.sch-label { font: 600 11px var(--f-sign); letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); }
+.sch-wave { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 6px 8px; border-radius: 5px; box-shadow: inset 0 0 0 1px var(--rule); }
+.sch-wave.open { box-shadow: inset 0 0 0 1px rgba(36, 161, 72, 0.6); }
+.sch-w { font: 600 13px var(--f-mono); color: var(--ink); padding: 2px 6px; border-radius: 3px; background: var(--rule); }
+.sch-wave.open .sch-w { background: var(--sig-green); color: #03140c; }
+.sch-block { display: inline-flex; align-items: center; gap: 6px; font: 12px var(--f-mono); color: var(--ink-2); background: transparent; border: 1px solid var(--rule); border-radius: 3px; padding: 4px 8px; cursor: pointer; }
+.sch-block:hover { color: var(--ink); border-color: var(--focus); }
+.sch-block small { font-size: 11px; color: var(--rust); }
+.sch-lamp { width: 8px; height: 8px; border-radius: 50%; background: #3a3a3a; }
+.sch-block.s-clear .sch-lamp { background: var(--sig-green); box-shadow: 0 0 6px var(--sig-green); }
+.sch-block.s-danger .sch-lamp { background: var(--sig-red); box-shadow: 0 0 6px var(--sig-red); }
+.sch-gate { font: 11px var(--f-mono); color: var(--ink-3); white-space: nowrap; }
+@media (max-width: 960px) { .schedule { grid-column: 1 / -1; } }
+.timeline.plan { grid-template-columns: minmax(0, 1fr) auto; }
+.timeline.plan .schedule { grid-column: auto; }
+.timeline.plan .commit { text-align: right; justify-items: end; }
+@media (max-width: 960px) { .timeline.plan { grid-template-columns: 1fr; } .timeline.plan .commit { text-align: left; justify-items: start; } }
+.timeline.plan { grid-template-columns: 1fr; gap: 8px; }
+.timeline.plan .commit { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; text-align: left; justify-items: start; }
+.timeline.plan .commit .subject { font-size: 13px; }
