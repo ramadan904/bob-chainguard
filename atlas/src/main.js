@@ -1087,7 +1087,14 @@ function rebuild() {
 
 function setRoute() {
   const pack = model.atlas.pack || { from: 'ethers v5 / web3.js', to: 'viem + wagmi' }
-  $('#route').textContent = `${model.atlas.root} · ${pack.from} → ${pack.to}`
+  // Read as a sentence, not an axis: what is migrated, from what, to what.
+  $('#route').replaceChildren(
+    h('span', { class: 'rt-k' }, 'Migrating'),
+    h('span', { class: 'rt-pair' },
+      h('span', { class: 'rt-from' }, pack.from.replace(' / ', ' + ')),
+      h('span', { class: 'rt-dest' }, h('span', { class: 'rt-arrow', 'aria-label': 'to' }, '→'), h('span', { class: 'rt-to' }, pack.to))),
+    h('span', { class: 'rt-k' }, 'in'),
+    h('code', { class: 'rt-dir' }, `${model.atlas.root}/`))
 }
 
 function buildPacks() {
