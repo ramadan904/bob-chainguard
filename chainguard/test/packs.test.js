@@ -88,3 +88,17 @@ test('e2e: a signal box opened with a pack scans with that pack', () => {
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+test('block prompts carry the traps for their rules and warn off shared-folder test runs', async () => {
+  const { buildPlan } = await import('../src/plan.js')
+  const { scanDir } = await import('../src/scan.js')
+  const { DEFAULT_PACK } = await import('../src/rules.js')
+  const { fileURLToPath } = await import('node:url')
+  const dir = fileURLToPath(new URL('../../legacy-dapp/src', import.meta.url))
+  const plan = buildPlan(scanDir(dir, DEFAULT_PACK.rules), { scanPath: 'legacy-dapp/src', pack: DEFAULT_PACK })
+  const signing = plan.tasks.find((t) => t.files.some((f) => f.endsWith('signing.js')))
+  assert.match(signing.prompt, /recoverMessageAddress is async/)
+  assert.match(signing.prompt, /parseUnits silently rounds/)
+  assert.equal(signing.prompt.match(/parseUnits silently rounds/g).length, 1, 'each trap once')
+  for (const t of plan.tasks) assert.match(t.prompt, /Judge the tests by `release`/)
+})
