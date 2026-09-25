@@ -27,6 +27,7 @@ test('runbook prompts: every step the Bob helpers print exists', () => {
   assert.match(promptFrom(runbook, '1.'), /walk\s+legacy-dapp\/src/)
   assert.match(promptFrom(runbook, '2. The dispatcher'), /You are the dispatcher/)
   assert.equal(promptFrom(runbook, 'no such heading'), null)
+  assert.equal(promptFrom(runbook.replace(/\r?\n/g, '\r\n'), '2. The dispatcher'), promptFrom(runbook.replace(/\r\n/g, '\n'), '2. The dispatcher'), 'CRLF checkouts (Windows) read the same')
 })
 
 test('screenshot captions come from file names', async () => {

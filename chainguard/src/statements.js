@@ -9,7 +9,7 @@ export const OPTIONAL = new Set(['bobcoins', 'shots_mcp'])
 
 export function renderStatement(template, values) {
   const missing = new Set()
-  const lines = template.replace(/<!--[\s\S]*?-->\n?/g, '').split('\n').filter((line) => {
+  const lines = template.replace(/\r\n/g, '\n').replace(/<!--[\s\S]*?-->\n?/g, '').split('\n').filter((line) => {
     const names = [...line.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1])
     const absent = names.filter((n) => values[n] == null || values[n] === '')
     if (absent.length && absent.every((n) => OPTIONAL.has(n))) return false
@@ -27,7 +27,7 @@ export function countWords(markdown) {
 // The first ```text block under the runbook heading that starts with `heading` (e.g. '2. The
 // dispatcher'), so scripts print the exact prompts the runbook documents.
 export function promptFrom(runbook, heading) {
-  const lines = runbook.split('\n')
+  const lines = runbook.replace(/\r\n/g, '\n').split('\n') // Git for Windows checks out CRLF
   const start = lines.findIndex((l) => /^#{1,3} /.test(l) && l.replace(/^#+\s*/, '').startsWith(heading))
   if (start < 0) return null
   const rest = lines.slice(start + 1).join('\n')
