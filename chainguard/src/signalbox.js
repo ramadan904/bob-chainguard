@@ -461,7 +461,9 @@ export function doctor(root, { runTests = true } = {}) {
   add('pre-commit guard', existsSync(hook) && readFileSync(hook, 'utf8').includes('signalbox'), existsSync(hook) ? hook : 'run: npm run -s sb -- install-hook')
   const nm = nodeModuleDirs(root)
   add('dependencies installed', nm.some((d) => d.startsWith('legacy-dapp')), nm.join(', ') || 'run: npm ci --prefix legacy-dapp')
-  add('live panel built', existsSync(join(root, 'atlas', 'dist', 'index.html')), 'npm run signalbox builds it')
+  const built = existsSync(join(root, 'atlas', 'dist', 'index.html'))
+  const buildable = existsSync(join(root, 'atlas', 'node_modules'))
+  add('live panel ready', built || buildable, built ? 'atlas/dist built' : buildable ? '`npm run signalbox` builds and serves it' : 'run: npm ci --prefix atlas')
   if (runTests && state) {
     const t = checkTests(root, state, [])
     add('tests pass on HEAD (isolated)', t.ok, t.summary || `exit ${t.exitCode}`)
