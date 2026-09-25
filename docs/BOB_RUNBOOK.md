@@ -61,6 +61,9 @@ Loop until `npm run -s sb -- next` prints ALL BLOCKS CLEARED:
    `npm run -s sb -- rollback <block> --agent dispatcher --operator`.
 4. After each wave, summarize what cleared, what faulted and why (from `npm run -s sb -- log`).
 Never edit files yourself and never bypass the signal box.
+Never run git commands (commit, stash, checkout, reset, clean) and never let a subagent run them:
+other subagents are editing at the same time, and release/rollback already handle git.
+If the signal box refuses something, report the reason. Do not work around it.
 ```
 
 What each subagent does (it's in its prompt): `claim` → edit only its block → `release`. Release

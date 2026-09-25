@@ -173,6 +173,7 @@ function updateMap() {
     : model.focusRule ? Object.entries(view.findings).filter(([, l]) => l.some(([id]) => id === model.focusRule)).map(([f]) => f)
     : [],
   )
+  const spadNow = new Set(liveViolations().map((v) => v.file))
   const related = new Set()
   if (model.selected) {
     related.add(model.selected)
@@ -183,7 +184,7 @@ function updateMap() {
     const { status, count } = stationStatus(id)
     const b = view.blocks[id]
     n.g.dataset.status = status
-    n.g.dataset.block = b ? b.state : 'none'
+    n.g.dataset.block = spadNow.has(id) ? 'spad' : b ? b.state : 'none'
     n.ring.setAttribute('r', stationRadius(count))
     n.count.textContent = count > 0 ? String(count) : ''
     const task = b && view.sb.tasks[b.task]
@@ -393,11 +394,23 @@ function updateGraph() {
 
 // ------------------------------------------------------------------ alert strip
 
+// Edits happening right now that no occupied block owns (or that touch protected files).
+function liveViolations() {
+  if (model.mode !== 'live' || !view.atHead || !model.live) return []
+  return Object.entries(model.live.owners || {}).filter(([, o]) => o === null || o === 'protected').map(([f, o]) => ({ file: f, protected: o === 'protected' }))
+}
+
 function updateAlert() {
   const e = view.event
   const el = $('#alert')
   let content = null
-  if (e?.t === 'verify' && !e.ok) {
+  const live = liveViolations()
+  if (live.length) {
+    content = h('div', { class: 'alert spad' },
+      h('strong', {}, 'SPAD in progress'),
+      h('span', {}, live.map((v) => `${v.file}${v.protected ? ' (protected)' : ''}`).join(', ')),
+      h('span', { class: 'alert-note' }, 'No occupied block owns this edit. Every release is refused until it is claimed or reverted.'))
+  } else if (e?.t === 'verify' && !e.ok) {
     const spad = e.checks.scope && !e.checks.scope.ok
     content = h('div', { class: `alert ${spad ? 'spad' : 'fault'}` },
       h('strong', {}, spad ? 'SPAD' : 'Fault'),

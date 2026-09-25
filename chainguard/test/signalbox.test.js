@@ -193,3 +193,31 @@ test('e2e: operator rollback frees a block held by a stuck agent', () => {
     rmSync(root, { recursive: true, force: true })
   }
 })
+
+test('e2e: tests and the checker are protected from agents', () => {
+  const { root, run } = makeRepo()
+  try {
+    mkdirSync(join(root, 'src/__tests__'))
+    writeFileSync(join(root, 'src/__tests__/a.test.js'), 'expect(1).toBe(1)\n')
+    run('add', '.')
+    run('commit', '-qm', 'add test')
+    init(root, { scanPath: 'src', testCmd: 'node check.js', allow: [] })
+    const a = Object.values(loadState(root).tasks).find((t) => t.files.includes('src/a.js'))
+    claim(root, a.id, 'bob-1')
+    assert.throws(() => extend(root, a.id, 'bob-1', ['src/__tests__/a.test.js']), /protected/)
+    assert.equal(readLedger(root).at(-1).t, 'deny')
+
+    writeFileSync(join(root, 'src/a.js'), 'export const one = () => 1n\nexport const keep = 1\n')
+    writeFileSync(join(root, 'src/b.js'), 'export const two = 2\n')
+    writeFileSync(join(root, 'src/__tests__/a.test.js'), '// weakened\n')
+    const r = release(root, a.id, 'bob-1')
+    assert.equal(r.ok, false)
+    assert.deepEqual(r.verify.checks.scope.protected, ['src/__tests__/a.test.js'])
+
+    run('add', 'src/__tests__/a.test.js')
+    assert.deepEqual(hookCheck(root), ['src/__tests__/a.test.js'])
+    assert.deepEqual(hookCheck(root, { SIGNALBOX_COMMIT: '1' }), [])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})

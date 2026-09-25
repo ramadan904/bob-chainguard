@@ -9,10 +9,12 @@ import { join, dirname, relative, resolve, sep } from 'node:path'
 import { tmpdir } from 'node:os'
 import { scanDir, scanSource } from './scan.js'
 import { buildPlan } from './plan.js'
-import { reduce, canClaim, blockFiles, ownerOf } from './signalbox-state.js'
+import { reduce, canClaim, blockFiles, ownerOf, isProtected } from './signalbox-state.js'
 
 export const DEFAULT_ALLOW = ['legacy-dapp/package.json', 'legacy-dapp/package-lock.json', '.signalbox/**', 'reports/**', 'bob_sessions/**', 'atlas/src/data/**']
 export const DEFAULT_TEST = 'npm test --prefix legacy-dapp'
+// Paths no agent may change: the behavior contract (tests) and the machinery that judges agents.
+export const DEFAULT_PROTECT = ['**/__tests__/**', '**/*.test.*', '**/*.spec.*', 'chainguard/**', '.github/**', 'docs/MIGRATION_PLAYBOOK.md']
 
 export class SignalboxError extends Error {}
 
@@ -70,7 +72,7 @@ function withLock(root, fn) {
 
 // ------------------------------------------------------------------ init
 
-export function init(root, { scanPath = 'legacy-dapp/src', testCmd = DEFAULT_TEST, allow = DEFAULT_ALLOW, force = false } = {}) {
+export function init(root, { scanPath = 'legacy-dapp/src', testCmd = DEFAULT_TEST, allow = DEFAULT_ALLOW, protect = DEFAULT_PROTECT, force = false } = {}) {
   const p = ledgerPath(root)
   if (existsSync(p) && !force) throw new SignalboxError('A signalbox ledger already exists. Use --force to archive it and start over.')
   if (existsSync(p)) renameSync(p, p.replace(/\.jsonl$/, `.${Date.now()}.jsonl`))
@@ -83,6 +85,7 @@ export function init(root, { scanPath = 'legacy-dapp/src', testCmd = DEFAULT_TES
     scanDir: scanPath,
     testCmd,
     allow,
+    protect,
     plan: { waves: plan.waves, totalFindings: plan.totalFindings, tasks: plan.tasks.map(({ id, wave, files, findings, prompt }) => ({ id, wave, files, findings, prompt: withProtocol(prompt, id) })) },
   })
 }
@@ -97,6 +100,12 @@ export function withProtocol(prompt, id) {
     `2. Edit only the files of your block. If you must touch another file, first run: npm run -s sb -- extend ${id} <path> --agent <your-agent-name>`,
     `3. When done, run: npm run -s sb -- release ${id} --agent <your-agent-name>. It checks scope, exported contract, legacy scan and tests on an isolated copy, then commits your block.`,
     '4. If release reports a fault, read the failing check, fix it and release again. If you cannot fix it, run: npm run -s sb -- rollback ' + id + ' --agent <your-agent-name>',
+    '',
+    'Hard rules (other agents are editing this repository at the same time):',
+    '- Never run git commands (no commit, stash, checkout, reset, restore, clean). release commits for you; rollback restores for you. A stash or checkout would destroy other agents\' work.',
+    '- Never edit tests, chainguard/ or the playbook. They are protected; the signal box rejects the change. If a test fails, the implementation is wrong.',
+    '- Never run npm install or change package.json. Dependencies are already installed.',
+    '- Use the same agent name in every command. Stop when release prints CLEARED and report the commit hash.',
   ].join('\n')
 }
 
@@ -127,6 +136,10 @@ function extendUnlocked(root, taskId, agent, files) {
   if (!t || t.agent !== agent) throw new SignalboxError(`${agent} does not occupy ${taskId}`)
   const rel = files.map((f) => normalize(root, f))
   for (const f of rel) {
+    if (isProtected(state, f)) {
+      append(root, { t: 'deny', task: taskId, agent, reason: `${f} is protected (tests and the signal box itself cannot be changed by agents)`, blocking: [] })
+      throw new SignalboxError(`DENIED: ${f} is protected. Fix the implementation, not the tests or the checker.`)
+    }
     const owner = ownerOf(state, f)
     if (owner && owner !== taskId && owner !== 'allow') {
       append(root, { t: 'deny', task: taskId, agent, reason: `${f} is held by ${owner}`, blocking: [owner] })
@@ -181,8 +194,10 @@ function readWorking(root, file) {
 }
 
 export function checkScope(root, state, taskId) {
-  const outside = modifiedFiles(root).filter((f) => ownerOf(state, f) === null)
-  return { ok: outside.length === 0, outside }
+  const changed = modifiedFiles(root)
+  const outside = changed.filter((f) => ownerOf(state, f) === null)
+  const protectedFiles = changed.filter((f) => ownerOf(state, f) === 'protected')
+  return { ok: outside.length === 0 && protectedFiles.length === 0, outside: [...outside, ...protectedFiles], protected: protectedFiles }
 }
 
 export function checkContract(root, files) {
@@ -346,7 +361,9 @@ export function hookCheck(root, env = process.env) {
   if (!state) return []
   const guarded = new Set(Object.values(state.tasks).filter((t) => !t.commit).flatMap((t) => blockFiles(t)))
   const staged = git(root, ['diff', '--cached', '--name-only']).split('\n').filter(Boolean)
-  return staged.filter((f) => guarded.has(f))
+  // Protected paths (tests, the checker) can't be committed while the box is open, except by a
+  // human who sets SIGNALBOX_COMMIT=1 on purpose.
+  return staged.filter((f) => guarded.has(f) || isProtected(state, f))
 }
 
 // ------------------------------------------------------------------ preflight
@@ -357,7 +374,7 @@ export function doctor(root, { runTests = true } = {}) {
   const events = readLedger(root)
   const state = reduce(events)
   add('signal box opened', Boolean(state), state ? `${Object.keys(state.tasks).length} blocks, base ${state.base.slice(0, 7)}` : 'run: npm run -s sb -- init')
-  const dirty = modifiedFiles(root).filter((f) => !state || ownerOf(state, f) === null)
+  const dirty = modifiedFiles(root).filter((f) => !state || ownerOf(state, f) === null || ownerOf(state, f) === 'protected')
   add('no unowned changes', dirty.length === 0, dirty.length ? `would be SPADs: ${dirty.slice(0, 5).join(', ')}${dirty.length > 5 ? '...' : ''}` : 'working tree clean outside blocks')
   const hook = resolve(root, git(root, ['rev-parse', '--git-path', 'hooks']).trim(), 'pre-commit')
   add('pre-commit guard', existsSync(hook) && readFileSync(hook, 'utf8').includes('signalbox'), existsSync(hook) ? hook : 'run: npm run -s sb -- install-hook')

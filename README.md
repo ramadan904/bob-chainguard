@@ -44,6 +44,11 @@ npm run -s sb -- status | log | prompt <block>
   faulty one stays uncommitted until it's fixed or rolled back.
 - **Ledger.** `.signalbox/ledger.jsonl` is append-only and is the single source of truth. The CLI,
   the live server and the UI derive state from it with the same pure reducer.
+- **Protected paths.** Tests, `chainguard/`, CI and the playbook can't be claimed, extended into
+  or committed while the box is open. An agent that "fixes" a failing test by editing it gets a
+  fault, not a pass.
+- **Live SPAD.** While `signalbox serve` runs, an edit no occupied block owns flashes red on the
+  map within a second, before anyone tries to release.
 - **No bypass.** The pre-commit hook refuses direct commits of files in an uncleared block. An
   operator can free a stuck agent's block with `rollback --operator`, and the event records who
   overrode whom.

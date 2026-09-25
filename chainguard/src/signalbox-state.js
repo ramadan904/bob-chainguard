@@ -51,7 +51,7 @@ export function reduce(events) {
         break
     }
   }
-  const state = { base: init.base, scanDir: init.scanDir, testCmd: init.testCmd, allow: init.allow || [], waves: init.plan.waves, tasks, spads, startedAt: init.at }
+  const state = { base: init.base, scanDir: init.scanDir, testCmd: init.testCmd, allow: init.allow || [], protect: init.protect || [], waves: init.plan.waves, tasks, spads, startedAt: init.at }
   for (const t of Object.values(tasks)) t.state = taskState(state, t)
   return state
 }
@@ -87,8 +87,14 @@ export function canClaim(state, taskId, agent) {
   return { ok: true }
 }
 
-// Who owns a modified file right now: an occupied block, an allow-listed path, or nobody (SPAD).
+// Who owns a modified file right now: 'protected' (tests, the checker itself: no agent may ever
+// change them), an occupied block, an allow-listed path, or nobody (SPAD).
+export function isProtected(state, file) {
+  return (state.protect || []).some((p) => matchGlob(p, file))
+}
+
 export function ownerOf(state, file) {
+  if (isProtected(state, file)) return 'protected'
   for (const t of Object.values(state.tasks)) if (t.agent && !t.commit && blockFiles(t).includes(file)) return t.id
   if (state.allow.some((p) => matchGlob(p, file))) return 'allow'
   return null

@@ -55,7 +55,9 @@ function faultLines(v) {
   const out = []
   if (!v) return out
   const c = v.checks
-  if (!c.scope.ok) out.push(`scope: SPAD, edited outside any block: ${c.scope.outside.join(', ')}`)
+  if (c.scope.protected?.length) out.push(`scope: PROTECTED files changed (tests / checker): ${c.scope.protected.join(', ')}`)
+  const unowned = c.scope.outside.filter((f) => !(c.scope.protected || []).includes(f))
+  if (unowned.length) out.push(`scope: SPAD, edited outside any block: ${unowned.join(', ')}`)
   if (!c.contract.ok) out.push(`contract: removed exports ${c.contract.removed.map((r) => `${r.file.split('/').pop()}#${r.name}`).join(', ')}`)
   if (!c.scan.ok) out.push(`scan: ${c.scan.remaining} legacy call sites left (${Object.entries(c.scan.byFile).filter(([, n]) => n).map(([f, n]) => `${f.split('/').pop()}:${n}`).join(', ')})`)
   if (!c.tests.ok) {
@@ -203,7 +205,8 @@ async function main() {
       if (!blocked.length) return 0
       console.error('signalbox: these files belong to a block that has not cleared:')
       for (const f of blocked) console.error(`  ${f}`)
-      console.error('Commit them with `npm run -s sb -- release <block> --agent <name>` so the track circuit runs first.')
+      console.error('Block files are committed by `npm run -s sb -- release <block> --agent <name>` after the track circuit.')
+      console.error('Protected files (tests, chainguard/) cannot be committed while the box is open; a human can override with SIGNALBOX_COMMIT=1.')
       return 1
     }
     case 'prompt': {
