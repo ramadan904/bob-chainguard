@@ -23,3 +23,15 @@ export function renderStatement(template, values) {
 export function countWords(markdown) {
   return markdown.replace(/[#|*`>-]+/g, ' ').split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length
 }
+
+// The first ```text block under the runbook heading that starts with `heading` (e.g. '2. The
+// dispatcher'), so scripts print the exact prompts the runbook documents.
+export function promptFrom(runbook, heading) {
+  const lines = runbook.split('\n')
+  const start = lines.findIndex((l) => /^#{1,3} /.test(l) && l.replace(/^#+\s*/, '').startsWith(heading))
+  if (start < 0) return null
+  const rest = lines.slice(start + 1).join('\n')
+  const next = rest.search(/^#{1,3} /m)
+  const section = next < 0 ? rest : rest.slice(0, next)
+  return section.match(/```text\n([\s\S]*?)```/)?.[1].trim() || null
+}
