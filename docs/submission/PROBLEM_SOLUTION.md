@@ -1,6 +1,7 @@
 # Problem & Solution Statement
 
-<!-- Limit: 500 words. Replace every [bracketed] value with the real number from the ledger before submitting. -->
+<!-- Limit: 500 words. `npm run finalize` fills every {{value}} from the ledger and writes the paste-ready
+     version to docs/submission/final/. Edit wording here, never the numbers. -->
 
 ## Problem
 
@@ -41,11 +42,11 @@ sunset in 2025) to viem/wagmi. That's 72 legacy call sites in 10 files, split in
 
 | Metric | Result |
 | --- | --- |
-| Legacy call sites | 72 → [0] |
-| Blocks cleared by Bob subagents | [6 / 6], [N] agents, up to [N] in parallel |
-| Faults caught before commit | [N] (e.g. viem `parseUnits` silently rounding where ethers threw) |
-| Refused claims / chaos drills caught | [N] / [N], none reached a commit |
+| Legacy call sites | {{calls_before}} → {{calls_after}} |
+| Blocks cleared by Bob subagents | {{blocks}}, {{agents}} agents, up to {{peak}} in parallel |
+| Faults caught before commit | {{faults}} (e.g. {{fault_example}}) |
+| Refused claims / chaos drills caught | {{denied}} / {{drills}}, none reached a commit |
 | Behavior tests | 22 / 22, never modified |
-| Wall-clock time | [X min] vs [manual estimate] |
+| Wall-clock time | {{wall_clock}} |
 
 Swap the rule pack (a Moment.js → date-fns pack ships too) and the same interlocking protects any large parallel-agent change.

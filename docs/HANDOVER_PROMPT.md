@@ -57,7 +57,7 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
 - `docs/MIGRATION_PLAYBOOK.md`: the ethers/web3 → viem/wagmi mapping and traps.
 - `docs/REHEARSAL.md`: a full dry run done by hand on a throwaway clone. It proved the tooling works end to end.
 - `docs/submission/`:
-  - `PROBLEM_SOLUTION.md` and `IBM_BOB_USAGE.md` (each **≤ 500 words**, with `[bracket]` placeholders)
+  - `PROBLEM_SOLUTION.md` and `IBM_BOB_USAGE.md` (each **≤ 500 words**, with `{{value}}` placeholders that `npm run finalize` fills into `docs/submission/final/`)
   - `DEMO_SCRIPT.md` (video ≤ 3 min)
   - `CHECKLIST.md`
   - `Signalbox-deck.pdf` (the pre-run version)
@@ -97,7 +97,7 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
    git push
    ```
    Then merge to `main` again (a PR from the branch I pushed to).
-5. Put the numbers from `reports/submission-numbers.md` into the `[brackets]` in `docs/submission/PROBLEM_SOLUTION.md` and `IBM_BOB_USAGE.md`. Recount the words: each must be **≤ 500**.
+5. `npm run finalize` wrote paste-ready statements to `docs/submission/final/` with every number filled in. It prints their word counts (each must be **≤ 500**) and warns if a screenshot is missing. Name screenshots by what they show: `name-onboarding.png`, `name-dispatcher.png`, `name-mcp.png`, `name-review.png`, `name-<block>.png`.
 6. Media:
    - Video ≤ 3 min, following `DEMO_SCRIPT.md`. An easy segment: record `…/bob-chainguard/?tour`.
    - Slides: open `deck.html` → "Save as PDF" with background graphics on.

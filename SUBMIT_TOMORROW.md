@@ -84,9 +84,13 @@ viem/wagmi. Rule packs make it work for any migration (a Moment.js → date-fns 
 **Repository:** https://github.com/ramadan904/bob-chainguard
 **Application URL:** https://bob-chainguard.vercel.app/
 
-**Problem & Solution statement:** docs/submission/PROBLEM_SOLUTION.md
-**IBM Bob Usage statement:** docs/submission/IBM_BOB_USAGE.md
-Replace every [bracket] with the numbers from `reports/submission-numbers.md`. Keep each under 500 words.
+**Problem & Solution statement:** paste `docs/submission/final/PROBLEM_SOLUTION.md`
+**IBM Bob Usage statement:** paste `docs/submission/final/IBM_BOB_USAGE.md`
+`npm run finalize` writes both with every number filled in from the ledger and prints their word
+counts (each must be ≤ 500). Name Bob screenshots in `bob_sessions/` by what they show, e.g.
+`alice-onboarding.png`, `alice-dispatcher.png`, `alice-mcp.png`, `alice-review.png`,
+`bob-w1-lib-1.png`, so they land in the right rows. Optional: put your Bobcoins total in
+`bob_sessions/bobcoins.txt`.
 
 ## 5. After submitting
 

@@ -1,6 +1,7 @@
 # IBM Bob Usage Statement
 
-<!-- Limit: 500 words. Fill the [bracketed] parts from the ledger (`npm run -s sb -- log`) and bob_sessions/. -->
+<!-- Limit: 500 words. `npm run finalize` fills every {{value}} from the ledger and bob_sessions/ and writes the
+     paste-ready version to docs/submission/final/. Edit wording here, never the numbers. -->
 
 Bob isn't a helper in this project; Bob is the workforce. Every change to `legacy-dapp/src`
 between tag `before-bob` and the final commit was made by a Bob subagent inside a signal-box
@@ -12,13 +13,13 @@ tests and the live panel.
 
 | Bob capability | Where it does the work | Evidence |
 | --- | --- | --- |
-| **Full repository context + document understanding** | Onboarding: Bob reads the README, the migration playbook and the baseline report, walks lib → hooks → components and names the riskiest parts. Every subagent works from the playbook's mapping and traps tables. | `bob_sessions/[member]-onboarding.png` |
-| **Agent mode, multi-step orchestration** | A **dispatcher** Bob agent loops: reads `sb status`, starts subagents for every block whose signal is CLEAR, waits for the wave, handles faults, summarizes the log, and moves to the next wave. | `bob_sessions/[member]-dispatcher.png` |
-| **Subagents + parallel tasks** | One subagent per block, and the blocks of a wave run at the same time: [N] subagents, up to [N] in parallel, on disjoint files guaranteed by the signal box. | ledger: `claim` events with overlapping times |
-| **Agent mode, terminal + edits** | Each subagent runs the protocol itself: `claim` → edit → `release` (isolated tests) → fix and release again, or `rollback`. | `bob_sessions/[member]-[block].png`, commits tagged `Signalbox-Agent: bob-N` |
-| **Tool use (MCP)** | Bob's agents call the signal box as MCP tools (`signalbox_claim`, `signalbox_release`, `signalbox_ask`); a fault returns as a tool error naming every failing check. | `bob_sessions/[member]-mcp.png` |
-| **Self-correction** | [N] faults caught and fixed by Bob before commit, e.g. [block]: viem `parseUnits` rounded instead of throwing; the test failed, and Bob fixed the implementation, not the test. | `verify` events with `ok: false`, then `clear` |
-| **Code review** | Bob reviews `before-bob..HEAD` using the ledger to see which agent changed which block. | `bob_sessions/[member]-review.png` |
+| **Full repository context + document understanding** | Onboarding: Bob reads the README, the migration playbook and the baseline report, walks lib → hooks → components and names the riskiest parts. Every subagent works from the playbook's mapping and traps tables. | {{shots_onboarding}} |
+| **Agent mode, multi-step orchestration** | A **dispatcher** Bob agent loops: reads `sb status`, starts subagents for every block whose signal is CLEAR, waits for the wave, handles faults, summarizes the log, and moves to the next wave. | {{shots_dispatcher}} |
+| **Subagents + parallel tasks** | One subagent per block, and the blocks of a wave run at the same time: {{agents}} subagents, up to {{peak}} in parallel, on disjoint files guaranteed by the signal box. | ledger: `claim` events with overlapping times |
+| **Agent mode, terminal + edits** | Each subagent runs the protocol itself: `claim` → edit → `release` (isolated tests) → fix and release again, or `rollback`. | {{shots_subagents}}, commits tagged `Signalbox-Agent: bob-N` |
+| **Tool use (MCP)** | Bob's agents call the signal box as MCP tools (`signalbox_claim`, `signalbox_release`, `signalbox_ask`); a fault returns as a tool error naming every failing check. | {{shots_mcp}} |
+| **Self-correction** | {{faults}} faults caught before commit and fixed by Bob, e.g. {{fault_example}}. Bob fixed the implementation, never the test. | `verify` events with `ok: false`, then `clear` |
+| **Code review** | Bob reviews `before-bob..HEAD` using the ledger to see which agent changed which block. | {{shots_review}} |
 
 ## Why this showcases Bob
 
@@ -33,9 +34,10 @@ multi-step reasoning, not a script.
 
 ## Results
 
-- Legacy call sites: 72 → [0]. Blocks: [6/6] cleared in 2 waves.
-- Faults caught before commit: [N]. Claims refused at signal: [N]. Chaos drills caught: [N]. Tests: 22/22, unmodified.
-- Wall clock: [X min]. Bobcoins: [N].
+- Legacy call sites: {{calls_before}} → {{calls_after}}. Blocks: {{blocks}} cleared in {{waves}} waves.
+- Faults caught before commit: {{faults}}. Claims refused at signal: {{denied}}. Chaos drills caught: {{drills}}. Tests: {{tests}}.
+- Wall clock: {{wall_clock}}.
+- Bobcoins used: {{bobcoins}}.
 
 ## watsonx
 
