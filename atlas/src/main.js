@@ -293,7 +293,8 @@ function flap(text, width, cls = '') {
 
 function updateBoard() {
   const head = h('div', { class: 'board-row board-head', role: 'row' },
-    ['Signal', 'Wave', 'Block', 'Train', 'Track circuit', 'Status'].map((t) => h('span', { role: 'columnheader' }, t)))
+    ['Signal', 'Wave', 'Block', 'Risk', 'Train', 'Track circuit', 'Status'].map((t) => h('span', { role: 'columnheader' }, t)))
+  const risk = blockRisk()
   const tasks = Object.values(view.sb.tasks).sort((a, b) => a.wave - b.wave || a.id.localeCompare(b.id))
   const rows = tasks.map((t) => {
     const lamps = checkLamps(t.lastVerify)
@@ -310,6 +311,7 @@ function updateBoard() {
       h('span', { class: `signal-head s-${t.state}`, 'aria-label': `signal ${STATUS_TEXT[t.state]}` }, h('i', { class: 'lamp red' }), h('i', { class: 'lamp amber' }), h('i', { class: 'lamp green' })),
       h('span', { class: 'wave-plate' }, String(t.wave)),
       h('span', { class: 'block-cell' }, flap(t.id, 14), h('span', { class: 'dest' }, taskFiles(t.id).map((f) => f.split('/').pop().replace(/\.(jsx?|tsx?)$/, '')).join(' · '))),
+      h('span', { class: `risk r-${risk[t.id].level}`, title: `${t.findings || 0} legacy call sites · ${risk[t.id].reach} dependent files outside the block` }, risk[t.id].level.toUpperCase()),
       h('span', { class: 'train' }, t.agent && !t.commit ? t.agent.toUpperCase() : t.commit ? t.commit.slice(0, 7) : '—'),
       h('span', { class: 'lamps' }, lamps.map((l) => h('span', { class: `chk ${l.state}`, title: `${CHECK_NAME[l.key]}: ${l.state}` }, CHECK_LETTER[l.key]))),
       flap(STATUS_TEXT[t.state], 9, 'status'),
@@ -524,6 +526,23 @@ function blastRadius(id) {
   return dist
 }
 
+// ------------------------------------------------------------------ risk
+
+// Risk of a block = its legacy call sites + 3 × the files outside it that depend on it
+// (transitively). Ranked within the plan into thirds: HIGH / MED / LOW.
+function blockRisk() {
+  const tasks = Object.values(view.sb.tasks)
+  const scored = tasks.map((t) => {
+    const files = taskFiles(t.id)
+    const reach = new Set()
+    for (const f of files) for (const [d] of blastRadius(f)) if (!files.includes(d)) reach.add(d)
+    return { id: t.id, score: (t.findings || 0) + 3 * reach.size, reach: reach.size }
+  }).sort((a, b) => b.score - a.score)
+  const out = {}
+  scored.forEach((r, k) => { out[r.id] = { ...r, level: k < Math.ceil(scored.length / 3) ? 'high' : k < Math.ceil((2 * scored.length) / 3) ? 'med' : 'low' } })
+  return out
+}
+
 // ------------------------------------------------------------------ crew roster
 
 function crew() {
@@ -642,7 +661,8 @@ function blockSection(b) {
   return h('div', { class: `block-card s-${t.state}` },
     h('div', { class: 'block-head' },
       h('span', { class: `signal-head s-${t.state}` }, h('i', { class: 'lamp red' }), h('i', { class: 'lamp amber' }), h('i', { class: 'lamp green' })),
-      h('div', {}, h('strong', {}, t.id), h('span', {}, `Wave ${t.wave} · ${STATUS_TEXT[t.state].toLowerCase()}${t.agent && !t.commit ? ` · ${t.agent}` : ''}${t.commit ? ` · ${t.commit.slice(0, 7)}` : ''}`))),
+      h('div', {}, h('strong', {}, t.id), h('span', {}, `Wave ${t.wave} · ${STATUS_TEXT[t.state].toLowerCase()}${t.agent && !t.commit ? ` · ${t.agent}` : ''}${t.commit ? ` · ${t.commit.slice(0, 7)}` : ''}`)),
+      (() => { const r = blockRisk()[t.id]; return h('span', { class: `risk r-${r.level}`, title: `${t.findings || 0} legacy call sites · ${r.reach} dependent files` }, `${r.level.toUpperCase()} RISK`) })()),
     checks ? h('ul', { class: 'checks' }, checks.map(([k, ok, text]) => h('li', { class: ok ? 'ok' : 'fail' }, h('b', {}, k), h('span', {}, text)))) : null,
     v && !v.checks.tests.ok && v.checks.tests.failures?.length ? h('pre', { class: 'failures' }, v.checks.tests.failures.join('\n')) : null,
     diffFor(t) ? h('button', { class: 'diff-open', onclick: () => openDiff(t) }, `Review ${t.agent ? `${t.agent}'s` : 'the'} change`, h('span', {}, ` ${t.commit.slice(0, 7)} →`)) : null,

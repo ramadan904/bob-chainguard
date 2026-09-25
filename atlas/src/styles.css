@@ -802,3 +802,11 @@ dialog.diff::backdrop { background: rgba(3, 6, 12, 0.72); backdrop-filter: blur(
 :root:not([data-theme='dark']) .d-add { color: #0e6027; background: rgba(36, 161, 72, 0.1); }
 :root:not([data-theme='dark']) .d-del { color: #a2191f; background: rgba(218, 30, 40, 0.08); }
 :root:not([data-theme='dark']) .d-hunk { color: #0043ce; }
+
+/* Block risk: legacy call sites + 3 × dependents, ranked within the plan */
+.board .board-row { grid-template-columns: 58px 40px minmax(190px, 1.4fr) 64px 92px 104px 150px; min-width: 760px; }
+.risk { justify-self: start; font: 600 11px/1 var(--f-mono); letter-spacing: 0.06em; padding: 5px 7px; border-radius: 3px; border: 1.5px solid currentColor; }
+.r-high { color: #ff6b7a; box-shadow: 0 0 12px rgba(255, 77, 94, 0.3); }
+.r-med { color: var(--amber); }
+.r-low { color: #6fdc8c; }
+.block-head .risk { margin-left: auto; align-self: flex-start; }

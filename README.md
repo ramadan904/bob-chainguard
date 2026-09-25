@@ -64,6 +64,10 @@ npm run -s sb -- status | log | prompt <block>
 - **Review every agent's change.** Each cleared block's real diff ships with the panel. Open a
   block and click "Review bob-N's change".
 - **Blast radius.** Pick a file to see every file that depends on it, ripple by ripple.
+- **Risk scores.** Each block is ranked HIGH, MED or LOW by its legacy call sites plus 3 × the files that
+  depend on it, so reviewers know where to look hardest.
+- **Pull request bot.** `.github/workflows/signalbox-pr.yml` keeps one Signalbox comment updated on every
+  pull request: legacy calls before and after, the signal box report, and the ledger audit.
 - **Crew roster.** A record for each Bob subagent: blocks cleared, releases, faults fixed, time in blocks.
 - **Black-box recorder.** Every occupied block's in-flight files are saved (content-addressed) on
   every signal box command and every file change. If an agent runs `git stash` or `checkout .`
