@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { init, claim, extend, release, rollback, loadState, readLedger, repoRoot, writeReplay, installHook, hookCheck, doctor, SignalboxError, DEFAULT_TEST } from '../src/signalbox.js'
+import { init, claim, extend, release, rollback, loadState, readLedger, repoRoot, writeReplay, installHook, hookCheck, doctor, checkpoint, listCheckpoints, recover, SignalboxError, DEFAULT_TEST } from '../src/signalbox.js'
 import { summary, describe, metrics, timeline } from '../src/signalbox-state.js'
 import { writeFileSync } from 'node:fs'
 import { resolve as resolvePath } from 'node:path'
@@ -16,6 +16,8 @@ Usage:
   signalbox report [--out file]                          impact report from the ledger (Markdown)
   signalbox install-hook                                 pre-commit guard: block files only via release
   signalbox doctor [--no-tests]                          preflight before a run or a recording
+  signalbox checkpoints <block>                          black-box copies of a block's in-flight work
+  signalbox recover <block> --agent <name> [--from <stamp>]  restore the latest (or a named) checkpoint
   signalbox prompt <block>                               the subagent prompt for a block
   signalbox status                                       the signal box panel, as text
   signalbox log                                          the train describer (every event)
@@ -161,10 +163,24 @@ async function main() {
       console.log(`ROLLED BACK ${block}: restored ${e.files.join(', ') || 'nothing'}`)
       return 0
     }
+    case 'checkpoints': {
+      checkpoint(root)
+      const list = listCheckpoints(root, block)
+      if (!list.length) console.log(`no checkpoints for ${block}`)
+      for (const c of list) console.log(`${c.stamp}  ${c.agent}  ${c.files.join(', ')}`)
+      return 0
+    }
+    case 'recover': {
+      const e = recover(root, block, opts.agent || 'operator', { stamp: opts.from })
+      console.log(`RECOVERED ${block} from ${e.from}: ${e.files.join(', ')}`)
+      return 0
+    }
     case 'status':
+      checkpoint(root)
       printStatus(root)
       return 0
     case 'next': {
+      checkpoint(root)
       const state = loadState(root)
       const list = Object.values(state.tasks)
       const out = {

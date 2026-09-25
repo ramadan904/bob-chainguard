@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { reduce, canClaim, ownerOf, matchGlob, summary, metrics, timeline } from '../src/signalbox-state.js'
-import { init, claim, extend, release, rollback, loadState, readLedger, exportsOf, installHook, hookCheck, SignalboxError } from '../src/signalbox.js'
+import { init, claim, extend, release, rollback, loadState, readLedger, exportsOf, installHook, hookCheck, checkpoint, listCheckpoints, recover, SignalboxError } from '../src/signalbox.js'
 
 const plan = {
   waves: 2,
@@ -217,6 +217,30 @@ test('e2e: tests and the checker are protected from agents', () => {
     run('add', 'src/__tests__/a.test.js')
     assert.deepEqual(hookCheck(root), ['src/__tests__/a.test.js'])
     assert.deepEqual(hookCheck(root, { SIGNALBOX_COMMIT: '1' }), [])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('e2e: black-box checkpoints survive a rogue git checkout', () => {
+  const { root, run } = makeRepo()
+  try {
+    init(root, { scanPath: 'src', testCmd: 'node check.js', allow: [] })
+    const a = Object.values(loadState(root).tasks).find((t) => t.files.includes('src/a.js'))
+    claim(root, a.id, 'bob-1')
+    writeFileSync(join(root, 'src/a.js'), 'export const one = () => 1n // hours of work\nexport const keep = 1\n')
+    assert.equal(checkpoint(root).length, 1)
+    assert.equal(checkpoint(root).length, 0, 'unchanged content is not saved twice')
+
+    run('checkout', '--', '.') // another agent breaks the rules
+    assert.doesNotMatch(readFileSync(join(root, 'src/a.js'), 'utf8'), /hours of work/)
+
+    const e = recover(root, a.id, 'dispatcher')
+    assert.match(readFileSync(join(root, 'src/a.js'), 'utf8'), /hours of work/)
+    assert.deepEqual(e.files, ['src/a.js'])
+    assert.equal(readLedger(root).at(-1).t, 'recover')
+    assert.ok(listCheckpoints(root, a.id).length >= 1)
+    assert.throws(() => recover(root, 'nope', 'x'), /unknown block/)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

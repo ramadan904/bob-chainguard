@@ -130,3 +130,5 @@ chainguard-report.*
 
 # Signalbox: transient lock between parallel agents (the ledger itself is committed)
 .signalbox/lock/
+# Signalbox black-box copies of in-flight work (transient)
+.signalbox/checkpoints/

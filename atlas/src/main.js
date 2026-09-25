@@ -418,6 +418,8 @@ function updateAlert() {
       h('span', { class: 'alert-note' }, 'Block held. Nothing was committed.'))
   } else if (e?.t === 'deny') {
     content = h('div', { class: 'alert held' }, h('strong', {}, 'Held at signal'), h('span', {}, `${e.agent} → ${e.task}: ${e.reason}`))
+  } else if (e?.t === 'recover') {
+    content = h('div', { class: 'alert rollback' }, h('strong', {}, 'Recovered'), h('span', {}, `${e.task}: ${e.files.length} files restored from the black-box recorder (${e.from.slice(0, 19)}).`))
   } else if (e?.t === 'rollback') {
     content = h('div', { class: 'alert rollback' }, h('strong', {}, 'Rolled back'), h('span', {}, `${e.task}: ${e.files.length} files restored. Other blocks kept running.`))
   } else if (e?.t === 'clear') {

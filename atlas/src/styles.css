@@ -631,3 +631,6 @@ body[data-done='true'] .stat-calls .num { color: var(--ink); }
 @media (max-width: 640px) { .graph-card { margin: 0 16px 20px; padding: 16px 12px 12px; } }
 .station[data-block='spad'] .st-block { opacity: 1; stroke: var(--sig-red); stroke-width: 4; animation: blink 0.5s steps(2, jump-none) infinite; }
 .station[data-block='spad'] .st-label { fill: var(--sig-red); }
+
+.td-recover .td-text { color: #78a9ff; font-weight: 600; }
+.tick.k-recover .tick-dot { border-color: var(--sig-blue); background: var(--sig-blue); }

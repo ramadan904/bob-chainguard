@@ -10,7 +10,7 @@ import { join, extname, normalize, dirname } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { gitSnapshots, buildAtlas } from './atlas.js'
 import { scanDir } from './scan.js'
-import { readLedger, ledgerPath, modifiedFiles } from './signalbox.js'
+import { readLedger, ledgerPath, modifiedFiles, checkpoint } from './signalbox.js'
 import { reduce, ownerOf } from './signalbox-state.js'
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.woff2': 'font/woff2', '.woff': 'font/woff', '.svg': 'image/svg+xml', '.png': 'image/png' }
@@ -64,6 +64,7 @@ export async function serve(root, { port = 4700, dist = join(root, 'atlas', 'dis
   const scheduleScan = () => {
     clearTimeout(scanTimer)
     scanTimer = setTimeout(() => {
+      try { checkpoint(root) } catch (err) { console.error('checkpoint failed:', err.message) }
       try { send('live', liveScan()) } catch (err) { console.error('scan failed:', err.message) }
     }, 250)
   }

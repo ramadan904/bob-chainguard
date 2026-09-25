@@ -121,6 +121,7 @@ export function describe(e) {
     case 'verify': return `${e.task} track circuit ${e.ok ? 'clear' : 'FAULT'}${e.checks.tests.summary ? ` (${e.checks.tests.summary})` : ''}`
     case 'clear': return `${e.task} cleared by ${e.agent} -> ${e.commit.slice(0, 7)}`
     case 'rollback': return `${e.agent || 'operator'} rolled back ${e.task} (${e.files.length} files restored)`
+    case 'recover': return `${e.agent} recovered ${e.task} from checkpoint (${e.files.length} files)`
     default: return JSON.stringify(e)
   }
 }

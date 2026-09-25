@@ -7,6 +7,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, mkdtempSync, symlinkSync, readdirSync, copyFileSync, renameSync, statSync } from 'node:fs'
 import { join, dirname, relative, resolve, sep } from 'node:path'
 import { tmpdir } from 'node:os'
+import { createHash } from 'node:crypto'
 import { scanDir, scanSource } from './scan.js'
 import { buildPlan } from './plan.js'
 import { reduce, canClaim, blockFiles, ownerOf, isProtected } from './signalbox-state.js'
@@ -115,6 +116,7 @@ export function claim(root, taskId, agent, { also = [] } = {}) {
   if (!agent) throw new SignalboxError('Pass --agent <name> so the signal box knows which train is entering')
   return withLock(root, () => {
     const state = loadState(root)
+    checkpoint(root, state)
     const verdict = canClaim(state, taskId, agent)
     if (!verdict.ok) {
       append(root, { t: 'deny', task: taskId, agent, reason: verdict.reason, blocking: verdict.blocking })
@@ -281,6 +283,7 @@ function nodeModuleDirs(root) {
 export function release(root, taskId, agent, { commit = true, runTests = true } = {}) {
   return withLock(root, () => {
     const state = loadState(root)
+    checkpoint(root, state)
     const t = state.tasks[taskId]
     if (!t) throw new SignalboxError(`unknown block ${taskId}`)
     if (t.agent !== agent) throw new SignalboxError(`${agent} does not occupy ${taskId}${t.agent ? ` (${t.agent} does)` : ''}`)
@@ -313,6 +316,7 @@ export function release(root, taskId, agent, { commit = true, runTests = true } 
 export function rollback(root, taskId, agent, { operator = false } = {}) {
   return withLock(root, () => {
     const state = loadState(root)
+    checkpoint(root, state)
     const t = state.tasks[taskId]
     if (!t) throw new SignalboxError(`unknown block ${taskId}`)
     if (t.commit) throw new SignalboxError(`${taskId} is already cleared; revert its commit ${t.commit.slice(0, 7)} instead`)
@@ -386,4 +390,65 @@ export function doctor(root, { runTests = true } = {}) {
     add('tests pass on HEAD (isolated)', t.ok, t.summary || `exit ${t.exitCode}`)
   }
   return checks
+}
+
+// ------------------------------------------------------------------ black-box recorder
+// Agents share one working tree. If one of them runs `git stash` or `git checkout .` against the
+// rules, every other agent's in-flight work would be lost. So the signal box keeps content-
+// addressed copies of every occupied block's changed files, taken on every signal box command and
+// (under `serve`) on every file change. `recover` puts the latest copy back.
+
+const MAX_CHECKPOINTS = 30
+const checkpointDir = (root, task) => join(root, '.signalbox', 'checkpoints', task)
+
+export function listCheckpoints(root, task) {
+  const dir = checkpointDir(root, task)
+  if (!existsSync(dir)) return []
+  return readdirSync(dir)
+    .filter((d) => existsSync(join(dir, d, 'manifest.json')))
+    .sort()
+    .map((d) => ({ stamp: d, dir: join(dir, d), ...JSON.parse(readFileSync(join(dir, d, 'manifest.json'), 'utf8')) }))
+}
+
+export function checkpoint(root, state = reduce(readLedger(root))) {
+  if (!state) return []
+  const changed = new Set(modifiedFiles(root))
+  const saved = []
+  for (const t of Object.values(state.tasks)) {
+    if (!t.agent || t.commit) continue
+    const files = blockFiles(t).filter((f) => changed.has(f) && existsSync(join(root, f)))
+    if (!files.length) continue
+    const hash = createHash('sha1')
+    for (const f of files) hash.update(f).update('\0').update(readFileSync(join(root, f))).update('\0')
+    const digest = hash.digest('hex').slice(0, 12)
+    const all = listCheckpoints(root, t.id)
+    if (all.at(-1)?.digest === digest) continue
+    const stamp = `${new Date().toISOString().replace(/[:.]/g, '-')}-${digest}`
+    const dir = join(checkpointDir(root, t.id), stamp)
+    for (const f of files) {
+      mkdirSync(dirname(join(dir, 'files', f)), { recursive: true })
+      copyFileSync(join(root, f), join(dir, 'files', f))
+    }
+    writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ at: new Date().toISOString(), task: t.id, agent: t.agent, digest, files }))
+    for (const old of all.slice(0, Math.max(0, all.length + 1 - MAX_CHECKPOINTS))) rmSync(old.dir, { recursive: true, force: true })
+    saved.push({ task: t.id, stamp, files })
+  }
+  return saved
+}
+
+export function recover(root, taskId, agent, { stamp } = {}) {
+  return withLock(root, () => {
+    const state = loadState(root)
+    const t = state.tasks[taskId]
+    if (!t) throw new SignalboxError(`unknown block ${taskId}`)
+    const all = listCheckpoints(root, taskId)
+    const cp = stamp ? all.find((c) => c.stamp === stamp) : all.at(-1)
+    if (!cp) throw new SignalboxError(`no checkpoint for ${taskId}${stamp ? ` named ${stamp}` : ''}`)
+    checkpoint(root, state) // the current state becomes a checkpoint too, so recovering is undoable
+    for (const f of cp.files) {
+      mkdirSync(dirname(join(root, f)), { recursive: true })
+      copyFileSync(join(cp.dir, 'files', f), join(root, f))
+    }
+    return append(root, { t: 'recover', task: taskId, agent, from: cp.stamp, files: cp.files })
+  })
 }
