@@ -35,3 +35,23 @@ export function promptFrom(runbook, heading) {
   const section = next < 0 ? rest : rest.slice(0, next)
   return section.match(/```text\n([\s\S]*?)```/)?.[1].trim() || null
 }
+
+// Caption for a Bob session screenshot from its file name: `<member>-<what>.png`, where <what> is
+// a step (onboarding, expand, dispatcher, mcp, review, cleanup) or a block id (w1-lib-1).
+const STEPS = {
+  onboarding: 'Onboarding: Bob reads the repo and the playbook',
+  expand: 'Expand step: viem and wagmi added alongside',
+  dispatcher: 'Dispatcher: Bob Agent mode starting subagents',
+  mcp: 'Bob calling the Signalbox MCP tools',
+  review: 'Code review of the whole migration',
+  cleanup: 'Cleanup: ethers and web3 removed',
+  chaos: 'Chaos drill during the run',
+}
+export function shotCaption(file) {
+  const base = file.replace(/\.[^.]+$/, '')
+  const [member, ...rest] = base.split('-')
+  const what = rest.join('-').toLowerCase()
+  const step = Object.keys(STEPS).find((k) => what.startsWith(k))
+  const caption = step ? STEPS[step] : /^w\d+-/.test(what) ? `Bob subagent working block ${what}` : what.replace(/[-_]+/g, ' ') || base
+  return { member: rest.length ? member : null, caption, order: step ? Object.keys(STEPS).indexOf(step) : /^w\d+-/.test(what) ? 3.5 : 99 }
+}

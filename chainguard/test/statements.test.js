@@ -28,3 +28,11 @@ test('runbook prompts: every step the Bob helpers print exists', () => {
   assert.match(promptFrom(runbook, '2. The dispatcher'), /You are the dispatcher/)
   assert.equal(promptFrom(runbook, 'no such heading'), null)
 })
+
+test('screenshot captions come from file names', async () => {
+  const { shotCaption } = await import('../src/statements.js')
+  assert.deepEqual(shotCaption('ramadan-dispatcher.png').member, 'ramadan')
+  assert.match(shotCaption('ramadan-dispatcher.png').caption, /Dispatcher/)
+  assert.equal(shotCaption('ada-w1-lib-2.png').caption, 'Bob subagent working block w1-lib-2')
+  assert.equal(shotCaption('notes.png').member, null)
+})

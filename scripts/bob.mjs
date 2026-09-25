@@ -59,7 +59,13 @@ if (cmd === 'prep') {
   console.log('Open the signal box\n')
   const pkg = JSON.parse(readFileSync(join(root, 'legacy-dapp/package.json'), 'utf8'))
   const expanded = pkg.dependencies?.viem && existsSync(join(root, 'legacy-dapp/src/lib/viem.js'))
-  expanded ? ok('expand step is in: viem is a dependency and src/lib/viem.js exists') : warn('expand step not found (no viem dependency or src/lib/viem.js): give Bob the expand prompt first (npm run bob:prep prints it)')
+  // Opening the box before the expand step deadlocks wave 2 (callers need lib/viem.js to exist).
+  if (expanded) ok('expand step is in: viem is a dependency and src/lib/viem.js exists')
+  else if (process.argv.includes('--force')) warn('expand step not found; opening anyway (--force)')
+  else {
+    fail('expand step not found (no viem dependency or src/lib/viem.js). Give Bob the expand prompt first: npm run bob:prep prints it')
+    process.exit()
+  }
   if (existsSync(join(root, 'legacy-dapp/node_modules')) && expanded && !existsSync(join(root, 'legacy-dapp/node_modules/viem'))) {
     sh('npm install --prefix legacy-dapp --no-audit --no-fund')
   }
