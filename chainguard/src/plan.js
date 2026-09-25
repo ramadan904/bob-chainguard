@@ -1,5 +1,5 @@
 import { posix } from 'node:path'
-import { RULES_BY_ID } from './rules.js'
+import { DEFAULT_PACK } from './rules.js'
 
 const MAX_FILES_PER_TASK = 3
 
@@ -32,7 +32,8 @@ export function computeWaves(flagged, imports = {}) {
   return waves
 }
 
-export function buildPlan(report, { target = 'viem + wagmi', playbook = 'docs/MIGRATION_PLAYBOOK.md', scanPath = report.root } = {}) {
+export function buildPlan(report, { pack = DEFAULT_PACK, scanPath = report.root } = {}) {
+  const { to: target, from, playbook } = pack
   const byFile = new Map()
   for (const f of report.findings) {
     if (!byFile.has(f.file)) byFile.set(f.file, [])
@@ -61,7 +62,7 @@ export function buildPlan(report, { target = 'viem + wagmi', playbook = 'docs/MI
         wave: Number(wave),
         files: chunk.map((f) => posix.join(scanPath, f)),
         findings: findings.length,
-        rules: ruleIds.map((id) => ({ id, title: RULES_BY_ID[id].title })),
+        rules: ruleIds.map((id) => ({ id, title: pack.byId[id]?.title || id })),
       })
     })
   }
@@ -69,14 +70,14 @@ export function buildPlan(report, { target = 'viem + wagmi', playbook = 'docs/MI
 
   for (const t of tasks) {
     t.prompt = [
-      `Migrate these files from ethers v5 / web3.js to ${target}: ${t.files.map((f) => `@${f}`).join(' ')}`,
+      `Migrate these files from ${from} to ${target}: ${t.files.map((f) => `@${f}`).join(' ')}`,
       `Follow @${playbook} (mapping table and rules). Do not edit any other file.`,
       `chainguard found ${t.findings} legacy call sites: ${t.rules.map((r) => `${r.id} ${r.title}`).join(', ')}.`,
       'Keep every exported name and call signature stable. Raw amounts become bigint; functions that returned strings still return strings.',
       `Done when \`node chainguard/bin/chainguard.js scan ${scanPath}\` lists none of these files and \`npm test --prefix legacy-dapp\` passes.`,
     ].join('\n')
   }
-  return { target, playbook, totalFindings: report.totals.findings, waves: Math.max(0, ...tasks.map((t) => t.wave)), tasks }
+  return { pack: pack.name, from, target, playbook, totalFindings: report.totals.findings, waves: Math.max(0, ...tasks.map((t) => t.wave)), tasks }
 }
 
 export function planToMarkdown(plan) {

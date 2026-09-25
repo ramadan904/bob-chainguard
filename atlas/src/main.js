@@ -697,7 +697,8 @@ async function start() {
     model.mode = model.events.length ? 'replay' : 'baseline'
     model.stop = model.events.length ? 0 : Infinity
   }
-  $('#route').textContent = `${model.atlas.root} · ethers v5 + web3.js → viem + wagmi`
+  const pack = model.atlas.pack || { from: 'ethers v5 / web3.js', to: 'viem + wagmi' }
+  $('#route').textContent = `${model.atlas.root} · ${pack.from} → ${pack.to}`
   view = derive()
   buildMap()
   buildTimeline()

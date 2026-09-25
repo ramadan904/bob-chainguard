@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os'
 import { createHash } from 'node:crypto'
 import { scanDir, scanSource } from './scan.js'
 import { buildPlan } from './plan.js'
+import { loadPack } from './pack.js'
 import { reduce, canClaim, blockFiles, ownerOf, isProtected } from './signalbox-state.js'
 
 export const DEFAULT_ALLOW = ['legacy-dapp/package.json', 'legacy-dapp/package-lock.json', '.signalbox/**', 'reports/**', 'bob_sessions/**', 'atlas/src/data/**']
@@ -73,12 +74,13 @@ function withLock(root, fn) {
 
 // ------------------------------------------------------------------ init
 
-export function init(root, { scanPath = 'legacy-dapp/src', testCmd = DEFAULT_TEST, allow = DEFAULT_ALLOW, protect = DEFAULT_PROTECT, force = false } = {}) {
+export function init(root, { scanPath = 'legacy-dapp/src', testCmd = DEFAULT_TEST, allow = DEFAULT_ALLOW, protect = DEFAULT_PROTECT, pack: packPath = null, force = false } = {}) {
   const p = ledgerPath(root)
   if (existsSync(p) && !force) throw new SignalboxError('A signalbox ledger already exists. Use --force to archive it and start over.')
   if (existsSync(p)) renameSync(p, p.replace(/\.jsonl$/, `.${Date.now()}.jsonl`))
-  const report = scanDir(join(root, scanPath))
-  const plan = buildPlan(report, { scanPath })
+  const pack = loadPack(packPath && join(root, packPath))
+  const report = scanDir(join(root, scanPath), pack.rules)
+  const plan = buildPlan(report, { scanPath, pack })
   const base = git(root, ['rev-parse', 'HEAD']).trim()
   return append(root, {
     t: 'init',
@@ -87,6 +89,7 @@ export function init(root, { scanPath = 'legacy-dapp/src', testCmd = DEFAULT_TES
     testCmd,
     allow,
     protect,
+    pack: packPath,
     plan: { waves: plan.waves, totalFindings: plan.totalFindings, tasks: plan.tasks.map(({ id, wave, files, findings, prompt }) => ({ id, wave, files, findings, prompt: withProtocol(prompt, id) })) },
   })
 }
@@ -218,14 +221,19 @@ export function checkContract(root, files) {
   return { ok: removed.length === 0, removed }
 }
 
-export function checkScan(root, files) {
+// The rule pack the box was opened with (recorded in the init event).
+export function packOf(root, state) {
+  return loadPack(state.pack && join(root, state.pack))
+}
+
+export function checkScan(root, files, rules) {
   const byFile = {}
   const findings = {}
   let remaining = 0
   for (const f of files) {
     const text = readWorking(root, f)
     if (text == null || !/\.(m?[jt]sx?|cjs|vue|svelte)$/.test(f)) continue
-    const list = scanSource(text, f)
+    const list = scanSource(text, f, rules)
     byFile[f] = list.length
     findings[f] = list.map((x) => [x.ruleId, x.line, x.snippet])
     remaining += list.length
@@ -293,7 +301,7 @@ export function release(root, taskId, agent, { commit = true, runTests = true } 
     const checks = {
       scope: checkScope(root, state, taskId),
       contract: checkContract(root, files),
-      scan: checkScan(root, files),
+      scan: checkScan(root, files, packOf(root, state).rules),
     }
     checks.tests = runTests ? checkTests(root, state, [...files, ...allowed]) : { ok: true, skipped: true }
     const ok = Object.values(checks).every((c) => c.ok)

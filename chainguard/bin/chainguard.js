@@ -3,16 +3,18 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { scanDir, compare } from '../src/scan.js'
 import { toText, toMarkdown } from '../src/format.js'
 import { buildPlan, planToMarkdown } from '../src/plan.js'
-import { RULES } from '../src/rules.js'
 import { gitSnapshots, buildAtlas } from '../src/atlas.js'
+import { loadPack } from '../src/pack.js'
 
 const USAGE = `chainguard - find legacy ethers v5 / web3.js usage and plan its migration to viem/wagmi
 
 Usage:
-  chainguard scan <dir> [--format text|json|md] [--out file] [--baseline report.json] [--fail-on error|warning|none]
+  chainguard scan <dir> [--format text|json|md] [--out file] [--baseline report.json] [--fail-on error|warning|none] [--pack rules.json]
   chainguard plan <dir> [--format md|json] [--out file]
   chainguard atlas <dir> [--out file]      git history of <dir>, scanned per commit, for the Atlas UI
-  chainguard rules
+  chainguard rules [--pack rules.json]
+
+--pack loads a rule pack (see chainguard/packs/); without it the built-in Web3 pack is used.
 
 Exit codes: 0 ok, 1 findings at or above --fail-on severity, 2 usage error.`
 
@@ -40,8 +42,10 @@ function main() {
   const { cmd, opts } = parseArgs(process.argv.slice(2))
   const dir = opts._[0]
 
+  const pack = loadPack(opts.pack)
   if (cmd === 'rules') {
-    for (const r of RULES) console.log(`${r.id.padEnd(7)} ${r.severity.padEnd(7)} ${r.lib.padEnd(9)} ${r.title}  ->  ${r.replacement}`)
+    console.log(`${pack.name}: ${pack.from} -> ${pack.to} (playbook ${pack.playbook})`)
+    for (const r of pack.rules) console.log(`${r.id.padEnd(7)} ${r.severity.padEnd(7)} ${r.lib.padEnd(9)} ${r.title}  ->  ${r.replacement}`)
     return 0
   }
   if (!['scan', 'plan', 'atlas'].includes(cmd) || !dir) {
@@ -50,15 +54,15 @@ function main() {
   }
 
   if (cmd === 'atlas') {
-    const atlas = buildAtlas(gitSnapshots(dir))
+    const atlas = buildAtlas(gitSnapshots(dir, pack.rules), pack)
     emit(JSON.stringify(atlas), opts.out)
     return 0
   }
 
-  const report = scanDir(dir)
+  const report = scanDir(dir, pack.rules)
 
   if (cmd === 'plan') {
-    const plan = buildPlan(report, { scanPath: dir })
+    const plan = buildPlan(report, { scanPath: dir, pack })
     emit(opts.format === 'json' ? JSON.stringify(plan, null, 2) : planToMarkdown(plan), opts.out)
     return 0
   }
@@ -67,8 +71,8 @@ function main() {
   const format = opts.format || 'text'
   const body =
     format === 'json' ? JSON.stringify(delta ? { ...report, delta } : report, null, 2)
-    : format === 'md' ? toMarkdown(report, delta)
-    : toText(report, delta)
+    : format === 'md' ? toMarkdown(report, delta, pack)
+    : toText(report, delta, pack)
   emit(body, opts.out)
 
   const failOn = opts['fail-on'] || 'none'

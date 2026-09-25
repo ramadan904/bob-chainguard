@@ -2,13 +2,13 @@ import { execFileSync } from 'node:child_process'
 import { relative, resolve, posix, sep } from 'node:path'
 import { scanDir, scanEntries, isSourcePath } from './scan.js'
 import { buildPlan } from './plan.js'
-import { RULES_BY_ID } from './rules.js'
+import { DEFAULT_PACK } from './rules.js'
 
 const git = (cwd, args) => execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
 
 // One scan per commit that touched `dir`, oldest first, plus the working tree when it has
 // uncommitted changes there. Every snapshot is a real scan of real code.
-export function gitSnapshots(dir) {
+export function gitSnapshots(dir, rules = DEFAULT_PACK.rules) {
   const top = git(dir, ['rev-parse', '--show-toplevel']).trim()
   const sub = relative(top, resolve(dir)).split(sep).join('/')
   const log = git(top, ['log', '--reverse', '--format=%H%x1f%ct%x1f%s', '--', sub]).trim()
@@ -20,10 +20,10 @@ export function gitSnapshots(dir) {
       .map((p) => ({ path: p, rel: posix.relative(sub, p) }))
       .filter((e) => isSourcePath(e.rel))
       .map((e) => ({ rel: e.rel, text: git(top, ['show', `${commit}:${e.path}`]) }))
-    snapshots.push({ commit, time: Number(time) * 1000, subject, report: scanEntries(sub, entries) })
+    snapshots.push({ commit, time: Number(time) * 1000, subject, report: scanEntries(sub, entries, rules) })
   }
   if (git(top, ['status', '--porcelain', '--', sub]).trim() || snapshots.length === 0) {
-    snapshots.push({ commit: null, time: Date.now(), subject: 'Working tree (uncommitted)', report: scanDir(dir) })
+    snapshots.push({ commit: null, time: Date.now(), subject: 'Working tree (uncommitted)', report: scanDir(dir, rules) })
   }
   return { root: sub, snapshots }
 }
@@ -45,7 +45,7 @@ export function importDepths(imports) {
   return depth
 }
 
-export function buildAtlas({ root, snapshots }) {
+export function buildAtlas({ root, snapshots }, pack = DEFAULT_PACK) {
   // Union of files and import edges across history, so stations never jump around.
   const imports = {}
   for (const s of snapshots) {
@@ -59,15 +59,16 @@ export function buildAtlas({ root, snapshots }) {
 
   // The plan is fixed at the first snapshot that still had legacy code: it is the schedule Bob follows.
   const baseline = snapshots.find((s) => s.report.totals.findings > 0) || snapshots[0]
-  const plan = buildPlan(baseline.report, { scanPath: root })
+  const plan = buildPlan(baseline.report, { scanPath: root, pack })
   const usedRules = new Set(snapshots.flatMap((s) => s.report.findings.map((f) => f.ruleId)))
 
   return {
     tool: 'chainguard-atlas',
+    pack: { name: pack.name, from: pack.from, to: pack.to },
     generatedAt: new Date().toISOString(),
     root,
     rules: Object.fromEntries([...usedRules].sort().map((id) => {
-      const { title, replacement, lib, severity } = RULES_BY_ID[id]
+      const { title, replacement, lib, severity } = pack.byId[id]
       return [id, { title, replacement, lib, severity }]
     })),
     files,

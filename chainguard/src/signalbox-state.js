@@ -51,7 +51,7 @@ export function reduce(events) {
         break
     }
   }
-  const state = { base: init.base, scanDir: init.scanDir, testCmd: init.testCmd, allow: init.allow || [], protect: init.protect || [], waves: init.plan.waves, tasks, spads, startedAt: init.at }
+  const state = { base: init.base, scanDir: init.scanDir, testCmd: init.testCmd, allow: init.allow || [], protect: init.protect || [], pack: init.pack || null, waves: init.plan.waves, tasks, spads, startedAt: init.at }
   for (const t of Object.values(tasks)) t.state = taskState(state, t)
   return state
 }

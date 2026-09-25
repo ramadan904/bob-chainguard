@@ -10,7 +10,8 @@ import { join, extname, normalize, dirname } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { gitSnapshots, buildAtlas } from './atlas.js'
 import { scanDir } from './scan.js'
-import { readLedger, ledgerPath, modifiedFiles, checkpoint } from './signalbox.js'
+import { readLedger, ledgerPath, modifiedFiles, checkpoint, packOf } from './signalbox.js'
+import { loadPack } from './pack.js'
 import { reduce, ownerOf } from './signalbox-state.js'
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.woff2': 'font/woff2', '.woff': 'font/woff', '.svg': 'image/svg+xml', '.png': 'image/png' }
@@ -25,11 +26,18 @@ export async function serve(root, { port = 4700, dist = join(root, 'atlas', 'dis
     for (const res of clients) res.write(msg)
   }
 
-  const snapshot = () => ({ atlas: buildAtlas(gitSnapshots(join(root, scanRoot()))), ledger: readLedger(root), live: liveScan() })
+  const packNow = () => {
+    const state = reduce(readLedger(root))
+    return state ? packOf(root, state) : loadPack(null)
+  }
+  const snapshot = () => {
+    const pack = packNow()
+    return { atlas: buildAtlas(gitSnapshots(join(root, scanRoot()), pack.rules), pack), ledger: readLedger(root), live: liveScan() }
+  }
 
   function liveScan() {
     const dir = scanRoot()
-    const report = scanDir(join(root, dir))
+    const report = scanDir(join(root, dir), packNow().rules)
     const findings = {}
     for (const f of report.findings) (findings[f.file] ||= []).push([f.ruleId, f.line, f.snippet])
     const state = reduce(readLedger(root))

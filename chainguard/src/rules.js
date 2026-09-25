@@ -211,3 +211,38 @@ export const RULES = [
 ]
 
 export const RULES_BY_ID = Object.fromEntries(RULES.map((r) => [r.id, r]))
+
+// A rule pack describes one migration: what it moves from and to, the playbook Bob follows, and
+// the detection rules. The Web3 pack above is the default; any other migration is a JSON file:
+//   { "name", "from", "to", "playbook", "rules": [{ "id", "lib", "severity", "title",
+//     "pattern" (regex source), "flags"?, "replacement" }] }
+export const DEFAULT_PACK = withIndex({
+  name: 'web3-to-viem',
+  from: 'ethers v5 / web3.js',
+  to: 'viem + wagmi',
+  playbook: 'docs/MIGRATION_PLAYBOOK.md',
+  rules: RULES,
+})
+
+function withIndex(pack) {
+  return { ...pack, byId: Object.fromEntries(pack.rules.map((r) => [r.id, r])) }
+}
+
+export function compilePack(json, source = 'rule pack') {
+  for (const k of ['name', 'from', 'to', 'playbook']) if (typeof json[k] !== 'string' || !json[k]) throw new Error(`${source}: "${k}" is required`)
+  if (!Array.isArray(json.rules) || !json.rules.length) throw new Error(`${source}: "rules" must be a non-empty array`)
+  const seen = new Set()
+  const rules = json.rules.map((r, i) => {
+    for (const k of ['id', 'title', 'pattern', 'replacement']) if (typeof r[k] !== 'string' || !r[k]) throw new Error(`${source}: rules[${i}].${k} is required`)
+    if (seen.has(r.id)) throw new Error(`${source}: duplicate rule id ${r.id}`)
+    seen.add(r.id)
+    let pattern
+    try {
+      pattern = new RegExp(r.pattern, (r.flags || '').replace(/g/g, ''))
+    } catch (err) {
+      throw new Error(`${source}: rules[${i}] (${r.id}) has an invalid pattern: ${err.message}`)
+    }
+    return { id: r.id, lib: r.lib || json.name, severity: r.severity === 'warning' ? 'warning' : 'error', title: r.title, pattern, replacement: r.replacement }
+  })
+  return withIndex({ name: json.name, from: json.from, to: json.to, playbook: json.playbook, rules })
+}

@@ -7,7 +7,7 @@ import { resolve as resolvePath } from 'node:path'
 const USAGE = `signalbox - interlocking for parallel Bob subagents
 
 Usage:
-  signalbox init [--scan legacy-dapp/src] [--test "${DEFAULT_TEST}"] [--force]
+  signalbox init [--scan legacy-dapp/src] [--test "${DEFAULT_TEST}"] [--pack rules.json] [--force]
   signalbox claim <block> --agent <name> [--also a,b]    enter a block (refused while its signal is at danger)
   signalbox extend <block> <file...> --agent <name>      add files to your block
   signalbox release <block> --agent <name> [--no-commit] run scope, contract, scan and isolated tests; commit the block if clear
@@ -127,7 +127,7 @@ async function main() {
   const [block, ...files] = opts._
   switch (cmd) {
     case 'init': {
-      const e = init(root, { scanPath: opts.scan, testCmd: opts.test, force: opts.force })
+      const e = init(root, { scanPath: opts.scan, testCmd: opts.test, pack: opts.pack, force: opts.force })
       console.log(describe(e))
       printStatus(root)
       return 0

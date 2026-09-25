@@ -57,6 +57,25 @@ npm run -s sb -- status | log | prompt <block>
 - **Live panel.** `signalbox serve` streams ledger events and a rescan on every file change.
   Deployed statically, the UI replays the recorded ledger.
 
+- **Black-box recorder.** Every occupied block's in-flight files are saved (content-addressed) on
+  every signal box command and every file change. If an agent runs `git stash` or `checkout .`
+  anyway, `npm run -s sb -- recover <block>` puts the work back.
+
+### Rule packs: any migration, not just Web3
+
+The Web3 rules (ethers v5 / web3.js → viem + wagmi) are the built-in pack. Any other migration is
+a JSON rule pack plus a playbook for Bob:
+
+```bash
+node chainguard/bin/chainguard.js rules --pack chainguard/packs/moment-to-date-fns.json
+npm run -s sb -- init --scan src --pack chainguard/packs/moment-to-date-fns.json --test "npm test"
+```
+
+`chainguard/packs/moment-to-date-fns.json` has 13 rules, and its playbook
+([docs/playbooks/moment-to-date-fns.md](docs/playbooks/moment-to-date-fns.md)) includes the
+format-token trap (`YYYY` means something else in date-fns). The pack is recorded in the ledger, so
+the release checks, the live server and the panel all use the same rules.
+
 The step-by-step run with Bob, including the dispatcher prompt, is in
 [docs/BOB_RUNBOOK.md](docs/BOB_RUNBOOK.md).
 

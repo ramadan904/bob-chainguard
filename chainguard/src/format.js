@@ -1,6 +1,6 @@
-import { RULES_BY_ID } from './rules.js'
+import { DEFAULT_PACK } from './rules.js'
 
-export function toText(report, delta) {
+export function toText(report, delta, pack = DEFAULT_PACK) {
   const lines = [
     `chainguard: ${report.root}`,
     `  files scanned    ${report.filesScanned}`,
@@ -10,7 +10,7 @@ export function toText(report, delta) {
     '',
   ]
   for (const f of report.findings) {
-    lines.push(`${f.file}:${f.line}  ${f.severity.padEnd(7)} ${f.ruleId}  ${RULES_BY_ID[f.ruleId].title}`)
+    lines.push(`${f.file}:${f.line}  ${f.severity.padEnd(7)} ${f.ruleId}  ${pack.byId[f.ruleId]?.title || f.ruleId}`)
     lines.push(`    ${f.snippet}`)
   }
   if (delta) lines.push('', ...deltaLines(delta))
@@ -27,14 +27,14 @@ function deltaLines(d) {
   ]
 }
 
-export function toMarkdown(report, delta) {
+export function toMarkdown(report, delta, pack = DEFAULT_PACK) {
   const lines = [
     '# chainguard report',
     '',
     '| Metric | Value |',
     '| --- | --- |',
     `| Files scanned | ${report.filesScanned} |`,
-    `| Files with legacy Web3 APIs | ${report.filesAffected} |`,
+    `| Files with legacy APIs | ${report.filesAffected} |`,
     `| Legacy-free files | ${report.legacyFreePercent}% |`,
     `| Findings | ${report.totals.findings} (${report.totals.errors} errors, ${report.totals.warnings} warnings) |`,
     ...Object.entries(report.byLib).map(([lib, n]) => `| ${lib} call sites | ${n} |`),
@@ -49,7 +49,7 @@ export function toMarkdown(report, delta) {
   if (report.findings.length) {
     lines.push('## By rule', '', '| Rule | Title | Count | Replace with |', '| --- | --- | --- | --- |')
     for (const [id, n] of Object.entries(report.byRule).sort((a, b) => b[1] - a[1])) {
-      const r = RULES_BY_ID[id]
+      const r = pack.byId[id] || { title: id, replacement: '' }
       lines.push(`| ${id} | ${r.title} | ${n} | ${r.replacement} |`)
     }
     lines.push('', '## By file', '', '| File | Findings |', '| --- | --- |')
