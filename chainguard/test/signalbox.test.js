@@ -6,7 +6,8 @@ import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { reduce, canClaim, ownerOf, matchGlob, summary, metrics, timeline, verifyChain } from '../src/signalbox-state.js'
-import { init, claim, extend, release, rollback, loadState, readLedger, exportsOf, installHook, hookCheck, checkpoint, listCheckpoints, recover, checkContract, importersOf, audit, sha256, ledgerPath, SignalboxError } from '../src/signalbox.js'
+import { init, claim, extend, release, rollback, loadState, readLedger, exportsOf, installHook, hookCheck, checkpoint, listCheckpoints, recover, checkContract, importersOf, audit, sha256, ledgerPath, drill, drillEnd, SignalboxError } from '../src/signalbox.js'
+import { ask } from '../src/dispatch.js'
 
 const plan = {
   waves: 2,
@@ -306,6 +307,88 @@ test('e2e: ledger is hash-chained and audit catches tampering', async () => {
     const chain = await verifyChain(events.filter((_, k) => k !== 1), async (t) => sha256(t))
     assert.equal(chain.ok, false)
     assert.equal(chain.brokenAt, 1)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('e2e: chaos drills are real edits, caught, restored and chained', async () => {
+  const { root } = makeRepo()
+  try {
+    init(root, { scanPath: 'src', testCmd: 'node check.js', allow: [] })
+    const spad = drill(root, { kind: 'spad' })
+    assert.equal(spad.file, 'src/a.js', 'the most-imported free file')
+    assert.match(readFileSync(join(root, 'src/a.js'), 'utf8'), /chaos drill/)
+    assert.ok(spad.caught.scope)
+    assert.throws(() => drill(root, { kind: 'spad' }), /already running/)
+    assert.equal(drillEnd(root).restored, true)
+    assert.doesNotMatch(readFileSync(join(root, 'src/a.js'), 'utf8'), /chaos drill/)
+
+    const broke = drill(root, { kind: 'contract' })
+    assert.deepEqual(broke.renamed, { from: 'keep', to: 'keepRenamed' })
+    assert.deepEqual(broke.usedBy, ['src/c.js'])
+    assert.match(broke.caught.contract, /keep still used by src\/c\.js/)
+    writeFileSync(join(root, 'src/a.js'), 'changed by someone else\n')
+    assert.equal(drillEnd(root).restored, false, 'never clobbers an edit it did not make')
+    assert.throws(() => drillEnd(root), /no chaos drill/)
+    assert.equal((await audit(root)).ok, true)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('dispatcher desk: plain questions answered from the ledger', () => {
+  const { root } = makeRepo()
+  try {
+    init(root, { scanPath: 'src', testCmd: 'node check.js', allow: [] })
+    const files = [{ id: 'a.js', imports: [] }, { id: 'b.js', imports: [] }, { id: 'c.js', imports: ['a.js'] }]
+    let state = loadState(root)
+    const a = Object.values(state.tasks).find((t) => t.files.includes('src/a.js'))
+    const c = Object.values(state.tasks).find((t) => t.files.includes('src/c.js'))
+    const start = ask('Start all green wave-1 blocks', { state, files })
+    assert.equal(start.intent, 'dispatch')
+    assert.match(start.prompt, new RegExp(`bob-1: block ${a.id}`))
+    assert.match(ask(`why is ${c.id} at danger?`, { state, files }).text, /DANGER: wave 2 opens when/)
+    assert.equal(ask('Show the riskiest remaining block', { state, files }).focus, a.id)
+    assert.deepEqual(ask('blast radius of a.js', { state, files }).lines, ['1 hop · c.js'])
+    claim(root, a.id, 'bob-1')
+    state = loadState(root)
+    assert.match(ask('who is working?', { state, files }).text, /1 agent in section/)
+    assert.match(ask('start wave 2', { state, files }).text, /Nothing to start in wave 2/)
+    assert.equal(ask('bake a cake', { state, files }).intent, 'unknown')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('mcp: the signal box as tools over stdio JSON-RPC', async () => {
+  const { root } = makeRepo()
+  try {
+    init(root, { scanPath: 'src', testCmd: 'node check.js', allow: [] })
+    const state = loadState(root)
+    const a = Object.values(state.tasks).find((t) => t.files.includes('src/a.js'))
+    const c = Object.values(state.tasks).find((t) => t.files.includes('src/c.js'))
+    const bin = fileURLToPath(new URL('../bin/signalbox.js', import.meta.url))
+    const msgs = [
+      { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } } },
+      { jsonrpc: '2.0', method: 'notifications/initialized' },
+      { jsonrpc: '2.0', id: 2, method: 'tools/list' },
+      { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'signalbox_claim', arguments: { block: c.id, agent: 'bob-2' } } },
+      { jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'signalbox_claim', arguments: { block: a.id, agent: 'bob-1' } } },
+      { jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'signalbox_ask', arguments: { question: 'who is working?' } } },
+      { jsonrpc: '2.0', id: 6, method: 'nope' },
+    ]
+    const out = execFileSync(process.execPath, [bin, 'mcp'], { cwd: root, input: msgs.map((m) => JSON.stringify(m)).join('\n') + '\n', encoding: 'utf8' })
+    const replies = out.trim().split('\n').map((l) => JSON.parse(l))
+    assert.deepEqual(replies.map((r) => r.id), [1, 2, 3, 4, 5, 6], 'one reply per request, none for the notification, nothing else on stdout')
+    assert.equal(replies[0].result.serverInfo.name, 'signalbox')
+    assert.ok(replies[1].result.tools.some((t) => t.name === 'signalbox_release'))
+    assert.equal(replies[2].result.isError, true)
+    assert.match(replies[2].result.content[0].text, /DENIED .*signal at danger/)
+    assert.match(replies[3].result.content[0].text, /^GREEN /)
+    assert.match(replies[4].result.content[0].text, /1 agent in section/)
+    assert.equal(replies[5].error.code, -32601)
+    assert.deepEqual(readLedger(root).map((e) => e.t), ['init', 'deny', 'claim'])
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

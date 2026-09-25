@@ -16,6 +16,7 @@ tests and the live panel.
 | **Agent mode, multi-step orchestration** | A **dispatcher** Bob agent loops: reads `sb status`, starts subagents for every block whose signal is CLEAR, waits for the wave, handles faults, summarizes the log, and moves to the next wave. | `bob_sessions/[member]-dispatcher.png` |
 | **Subagents + parallel tasks** | One subagent per block, and the blocks of a wave run at the same time: [N] subagents, up to [N] in parallel, on disjoint files guaranteed by the signal box. | ledger: `claim` events with overlapping times |
 | **Agent mode, terminal + edits** | Each subagent runs the protocol itself: `claim` → edit → `release` (isolated tests) → fix and release again, or `rollback`. | `bob_sessions/[member]-[block].png`, commits tagged `Signalbox-Agent: bob-N` |
+| **Tool use (MCP)** | Bob's agents call the signal box as MCP tools (`signalbox_claim`, `signalbox_release`, `signalbox_ask`); a fault returns as a tool error naming every failing check. | `bob_sessions/[member]-mcp.png` |
 | **Self-correction** | [N] faults caught and fixed by Bob before commit, e.g. [block]: viem `parseUnits` rounded instead of throwing; the test failed, and Bob fixed the implementation, not the test. | `verify` events with `ok: false`, then `clear` |
 | **Code review** | Bob reviews `before-bob..HEAD` using the ledger to see which agent changed which block. | `bob_sessions/[member]-review.png` |
 
@@ -32,8 +33,8 @@ multi-step reasoning, not a script.
 
 ## Results
 
-- Legacy call sites: 72 → [0]. Blocks: [6/6] cleared in [3] waves.
-- Faults caught before commit: [N]. SPADs: [N]. Rollbacks: [N]. Tests: 22/22, unmodified.
+- Legacy call sites: 72 → [0]. Blocks: [6/6] cleared in 2 waves.
+- Faults caught before commit: [N]. Claims refused at signal: [N]. Chaos drills caught: [N]. Tests: 22/22, unmodified.
 - Wall clock: [X min]. Bobcoins: [N].
 
 ## watsonx

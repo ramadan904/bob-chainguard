@@ -5,18 +5,24 @@ Record the Bob IDE on the left and the live Signalbox panel (`npm run signalbox`
 
 | Time | On screen | Voice-over |
 | --- | --- | --- |
-| 0:00–0:20 | Signalbox panel, all signals at danger except wave 1; the map full of rust stations | "Everyone wants AI agents working in parallel. Nobody trusts them to: they overwrite each other, break each other's code and hand you one giant diff. Railways solved this over 150 years ago with interlocking. This is interlocking for IBM Bob." |
-| 0:20–0:35 | Bob dispatcher prompt running; it reads `sb status` and starts two subagents | "One Bob agent is the dispatcher. It reads the signal box and starts a subagent for every block with a green signal. Wave one: two subagents in parallel." |
-| 0:35–0:55 | Panel: two blocks turn amber, BOB-1 and BOB-2 tags, stations shrink live as Bob edits | "Each subagent claims its block. Nobody else can touch those files. As Bob edits, the map updates live." |
-| 0:55–1:15 | bob-2 releases → track circuit → red FAULT banner with the failing test; describer line in red | "Before a block is released, the signal box runs the tests on an isolated copy with only that block's changes. Here viem silently rounds a value that ethers rejected. Fault caught, nothing committed, and bob-1 kept working." |
-| 1:15–1:30 | Bob fixes the implementation; release → CLEARED, commit hash on the board | "Bob reads the failure and fixes the code, not the test. The block clears and is committed on its own, signed by its agent." |
-| 1:30–1:50 | Wave 1 cleared → wave 2 signals turn green automatically; a third agent held at signal earlier shows in the describer | "When a wave clears, the next signals turn green. An agent that tried to jump ahead was held at the signal." |
-| 1:50–2:20 | Time-lapse (4–8x) of waves 2 and 3; then the finished map: 0 legacy calls, 6/6 blocks | "Six blocks, three waves, [N] Bob subagents. [N] faults caught before they ever reached a commit." |
-| 2:20–2:40 | Deployed site opened with `?tour`: the guided replay captions each step, stops on the fault and opens Bob's diff | "Every event is in a hash-chained ledger. Anyone can replay the run, see exactly what each agent changed, and verify nothing was tampered with." |
+| 0:00–0:15 | Signalbox panel: wave 1 green, wave 2 at danger, the map full of rust stations, control tower waiting | "Everyone wants AI agents working in parallel. Nobody trusts them to: they overwrite each other and break each other's code. Railways solved this 150 years ago with interlocking. This is interlocking for IBM Bob." |
+| 0:15–0:30 | Dispatcher desk: type "Start all green wave-1 blocks" → the dispatch appears → paste it into Bob Agent mode | "I ask the signal box in plain words. It answers from the ledger and writes the dispatch. Bob's dispatcher agent starts one subagent per green block, all in parallel." |
+| 0:30–0:45 | Control tower: BOB-1, BOB-2, BOB-3 lanes light up; map stations get agent tags and shrink live as Bob edits | "Three Bob subagents, three blocks, at the same time. Each one claims its files. Nobody else can touch them." |
+| 0:45–0:55 | A fourth lane flashes amber, HELD AT SIGNAL; amber pulse on the wave-2 station | "This one tried to jump ahead into wave two. Interlocking refused it: the signal stays red until wave one clears." |
+| 0:55–1:15 | Click **⚡ Simulate chaos: SPAD** → screen flashes red, CHAOS DRILL banner, "caught in 8 ms", station blinks; 6 s later "restored from git" | "Now chaos. A stray edit hits a file no agent owns. Caught in eight milliseconds, every release is locked, and six seconds later it's restored from git. Nobody's work was touched." |
+| 1:15–1:35 | A subagent's release → red FAULT lane + banner with the failing test → Bob fixes the code → CLEARED, commit hash on the board | "Every release runs four checks on an isolated copy. Here viem silently rounds a value ethers rejected. Fault caught, nothing committed. Bob fixes the code, not the test, and the block commits on its own." |
+| 1:35–1:50 | Wave 1 cleared → wave-2 signals turn green; desk: "Show the riskiest remaining block" | "When a wave clears, the next signals turn green. The desk tells us the riskiest block left, and why." |
+| 1:50–2:20 | Time-lapse (4–8x) of wave 2; then the finished map: 0 legacy calls, 6/6 blocks | "Six blocks, two waves, [N] Bob subagents, up to [P] at once. [F] faults caught before they ever reached a commit." |
+| 2:20–2:40 | Deployed site with `?tour`: guided replay, the chaos drill and the fault replayed; click "Ledger verified" → rows turn green → **Tamper test** breaks the chain at one event; flip the rule pack to Moment → date-fns for 2 seconds | "Every event, including the chaos drill, is in a hash-chained ledger. Anyone can replay the run and verify it in their own browser: change one event and the chain breaks right there. And it isn't only Web3: the same interlocking plans a Moment to date-fns migration." |
 | 2:40–2:50 | Impact table | "Signalbox: parallel Bob subagents you can actually trust." |
+
+**The 90-second cut** (if judges only watch the core): 0:15–1:35 above. It shows Agent mode
+(dispatcher), subagents in parallel (control tower), interlocking (held at signal), safety (chaos
+drill) and self-correction (fault → fix → clear).
 
 Recording tips:
 - Short on time? Open `https://ramadan904.github.io/bob-chainguard/?tour` after `npm run finalize` and a
   merge. The tour narrates the real run by itself (about 45–90 seconds), which gives you a clean segment.
 - Speed up long Bob thinking segments, but show the real subagent names and timestamps.
+- Do the chaos drill **between two releases** so no agent's release lands in the 6-second window.
 - Never show `.env` or any key.

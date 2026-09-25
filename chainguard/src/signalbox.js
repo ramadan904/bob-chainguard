@@ -553,3 +553,79 @@ export async function audit(root) {
   }
   return { ok: findings.length === 0, events: events.length, clears: clears.length, chain, findings }
 }
+
+// ------------------------------------------------------------------ chaos drill
+// A fire drill for the interlocking, done for real: the signal box makes a genuine stray edit to a
+// file no agent holds (a SPAD) or renames an export other files still import (a contract break),
+// runs the same checks a release would, records what they caught, and later restores the file
+// from git. The drill is in the ledger as `drill` / `drill-end`, so a replay shows it too.
+
+function drillCandidates(root, state) {
+  const changed = new Set(modifiedFiles(root))
+  return git(root, ['ls-files', '--', state.scanDir]).split('\n').filter(Boolean)
+    .filter((f) => /\.(m?[jt]sx?)$/.test(f) && !changed.has(f) && ownerOf(state, f) === null)
+}
+
+export function drill(root, { kind = 'spad', by = 'operator' } = {}) {
+  if (!['spad', 'contract'].includes(kind)) throw new SignalboxError(`unknown drill ${kind} (use spad or contract)`)
+  return withLock(root, () => {
+    const state = loadState(root)
+    if (readLedger(root).some((e, k, all) => e.t === 'drill' && !all.slice(k + 1).some((x) => x.t === 'drill-end' && x.file === e.file))) {
+      throw new SignalboxError('a chaos drill is already running; end it first (signalbox drill-end)')
+    }
+    // Most-imported files first: the ripple on the map is the point of the drill.
+    const ranked = drillCandidates(root, state)
+      .map((f) => ({ f, users: importersOf(root, f, state.scanDir) }))
+      .sort((a, b) => b.users.length - a.users.length || a.f.localeCompare(b.f))
+    let target = null
+    let before = null
+    let after = null
+    let renamed = null
+    for (const { f, users } of ranked) {
+      before = readFileSync(join(root, f), 'utf8')
+      if (kind === 'spad') {
+        target = f
+        after = `${before.replace(/\n?$/, '\n')}// chaos drill: stray edit by ${by}, outside every claimed block\n`
+        break
+      }
+      const used = new Set(users.flatMap((u) => (u.names === '*' ? [] : [...u.names])))
+      for (const name of exportsOf(before)) {
+        if (!used.has(name) || name === 'default') continue
+        const re = new RegExp(`(export\\s+(?:async\\s+)?(?:function\\*?|const|let|var|class)\\s+)${name}\\b`)
+        if (!re.test(before)) continue
+        target = f
+        renamed = { from: name, to: `${name}Renamed` }
+        after = before.replace(re, `$1${renamed.to}`)
+        break
+      }
+      if (target) break
+    }
+    if (!target) throw new SignalboxError(`no file is free for a ${kind} drill: every candidate is held by an agent or already modified`)
+    const t0 = process.hrtime.bigint()
+    writeFileSync(join(root, target), after)
+    const scope = checkScope(root, state, null)
+    const contract = checkContract(root, [target], state.scanDir)
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6
+    return append(root, {
+      t: 'drill', kind, by, file: target, ...(renamed ? { renamed } : {}),
+      caught: { scope: !scope.outside.includes(target) ? null : 'SPAD: edit outside every claimed block', contract: contract.ok ? null : contract.removed.map((r) => `${r.name} still used by ${r.usedBy.join(', ')}`).join('; ') },
+      usedBy: [...new Set(contract.removed.flatMap((r) => r.usedBy))],
+      detectMs: Math.round(ms * 10) / 10,
+      digest: sha256(after),
+    })
+  })
+}
+
+// Ends the running drill: restores the file from git, unless someone changed it since the drill
+// wrote it (then it is left alone and the event says so).
+export function drillEnd(root, { by = 'operator' } = {}) {
+  return withLock(root, () => {
+    const events = readLedger(root)
+    const open = [...events].reverse().find((e, k, rev) => e.t === 'drill' && !rev.slice(0, k).some((x) => x.t === 'drill-end' && x.file === e.file))
+    if (!open) throw new SignalboxError('no chaos drill is running')
+    const path = join(root, open.file)
+    const untouched = existsSync(path) && sha256(readFileSync(path, 'utf8')) === open.digest
+    if (untouched) git(root, ['checkout', 'HEAD', '--', open.file])
+    return append(root, { t: 'drill-end', by, file: open.file, restored: untouched, heldMs: Date.now() - Date.parse(open.at) })
+  })
+}

@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-import { init, claim, extend, release, rollback, loadState, readLedger, repoRoot, writeReplay, installHook, hookCheck, doctor, checkpoint, listCheckpoints, recover, audit, SignalboxError, DEFAULT_TEST } from '../src/signalbox.js'
+import { init, claim, extend, release, rollback, loadState, readLedger, repoRoot, writeReplay, installHook, hookCheck, doctor, checkpoint, listCheckpoints, recover, audit, drill, drillEnd, packOf, SignalboxError, DEFAULT_TEST } from '../src/signalbox.js'
+import { ask } from '../src/dispatch.js'
+import { scanDir } from '../src/scan.js'
 import { summary, describe, metrics, timeline } from '../src/signalbox-state.js'
 import { writeFileSync } from 'node:fs'
-import { resolve as resolvePath } from 'node:path'
+import { resolve as resolvePath, join } from 'node:path'
 
 const USAGE = `signalbox - interlocking for parallel Bob subagents
 
@@ -19,9 +21,16 @@ Usage:
   signalbox audit                                        verify the ledger hash chain and every cleared commit
   signalbox checkpoints <block>                          black-box copies of a block's in-flight work
   signalbox recover <block> --agent <name> [--from <stamp>]  restore the latest (or a named) checkpoint
+  signalbox ask "<question>" [--json]                    plain-language dispatcher desk ("start all green wave-1 blocks",
+                                                         "riskiest remaining block", "why is w2-lib at danger?")
+  signalbox why <block>                                  why a block's signal shows what it shows
+  signalbox drill [spad|contract] [--hold 6]             chaos drill: a real stray edit or contract break, caught
+                                                         by the checks, then restored from git after --hold seconds
+  signalbox drill-end                                    end a running drill and restore its file
   signalbox prompt <block>                               the subagent prompt for a block
   signalbox status                                       the signal box panel, as text
   signalbox log                                          the train describer (every event)
+  signalbox mcp [--root <repo>]                          MCP server on stdio: the signal box as tools for Bob
   signalbox serve [--port 4700] [--dist atlas/dist]       live signal box panel in the browser
   signalbox export [--out atlas/src/data/ledger.json]     ledger for the static replay build
 
@@ -38,6 +47,13 @@ function parseArgs(argv) {
     else opts._.push(a)
   }
   return { cmd, opts }
+}
+
+function askBox(root, question) {
+  const state = loadState(root)
+  const report = scanDir(join(root, state.scanDir), packOf(root, state).rules)
+  const files = Object.entries(report.imports).map(([id, imports]) => ({ id, imports }))
+  return ask(question, { state, files })
 }
 
 const LAMP = { danger: '● DANGER  ', clear: '● CLEAR   ', occupied: '● OCCUPIED', fault: '● FAULT   ', cleared: '✓ CLEARED ' }
@@ -124,7 +140,7 @@ function reportMarkdown(events) {
 
 async function main() {
   const { cmd, opts } = parseArgs(process.argv.slice(2))
-  const root = repoRoot()
+  const root = cmd === 'mcp' && opts.root ? null : repoRoot()
   const [block, ...files] = opts._
   switch (cmd) {
     case 'init': {
@@ -240,6 +256,40 @@ async function main() {
       console.log(t.prompt.replaceAll('<your-agent-name>', opts.agent || '<your-agent-name>'))
       return 0
     }
+    case 'ask':
+    case 'why':
+    case 'risk': {
+      checkpoint(root)
+      const q = cmd === 'ask' ? opts._.join(' ') : cmd === 'why' ? `why ${block || ''}` : 'riskiest remaining block'
+      const a = askBox(root, q)
+      if (opts.json) console.log(JSON.stringify(a, null, 2))
+      else {
+        console.log(a.text)
+        for (const l of a.lines || []) console.log(`  ${l}`)
+        if (a.prompt) console.log(`\n${a.prompt}`)
+      }
+      return a.intent === 'unknown' ? 1 : 0
+    }
+    case 'drill': {
+      const e = drill(root, { kind: block || 'spad', by: opts.agent || 'operator' })
+      console.log(describe(e))
+      if (e.caught.scope) console.log(`  scope     CAUGHT  ${e.caught.scope}`)
+      if (e.caught.contract) console.log(`  contract  CAUGHT  ${e.caught.contract}`)
+      console.log('  every release is refused while this edit is on the tracks')
+      const hold = opts.hold === undefined ? null : Number(opts.hold)
+      if (hold == null) {
+        console.log('end it with: npm run -s sb -- drill-end')
+        return 0
+      }
+      await new Promise((r) => setTimeout(r, hold * 1000))
+      const end = drillEnd(root, { by: opts.agent || 'operator' })
+      console.log(describe(end))
+      return 0
+    }
+    case 'drill-end': {
+      console.log(describe(drillEnd(root, { by: opts.agent || 'operator' })))
+      return 0
+    }
     case 'log':
       for (const e of readLedger(root)) console.log(`${e.at.slice(11, 19)}  ${describe(e)}`)
       return 0
@@ -247,6 +297,11 @@ async function main() {
       const out = resolvePath(opts.out || `${root}/atlas/src/data/ledger.json`)
       writeReplay(root, out)
       console.log(`wrote ${readLedger(root).length} events to ${out}`)
+      return 0
+    }
+    case 'mcp': {
+      const { serveMcp } = await import('../src/signalbox-mcp.js')
+      await serveMcp(opts.root ? repoRoot(resolvePath(opts.root)) : root)
       return 0
     }
     case 'serve': {

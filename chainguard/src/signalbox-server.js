@@ -2,6 +2,8 @@
 //   GET /api/snapshot   git history (Atlas data) + full ledger
 //   GET /api/stream     server-sent events: `ledger` (new events), `live` (fresh scan + who owns
 //                       each modified file), `head` (a block was committed; refetch the snapshot)
+//   POST /api/drill     chaos drill ({ kind: 'spad' | 'contract' }): a real stray edit or contract
+//                       break, caught by the checks, restored from git after `drillHoldMs`
 // Zero dependencies: node:http, fs.watch and the same scanner/reducer as the CLI.
 
 import { createServer } from 'node:http'
@@ -10,13 +12,13 @@ import { join, extname, normalize, dirname } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { gitSnapshots, buildAtlas } from './atlas.js'
 import { scanDir } from './scan.js'
-import { readLedger, ledgerPath, modifiedFiles, checkpoint, packOf } from './signalbox.js'
+import { readLedger, ledgerPath, modifiedFiles, checkpoint, packOf, drill, drillEnd } from './signalbox.js'
 import { loadPack } from './pack.js'
 import { reduce, ownerOf } from './signalbox-state.js'
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.woff2': 'font/woff2', '.woff': 'font/woff', '.svg': 'image/svg+xml', '.png': 'image/png' }
 
-export async function serve(root, { port = 4700, dist = join(root, 'atlas', 'dist'), scanPath } = {}) {
+export async function serve(root, { port = 4700, dist = join(root, 'atlas', 'dist'), scanPath, drillHoldMs = 6000 } = {}) {
   const ledger = ledgerPath(root)
   mkdirSync(dirname(ledger), { recursive: true })
   const scanRoot = () => scanPath || reduce(readLedger(root))?.scanDir || 'legacy-dapp/src'
@@ -93,6 +95,24 @@ export async function serve(root, { port = 4700, dist = join(root, 'atlas', 'dis
       } catch (err) {
         res.writeHead(500, { 'content-type': 'text/plain' })
         res.end(err.message)
+      }
+      return
+    }
+    if (url.pathname === '/api/drill' && req.method === 'POST') {
+      const kind = url.searchParams.get('kind') || 'spad'
+      const reply = (code, body) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)) }
+      try {
+        const e = drill(root, { kind, by: 'operator (panel)' })
+        pumpLedger()
+        scheduleScan()
+        setTimeout(() => {
+          try { drillEnd(root, { by: 'signal box' }) } catch (err) { console.error('drill-end failed:', err.message) }
+          pumpLedger()
+          scheduleScan()
+        }, drillHoldMs)
+        reply(200, e)
+      } catch (err) {
+        reply(409, { error: err.message })
       }
       return
     }

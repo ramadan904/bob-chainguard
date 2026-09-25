@@ -23,6 +23,7 @@
         <div>
           <h1>Chainguard Signalbox <span class="mode" id="mode" data-mode="baseline">Baseline</span></h1>
           <p class="route" id="route"></p>
+          <div class="packs" id="packs" role="group" aria-label="Rule pack"></div>
           <span class="ledger" id="ledger" role="status"></span>
         </div>
       </div>
@@ -39,8 +40,21 @@
     <nav class="timeline" id="timeline" aria-label="Signal box history"></nav>
     <div class="alert-strip" id="alert" role="status" aria-live="polite"></div>
 
+    <section class="tower" id="tower" aria-labelledby="tower-title">
+      <div class="tower-head">
+        <h2 id="tower-title"><span class="tower-dot" aria-hidden="true"></span>Control tower</h2>
+        <p id="tower-sub"></p>
+        <div class="tower-actions" id="tower-actions"></div>
+      </div>
+      <ol class="lanes" id="lanes" aria-live="polite"></ol>
+      <div class="ask" id="ask"></div>
+    </section>
+
     <main class="layout">
-      <section class="map-card" aria-label="Transit map of the codebase">
+      <section class="map-card" id="map-card" aria-label="Transit map of the codebase">
+        <div class="map-tools">
+          <button class="heat-btn" id="heat" aria-pressed="false" title="Colour every block by risk: legacy call sites plus the files outside it that depend on it">Risk heatmap</button>
+        </div>
         <div class="map-scroll"><svg id="map" role="group" aria-label="Files as stations, folders as lines, imports as tunnels"></svg></div>
         <ul class="legend" aria-label="Legend">
           <li><svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="10" class="lg-legacy" /></svg>Legacy call sites (size = count)</li>
@@ -78,6 +92,7 @@
 
     <div class="caption" id="caption" role="status" aria-live="polite"></div>
     <dialog class="diff" id="diff" aria-label="Bob's change"></dialog>
+    <dialog class="diff verify" id="verify" aria-label="Verify the ledger"></dialog>
 
     <footer class="foot">
       <p>Everything here comes from the signal box ledger and real <code>chainguard</code> scans of real commits. The agents are IBM Bob subagents. Keys: ← → step through events, Esc returns to the overview. · <a href="./deck.html">Pitch deck</a></p>

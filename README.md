@@ -9,7 +9,7 @@ Built for the IBM Bob 2.0 Hackathon (Sep 25–27, 2026).
 ```
  chainguard scan+plan ──► signal box ──► Bob dispatcher ──► Bob subagents (parallel, one per block)
  72 legacy call sites     6 blocks,      reads status,      claim ─► edit ─► release
- import graph             3 waves        starts subagents            │
+ import graph             2 waves        starts subagents            │
                                                                      ▼
             live panel ◄── ledger ◄── clear + commit block  ◄── track circuit: scope · contract ·
             (transit map,                 or FAULT / rollback      legacy scan · isolated tests
@@ -28,6 +28,9 @@ npm run -s sb -- next [--json]                          # what a dispatcher may 
 npm run -s sb -- report --out reports/signalbox-report.md   # impact numbers from the ledger
 npm run -s sb -- install-hook                           # pre-commit guard: block files only via release
 npm run -s sb -- status | log | prompt <block>
+npm run -s sb -- ask "why is w2-lib at danger?"          # dispatcher desk: start / why / risk / blast / who
+npm run -s sb -- drill spad --hold 6                    # chaos drill: real stray edit, caught, restored
+node chainguard/bin/signalbox.js mcp                    # MCP server: the signal box as Bob tools (docs/BOB_MCP.md)
 ```
 
 - **Blocks and waves.** chainguard's import graph splits the change into blocks of disjoint files.
@@ -56,6 +59,25 @@ npm run -s sb -- status | log | prompt <block>
   bars are Bob subagents working in parallel, and every track circuit run is marked.
 - **Live panel.** `signalbox serve` streams ledger events and a rescan on every file change.
   Deployed statically, the UI replays the recorded ledger.
+- **Control tower.** One lane per Bob subagent: the block it holds, its last move, faults, and an
+  amber "Held at signal" lane (with a pulse on the map) when interlocking refuses a claim.
+- **Chaos drill.** `⚡ Simulate chaos` (or `sb drill spad|contract`) makes a real stray edit to the
+  most-imported free file, or renames an export others still import. The checks catch it, every
+  release is refused, and the file is restored from git after 6 s unless someone else changed it.
+  Drills are ledger events, so the replay shows them.
+- **Risk heatmap.** One toggle colours every unfinished block by risk (legacy call sites + files
+  outside it that depend on it): red, amber, green.
+- **Verify it yourself.** Click the "Ledger verified" badge: the browser re-hashes every event with
+  SHA-256, then a tamper test edits one event in memory and shows the chain break at that event.
+- **Rule-pack switcher.** The panel switches between the Web3 plan and the Moment.js → date-fns
+  plan of `samples/moment-billing`, a small sample app scanned with the second pack.
+- **MCP tools for Bob.** `signalbox mcp` serves claim, release, rollback, next, ask and more as
+  Model Context Protocol tools over stdio (zero dependencies), so Bob's agents use the signal box
+  natively. Faults come back as tool errors naming every failing check.
+- **Dispatcher desk.** Plain-language questions ("start all green wave-1 blocks", "riskiest
+  remaining block", "why is w2-lib at danger?") answered from the ledger by keyword intents, not a
+  language model. The panel's command bar and `sb ask` share one module, so Bob Agent mode can use
+  it as a tool. "Start" answers with the exact dispatch for Bob to run.
 
 - **Tamper-evident ledger.** Every event is SHA-256 chained to the previous one. `npm run -s sb -- audit`
   verifies the chain and checks that every cleared block's commit exists on the branch, is signed by
@@ -171,7 +193,7 @@ It works on any JS/TS/JSX/TSX/Vue/Svelte frontend, not just this sample.
 | Files scanned | 18 |
 | Files on legacy Web3 APIs | 10 |
 | Legacy call sites | 72 (57 ethers v5, 15 web3.js) |
-| Bob task plan | 6 tasks in 3 waves |
+| Bob task plan | 6 tasks in 2 waves |
 | Behavior tests | 22 / 22 passing |
 
 Full breakdown: [reports/baseline.md](reports/baseline.md). Results after the Bob run go in

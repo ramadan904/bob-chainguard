@@ -118,10 +118,16 @@ export function describe(e) {
     case 'claim': return `${e.agent} entered ${e.task}`
     case 'deny': return `${e.agent} held at signal for ${e.task}: ${e.reason}`
     case 'extend': return `${e.agent} extended ${e.task} with ${e.files.join(', ')}`
-    case 'verify': return `${e.task} track circuit ${e.ok ? 'clear' : 'FAULT'}${e.checks.tests.summary ? ` (${e.checks.tests.summary})` : ''}`
+    case 'verify': {
+      if (e.ok) return `${e.task} track circuit clear${e.checks.tests.summary ? ` (${e.checks.tests.summary})` : ''}`
+      const failed = Object.entries(e.checks || {}).filter(([, c]) => !c.ok).map(([k]) => ({ scope: 'scope/SPAD', contract: 'contract', scan: 'legacy scan', tests: 'tests' })[k] || k)
+      return `${e.task} track circuit FAULT: ${failed.join(', ')}${!e.checks.tests.ok && e.checks.tests.summary ? ` (${e.checks.tests.summary})` : ''}`
+    }
     case 'clear': return `${e.task} cleared by ${e.agent} -> ${e.commit.slice(0, 7)}`
     case 'rollback': return `${e.agent || 'operator'} rolled back ${e.task} (${e.files.length} files restored)`
     case 'recover': return `${e.agent} recovered ${e.task} from checkpoint (${e.files.length} files)`
+    case 'drill': return `CHAOS DRILL (${e.by}): ${e.kind === 'contract' ? `renamed ${e.renamed.from} in` : 'stray edit to'} ${e.file}, caught in ${e.detectMs} ms`
+    case 'drill-end': return `chaos drill over: ${e.file} ${e.restored ? 'restored from git' : 'left as is (changed since)'}`
     default: return JSON.stringify(e)
   }
 }
@@ -181,6 +187,8 @@ export function metrics(events) {
     faultsByCheck: byCheck,
     spads: state.spads.length,
     rollbacks: events.filter((e) => e.t === 'rollback').length,
+    drills: events.filter((e) => e.t === 'drill').length,
+    drillsCaught: events.filter((e) => e.t === 'drill' && (e.caught?.scope || e.caught?.contract)).length,
     wallClockMs: (lastClear ?? tl.t1) - tl.t0,
     agentBusyMs: busy,
     firstTimeRight: cleared.filter((t) => t.attempts === 1).length,
