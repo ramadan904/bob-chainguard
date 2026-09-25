@@ -113,3 +113,18 @@ receipt status handling). List findings with file:line.
       deploy `atlas/` (docs/submission/CHECKLIST.md). The deployed site replays the real run.
 - [ ] Fill the numbers in `docs/submission/*.md` from the ledger: blocks, agents, faults caught,
       SPADs, rollbacks, wall-clock time.
+
+## Retakes (recording often takes a few attempts)
+
+The ledger and the code must go back together, or the replay will show events that don't match
+the commits. From the repo root, with nothing you want to keep uncommitted:
+
+```bash
+git branch practice-$(date +%H%M)                 # keep the attempt, just in case
+git reset --hard <commit before 'signalbox: clear ...' commits>   # usually the "Add viem and wagmi" commit
+npm run -s sb -- init --force                     # archives the old ledger as .signalbox/ledger.<time>.jsonl
+rm -rf .signalbox/checkpoints
+npm run -s sb -- doctor
+```
+
+Only the final take's ledger gets exported (`npm run atlas`) and committed.
