@@ -13,7 +13,8 @@
     "dev": "npm run dev --prefix legacy-dapp",
     "build": "npm run build --prefix legacy-dapp && npm run build --prefix atlas",
     "atlas": "npm run data --prefix atlas && npm run build --prefix atlas",
-    "atlas:dev": "npm run data --prefix atlas && npm run dev --prefix atlas"
+    "atlas:dev": "npm run data --prefix atlas && npm run dev --prefix atlas",
+    "sb": "node chainguard/bin/signalbox.js"
   },
   "license": "MIT"
 }
