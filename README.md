@@ -24,6 +24,9 @@ npm run signalbox                                       # live panel at http://l
 npm run -s sb -- claim w1-lib-1 --agent bob-1           # refused while the signal is at danger
 npm run -s sb -- release w1-lib-1 --agent bob-1         # scope, contract, scan, isolated tests -> commit
 npm run -s sb -- rollback w1-lib-1 --agent bob-1        # restore only this block
+npm run -s sb -- next [--json]                          # what a dispatcher may start now
+npm run -s sb -- report --out reports/signalbox-report.md   # impact numbers from the ledger
+npm run -s sb -- install-hook                           # pre-commit guard: block files only via release
 npm run -s sb -- status | log | prompt <block>
 ```
 
@@ -41,6 +44,11 @@ npm run -s sb -- status | log | prompt <block>
   faulty one stays uncommitted until it's fixed or rolled back.
 - **Ledger.** `.signalbox/ledger.jsonl` is append-only and is the single source of truth. The CLI,
   the live server and the UI derive state from it with the same pure reducer.
+- **No bypass.** The pre-commit hook refuses direct commits of files in an uncleared block. An
+  operator can free a stuck agent's block with `rollback --operator`, and the event records who
+  overrode whom.
+- **Train graph.** A railway-style time chart of which agent occupied which block when. Overlapping
+  bars are Bob subagents working in parallel, and every track circuit run is marked.
 - **Live panel.** `signalbox serve` streams ledger events and a rescan on every file change.
   Deployed statically, the UI replays the recorded ledger.
 

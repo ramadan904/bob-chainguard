@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { init, claim, extend, release, rollback, loadState, readLedger, repoRoot, writeReplay, SignalboxError, DEFAULT_TEST } from '../src/signalbox.js'
-import { summary, describe } from '../src/signalbox-state.js'
+import { init, claim, extend, release, rollback, loadState, readLedger, repoRoot, writeReplay, installHook, hookCheck, SignalboxError, DEFAULT_TEST } from '../src/signalbox.js'
+import { summary, describe, metrics, timeline } from '../src/signalbox-state.js'
+import { writeFileSync } from 'node:fs'
 import { resolve as resolvePath } from 'node:path'
 
 const USAGE = `signalbox - interlocking for parallel Bob subagents
@@ -10,7 +11,10 @@ Usage:
   signalbox claim <block> --agent <name> [--also a,b]    enter a block (refused while its signal is at danger)
   signalbox extend <block> <file...> --agent <name>      add files to your block
   signalbox release <block> --agent <name> [--no-commit] run scope, contract, scan and isolated tests; commit the block if clear
-  signalbox rollback <block> --agent <name>              restore the block's files and free it
+  signalbox rollback <block> --agent <name> [--operator] restore the block's files and free it
+  signalbox next [--json]                                blocks a dispatcher may start now, with prompts
+  signalbox report [--out file]                          impact report from the ledger (Markdown)
+  signalbox install-hook                                 pre-commit guard: block files only via release
   signalbox prompt <block>                               the subagent prompt for a block
   signalbox status                                       the signal box panel, as text
   signalbox log                                          the train describer (every event)
@@ -25,7 +29,7 @@ function parseArgs(argv) {
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i]
     if (a.startsWith('--no-')) opts[a.slice(5)] = false
-    else if (a === '--force') opts.force = true
+    else if (a === '--force' || a === '--operator' || a === '--json') opts[a.slice(2)] = true
     else if (a.startsWith('--')) opts[a.slice(2)] = rest[++i]
     else opts._.push(a)
   }
@@ -59,6 +63,57 @@ function faultLines(v) {
     if (!c.tests.failures?.length) for (const l of (c.tests.tail || []).slice(-10)) out.push(`  | ${l}`)
   }
   return out
+}
+
+const dur = (ms) => (ms >= 3600e3 ? `${Math.floor(ms / 3600e3)} h ${Math.round((ms % 3600e3) / 60e3)} min` : ms >= 60e3 ? `${Math.floor(ms / 60e3)} min ${Math.round((ms % 60e3) / 1e3)} s` : `${Math.round(ms / 1e3)} s`)
+
+function reportMarkdown(events) {
+  const m = metrics(events)
+  if (!m) throw new SignalboxError('No signalbox here yet. Run: signalbox init')
+  const tl = timeline(events)
+  const state = loadState(repoRoot())
+  const lines = [
+    '# Signalbox report',
+    '',
+    'Generated from `.signalbox/ledger.jsonl`. Every number below is computed from recorded events.',
+    '',
+    '| Metric | Value |',
+    '| --- | --- |',
+    `| Blocks cleared | ${m.cleared} / ${m.blocks} in ${m.waves} waves |`,
+    `| Bob subagents | ${m.agents.length} (${m.agents.join(', ') || 'none'}) |`,
+    `| Peak blocks occupied at once | ${m.peakParallel} |`,
+    `| Claims / refused at signal | ${m.claims} / ${m.denied} |`,
+    `| Track circuit runs / faults caught before commit | ${m.verifies} / ${m.faults} |`,
+    `| Faults by check | scope ${m.faultsByCheck.scope} · contract ${m.faultsByCheck.contract} · legacy scan ${m.faultsByCheck.scan} · tests ${m.faultsByCheck.tests} |`,
+    `| SPADs (edits outside any block) | ${m.spads} |`,
+    `| Rollbacks | ${m.rollbacks} |`,
+    `| Blocks cleared on the first release | ${m.firstTimeRight} / ${m.cleared} |`,
+    `| Wall clock, box opened to last clear | ${dur(m.wallClockMs)} |`,
+    `| Agent time in blocks (sum) | ${dur(m.agentBusyMs)} |`,
+    '',
+    '## Blocks',
+    '',
+    '| Wave | Block | Agent(s) | Releases | Outcome | Commit |',
+    '| --- | --- | --- | --- | --- | --- |',
+    ...Object.values(state.tasks).sort((a, b) => a.wave - b.wave || a.id.localeCompare(b.id)).map((t) => {
+      const runs = tl.runs.filter((r) => r.task === t.id)
+      return `| ${t.wave} | ${t.id} | ${[...new Set(runs.map((r) => r.agent))].join(', ') || '—'} | ${t.attempts} | ${t.state} | ${t.commit ? `\`${t.commit.slice(0, 7)}\`` : '—'} |`
+    }),
+    '',
+    '## Faults caught',
+    '',
+    ...(events.filter((e) => e.t === 'verify' && !e.ok).map((e) => {
+      const c = e.checks
+      const why = []
+      if (!c.scope.ok) why.push(`SPAD ${c.scope.outside.join(', ')}`)
+      if (!c.contract.ok) why.push(`removed exports ${c.contract.removed.map((r) => `${r.file.split('/').pop()}#${r.name}`).join(', ')}`)
+      if (!c.scan.ok) why.push(`${c.scan.remaining} legacy call sites left`)
+      if (!c.tests.ok) why.push(`tests: ${(c.tests.failures || [])[0] || c.tests.summary}`)
+      return `- ${e.at.slice(11, 19)} **${e.task}** (${e.agent}): ${why.join('; ')}`
+    })),
+    '',
+  ]
+  return lines.join('\n')
 }
 
 async function main() {
@@ -99,13 +154,52 @@ async function main() {
       return 0
     }
     case 'rollback': {
-      const e = rollback(root, block, opts.agent)
+      const e = rollback(root, block, opts.agent, { operator: opts.operator !== undefined })
       console.log(`ROLLED BACK ${block}: restored ${e.files.join(', ') || 'nothing'}`)
       return 0
     }
     case 'status':
       printStatus(root)
       return 0
+    case 'next': {
+      const state = loadState(root)
+      const list = Object.values(state.tasks)
+      const out = {
+        done: list.every((t) => t.commit),
+        ready: list.filter((t) => t.state === 'clear').map((t) => ({ block: t.id, wave: t.wave, files: [...t.files, ...t.extra], prompt: t.prompt })),
+        occupied: list.filter((t) => t.state === 'occupied').map((t) => ({ block: t.id, agent: t.agent })),
+        fault: list.filter((t) => t.state === 'fault').map((t) => ({ block: t.id, agent: t.agent, attempts: t.attempts })),
+        waiting: list.filter((t) => t.state === 'danger').map((t) => t.id),
+      }
+      if (opts.json) console.log(JSON.stringify(out, null, 2))
+      else {
+        if (out.done) console.log('ALL BLOCKS CLEARED')
+        for (const r of out.ready) console.log(`READY     ${r.block} (wave ${r.wave}): npm run -s sb -- prompt ${r.block} --agent <name>`)
+        for (const r of out.occupied) console.log(`OCCUPIED  ${r.block} by ${r.agent}`)
+        for (const r of out.fault) console.log(`FAULT     ${r.block} by ${r.agent} after ${r.attempts} release attempt(s)`)
+        if (out.waiting.length) console.log(`WAITING   ${out.waiting.join(', ')}`)
+      }
+      return 0
+    }
+    case 'report': {
+      const md = reportMarkdown(readLedger(root))
+      if (opts.out) {
+        writeFileSync(resolvePath(opts.out), md)
+        console.log(`wrote ${opts.out}`)
+      } else console.log(md)
+      return 0
+    }
+    case 'install-hook':
+      console.log(`installed ${installHook(root)}`)
+      return 0
+    case 'hook-check': {
+      const blocked = hookCheck(root)
+      if (!blocked.length) return 0
+      console.error('signalbox: these files belong to a block that has not cleared:')
+      for (const f of blocked) console.error(`  ${f}`)
+      console.error('Commit them with `npm run -s sb -- release <block> --agent <name>` so the track circuit runs first.')
+      return 1
+    }
     case 'prompt': {
       const t = loadState(root).tasks[block]
       if (!t) throw new SignalboxError(`unknown block ${block}`)

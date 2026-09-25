@@ -118,3 +118,64 @@ export function describe(e) {
     default: return JSON.stringify(e)
   }
 }
+
+// Occupancy intervals and outcomes per block, from the ledger alone. Feeds `signalbox report`
+// and the train graph. Times are epoch milliseconds.
+export function timeline(events) {
+  const init = events.find((e) => e.t === 'init')
+  if (!init) return null
+  const t0 = Date.parse(init.at)
+  const open = {}
+  const runs = [] // { task, agent, start, end, outcome: 'cleared'|'rolled-back'|'open', verifies: [{at, ok, failed:[check]}] }
+  for (const e of events) {
+    const at = Date.parse(e.at)
+    if (e.t === 'claim') open[e.task] = { task: e.task, agent: e.agent, start: at, end: null, outcome: 'open', verifies: [] }
+    const run = open[e.task]
+    if (!run) continue
+    if (e.t === 'verify') run.verifies.push({ at, ok: e.ok, failed: Object.entries(e.checks || {}).filter(([, c]) => !c.ok).map(([k]) => k) })
+    if (e.t === 'clear' || e.t === 'rollback') {
+      run.end = at
+      run.outcome = e.t === 'clear' ? 'cleared' : 'rolled-back'
+      runs.push(run)
+      delete open[e.task]
+    }
+  }
+  runs.push(...Object.values(open))
+  const last = events.length ? Date.parse(events[events.length - 1].at) : t0
+  return { t0, t1: Math.max(last, t0 + 1), runs, tasks: init.plan.tasks.map((t) => ({ id: t.id, wave: t.wave })) }
+}
+
+export function metrics(events) {
+  const tl = timeline(events)
+  if (!tl) return null
+  const state = reduce(events)
+  const verifies = events.filter((e) => e.t === 'verify')
+  const faults = verifies.filter((e) => !e.ok)
+  const byCheck = { scope: 0, contract: 0, scan: 0, tests: 0 }
+  for (const f of faults) for (const [k, c] of Object.entries(f.checks || {})) if (!c.ok && k in byCheck) byCheck[k]++
+  // Peak number of blocks occupied at the same time.
+  const edges = tl.runs.flatMap((r) => [[r.start, 1], [r.end ?? tl.t1, -1]]).sort((a, b) => a[0] - b[0] || a[1] - b[1])
+  let cur = 0
+  let peak = 0
+  for (const [, d] of edges) peak = Math.max(peak, (cur += d))
+  const cleared = Object.values(state.tasks).filter((t) => t.commit)
+  const lastClear = events.filter((e) => e.t === 'clear').map((e) => Date.parse(e.at)).sort((a, b) => b - a)[0]
+  const busy = tl.runs.reduce((ms, r) => ms + ((r.end ?? tl.t1) - r.start), 0)
+  return {
+    blocks: Object.keys(state.tasks).length,
+    cleared: cleared.length,
+    waves: state.waves,
+    agents: [...new Set(tl.runs.map((r) => r.agent))],
+    peakParallel: peak,
+    claims: events.filter((e) => e.t === 'claim').length,
+    denied: events.filter((e) => e.t === 'deny').length,
+    verifies: verifies.length,
+    faults: faults.length,
+    faultsByCheck: byCheck,
+    spads: state.spads.length,
+    rollbacks: events.filter((e) => e.t === 'rollback').length,
+    wallClockMs: (lastClear ?? tl.t1) - tl.t0,
+    agentBusyMs: busy,
+    firstTimeRight: cleared.filter((t) => t.attempts === 1).length,
+  }
+}

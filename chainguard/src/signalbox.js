@@ -287,7 +287,7 @@ export function release(root, taskId, agent, { commit = true, runTests = true } 
     const staged = git(root, ['diff', '--cached', '--name-only', '--', ...paths]).trim()
     let sha = git(root, ['rev-parse', 'HEAD']).trim()
     if (staged) {
-      git(root, ['commit', '--quiet', '-m', `signalbox: clear ${taskId}`, '-m', `Block cleared by ${agent}: scope, contract, scan (${checks.scan.remaining} left) and tests (${checks.tests.summary || 'skipped'}) passed.\n\nSignalbox-Agent: ${agent}\nSignalbox-Block: ${taskId}`, '--', ...paths])
+      git(root, ['commit', '--quiet', '-m', `signalbox: clear ${taskId}`, '-m', `Block cleared by ${agent}: scope, contract, scan (${checks.scan.remaining} left) and tests (${checks.tests.summary || 'skipped'}) passed.\n\nSignalbox-Agent: ${agent}\nSignalbox-Block: ${taskId}`, '--', ...paths], { env: { ...process.env, SIGNALBOX_COMMIT: '1' } })
       sha = git(root, ['rev-parse', 'HEAD']).trim()
     }
     const clear = append(root, { t: 'clear', task: taskId, agent, commit: sha, files: paths })
@@ -295,13 +295,15 @@ export function release(root, taskId, agent, { commit = true, runTests = true } 
   })
 }
 
-export function rollback(root, taskId, agent) {
+export function rollback(root, taskId, agent, { operator = false } = {}) {
   return withLock(root, () => {
     const state = loadState(root)
     const t = state.tasks[taskId]
     if (!t) throw new SignalboxError(`unknown block ${taskId}`)
     if (t.commit) throw new SignalboxError(`${taskId} is already cleared; revert its commit ${t.commit.slice(0, 7)} instead`)
-    if (t.agent && t.agent !== agent) throw new SignalboxError(`${taskId} is occupied by ${t.agent}`)
+    // An operator may free a block whose agent crashed or went quiet; the event records both.
+    if (t.agent && t.agent !== agent && !operator) throw new SignalboxError(`${taskId} is occupied by ${t.agent} (an operator can override with --operator)`)
+    const by = t.agent && t.agent !== agent ? `${agent} (operator, over ${t.agent})` : agent
     const restored = []
     for (const f of blockFiles(t)) {
       if (headText(root, f) != null) {
@@ -312,10 +314,37 @@ export function rollback(root, taskId, agent) {
         restored.push(f)
       }
     }
-    return append(root, { t: 'rollback', task: taskId, agent, files: restored })
+    return append(root, { t: 'rollback', task: taskId, agent: by, files: restored })
   })
 }
 
 export function writeReplay(root, out) {
   writeFileSync(out, JSON.stringify(readLedger(root)))
+}
+
+// ------------------------------------------------------------------ pre-commit guard
+
+const HOOK = `#!/bin/sh
+# Installed by signalbox: files that belong to a signal-box block may only be committed by
+# \`signalbox release\` (which sets SIGNALBOX_COMMIT=1). Everything else commits normally.
+exec node "$(git rev-parse --show-toplevel)/chainguard/bin/signalbox.js" hook-check
+`
+
+export function installHook(root) {
+  const dir = git(root, ['rev-parse', '--git-path', 'hooks']).trim()
+  const path = resolve(root, dir, 'pre-commit')
+  mkdirSync(dirname(path), { recursive: true })
+  if (existsSync(path) && !readFileSync(path, 'utf8').includes('signalbox')) throw new SignalboxError(`${path} already exists and is not ours; add a call to 'signalbox hook-check' to it yourself`)
+  writeFileSync(path, HOOK, { mode: 0o755 })
+  return path
+}
+
+// Returns the staged files that only a release may commit (empty = commit allowed).
+export function hookCheck(root, env = process.env) {
+  if (env.SIGNALBOX_COMMIT === '1' || !existsSync(ledgerPath(root))) return []
+  const state = reduce(readLedger(root))
+  if (!state) return []
+  const guarded = new Set(Object.values(state.tasks).filter((t) => !t.commit).flatMap((t) => blockFiles(t)))
+  const staged = git(root, ['diff', '--cached', '--name-only']).split('\n').filter(Boolean)
+  return staged.filter((f) => guarded.has(f))
 }

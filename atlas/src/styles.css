@@ -600,3 +600,32 @@ body[data-done='true'] .stat-calls .num { color: var(--ink); }
   .alert-strip { padding: 12px 16px 0; }
   .mode { margin-left: 6px; }
 }
+
+/* train graph */
+.graph-card {
+  margin: 0 32px 24px;
+  background: var(--board); color: #d9d6ce;
+  padding: 20px 22px 16px; border-radius: 6px;
+  box-shadow: inset 0 0 0 1px #2a2a2a;
+}
+.graph-card .board-top h2 { margin: 0; font: 600 22px/1 var(--f-sign); text-transform: uppercase; letter-spacing: 0.14em; color: var(--amber); }
+.graph-wrap { overflow-x: auto; }
+.graph { display: block; }
+.graph-empty { margin: 0; color: #9a978f; font-size: 13px; }
+.g-grid { stroke: #232323; }
+.g-axis { font: 11px var(--f-mono); fill: #6f6d68; }
+.g-wave { stroke: #333; stroke-dasharray: 2 4; }
+.g-row { font: 12px var(--f-mono); fill: #9a978f; }
+.g-run rect:first-child { opacity: 0.9; }
+.g-run.o-open rect:first-child { animation: blink 1.6s steps(2, jump-none) infinite; }
+.g-run.o-rolled-back rect:first-child { opacity: 0.4; }
+.g-agent { font: 600 10.5px var(--f-mono); fill: #111; letter-spacing: 0.04em; pointer-events: none; }
+.g-ok { fill: #42be65; }
+.g-fault { fill: #fa4d56; }
+.g-clear { fill: #42be65; stroke: var(--board); stroke-width: 2; }
+.g-rollback { stroke: #78a9ff; stroke-width: 2.5; }
+.g-deny { fill: none; stroke: #d6a800; stroke-width: 1.5; }
+.g-now { stroke: #e8e6df; stroke-width: 1.5; stroke-dasharray: 3 3; }
+.g-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; margin: 10px 0 0; padding: 0; font: 12px var(--f-mono); color: #c7c4bb; }
+.g-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+@media (max-width: 640px) { .graph-card { margin: 0 16px 20px; padding: 16px 12px 12px; } }

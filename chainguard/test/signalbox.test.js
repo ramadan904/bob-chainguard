@@ -4,8 +4,8 @@ import { execFileSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { reduce, canClaim, ownerOf, matchGlob, summary } from '../src/signalbox-state.js'
-import { init, claim, extend, release, rollback, loadState, readLedger, exportsOf, SignalboxError } from '../src/signalbox.js'
+import { reduce, canClaim, ownerOf, matchGlob, summary, metrics, timeline } from '../src/signalbox-state.js'
+import { init, claim, extend, release, rollback, loadState, readLedger, exportsOf, installHook, hookCheck, SignalboxError } from '../src/signalbox.js'
 
 const plan = {
   waves: 2,
@@ -129,6 +129,66 @@ test('e2e: SPAD, broken contract and rollback', () => {
     assert.equal(loadState(root).tasks[a.id].state, 'clear')
     assert.deepEqual(readLedger(root).map((e) => e.t), ['init', 'claim', 'verify', 'extend', 'rollback'])
     assert.ok(!existsSync(join(root, '.signalbox', 'lock')))
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('metrics: parallelism, faults by check, first-time-right', () => {
+  const at = (sec) => new Date(Date.UTC(2026, 8, 25, 0, 0, sec)).toISOString()
+  const events = [
+    { t: 'init', at: at(0), base: 'b', plan, allow: [] },
+    { t: 'claim', at: at(1), task: 'w1-a', agent: 'x' },
+    { t: 'claim', at: at(2), task: 'w1-b', agent: 'y' },
+    { t: 'verify', at: at(3), task: 'w1-a', agent: 'x', ok: false, checks: { scope: { ok: true }, contract: { ok: true }, scan: { ok: true }, tests: { ok: false } } },
+    { t: 'verify', at: at(4), task: 'w1-b', agent: 'y', ok: true, checks: { scope: { ok: true }, contract: { ok: true }, scan: { ok: true }, tests: { ok: true } } },
+    { t: 'clear', at: at(4), task: 'w1-b', agent: 'y', commit: 'c1' },
+    { t: 'verify', at: at(6), task: 'w1-a', agent: 'x', ok: true, checks: { scope: { ok: true }, contract: { ok: true }, scan: { ok: true }, tests: { ok: true } } },
+    { t: 'clear', at: at(6), task: 'w1-a', agent: 'x', commit: 'c2' },
+  ]
+  const m = metrics(events)
+  assert.equal(m.peakParallel, 2)
+  assert.equal(m.faults, 1)
+  assert.deepEqual(m.faultsByCheck, { scope: 0, contract: 0, scan: 0, tests: 1 })
+  assert.equal(m.firstTimeRight, 1)
+  assert.equal(m.wallClockMs, 6000)
+  assert.deepEqual(timeline(events).runs.map((r) => [r.task, r.outcome, r.verifies.length]), [['w1-b', 'cleared', 1], ['w1-a', 'cleared', 2]])
+})
+
+test('e2e: pre-commit hook blocks direct commits of block files but not releases', () => {
+  const { root, run } = makeRepo()
+  try {
+    init(root, { scanPath: 'src', testCmd: 'node check.js', allow: [] })
+    installHook(root)
+    // Point the hook at this checkout's CLI (the temp repo has no chainguard/ folder).
+    const hook = join(root, '.git/hooks/pre-commit')
+    writeFileSync(hook, `#!/bin/sh\nexec node ${JSON.stringify(new URL('../bin/signalbox.js', import.meta.url).pathname)} hook-check\n`, { mode: 0o755 })
+    const a = Object.values(loadState(root).tasks).find((t) => t.files.includes('src/a.js'))
+    claim(root, a.id, 'bob-1')
+    writeFileSync(join(root, 'src/a.js'), 'export const one = () => 1n\nexport const keep = 1\n')
+    writeFileSync(join(root, 'src/b.js'), 'export const two = 2\n')
+    run('add', 'src/a.js')
+    assert.deepEqual(hookCheck(root), ['src/a.js'])
+    assert.throws(() => run('commit', '-qm', 'bypass'))
+    run('reset', '-q')
+    const r = release(root, a.id, 'bob-1')
+    assert.equal(r.ok, true)
+    assert.ok(r.clear.commit)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('e2e: operator rollback frees a block held by a stuck agent', () => {
+  const { root } = makeRepo()
+  try {
+    init(root, { scanPath: 'src', testCmd: 'node check.js', allow: [] })
+    const a = Object.values(loadState(root).tasks).find((t) => t.files.includes('src/a.js'))
+    claim(root, a.id, 'bob-1')
+    assert.throws(() => rollback(root, a.id, 'dispatcher'), /--operator/)
+    const e = rollback(root, a.id, 'dispatcher', { operator: true })
+    assert.equal(e.agent, 'dispatcher (operator, over bob-1)')
+    assert.equal(loadState(root).tasks[a.id].state, 'clear')
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

@@ -9,7 +9,7 @@ import staticAtlas from './data/atlas-data.json'
 import { layoutAtlas, LABEL_OFFSET } from './layout.js'
 import { dependentsOf, baselineIndex } from './state.js'
 import { buildStops, findingsAt, signalStateAt, blockIndex, faultsCaught, checkLamps, stripRoot } from './signal.js'
-import { reduce, describe, summary } from '../../chainguard/src/signalbox-state.js'
+import { reduce, describe, summary, timeline } from '../../chainguard/src/signalbox-state.js'
 
 // A recorded ledger (from a real Bob run) ships with the static build for replay. Optional.
 const ledgerModules = import.meta.glob('./data/ledger.json', { eager: true, import: 'default' })
@@ -326,6 +326,71 @@ function faultReasons(v) {
   return out
 }
 
+// ------------------------------------------------------------------ train graph
+
+const AGENT_COLORS = ['#ffb000', '#33b1ff', '#ff7eb6', '#42be65', '#08bdba', '#d4bbff', '#fa4d56', '#a7f0ba']
+
+function updateGraph() {
+  const el = $('#graph')
+  const full = timeline(model.events)
+  if (!full) {
+    el.replaceChildren(h('p', { class: 'graph-empty' }, 'Bars appear here as Bob subagents claim blocks.'))
+    return
+  }
+  const upto = view.stops[view.i].event
+  const tl = timeline(model.events.slice(0, upto + 1))
+  const now = Date.parse(model.events[upto].at)
+  const agents = [...new Set(full.runs.map((r) => r.agent))]
+  const color = (a) => AGENT_COLORS[agents.indexOf(a) % AGENT_COLORS.length]
+  const tasks = [...full.tasks].sort((a, b) => a.wave - b.wave || a.id.localeCompare(b.id))
+  const W = Math.max(640, el.clientWidth || 900)
+  const left = 150
+  const right = 24
+  const rowH = 30
+  const top = 26
+  const H = top + tasks.length * rowH + 30
+  const span = Math.max(1, full.t1 - full.t0)
+  const x = (t) => left + ((t - full.t0) / span) * (W - left - right)
+  const rowY = Object.fromEntries(tasks.map((t, i) => [t.id, top + i * rowH]))
+
+  const g = s('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, class: 'graph', role: 'img', 'aria-label': `Train graph: ${tl.runs.length} block occupations by ${agents.length} agents` })
+  // time axis: minute marks
+  const stepMs = [10e3, 30e3, 60e3, 120e3, 300e3, 600e3, 900e3, 1800e3, 3600e3].find((m) => span / m <= 8) || 7200e3
+  for (let t = 0; t <= span; t += stepMs) {
+    const xx = x(full.t0 + t)
+    g.append(s('line', { x1: xx, x2: xx, y1: top - 6, y2: H - 24, class: 'g-grid' }),
+      s('text', { x: xx, y: H - 8, class: 'g-axis', 'text-anchor': 'middle' }, t >= 60e3 ? `+${Math.round(t / 60e3)}m` : `+${Math.round(t / 1e3)}s`))
+  }
+  let lastWave = null
+  for (const t of tasks) {
+    const y = rowY[t.id]
+    if (t.wave !== lastWave) {
+      g.append(s('line', { x1: 8, x2: W - right, y1: y - 3, y2: y - 3, class: 'g-wave' }))
+      lastWave = t.wave
+    }
+    g.append(s('text', { x: 12, y: y + rowH / 2 + 1, class: 'g-row' }, `W${t.wave}  ${t.id}`))
+  }
+  for (const r of tl.runs) {
+    const y = rowY[r.task] + 7
+    const end = r.end ?? now
+    const bar = s('g', { class: `g-run o-${r.outcome}` },
+      s('rect', { x: x(r.start), y, width: Math.max(3, x(end) - x(r.start)), height: rowH - 14, rx: 3, fill: color(r.agent) }),
+      x(end) - x(r.start) > 44 ? s('text', { x: x(r.start) + 6, y: y + 12, class: 'g-agent' }, r.agent.toUpperCase()) : null,
+      r.verifies.map((v) => s('rect', { x: x(v.at) - 2, y: y - 4, width: 4, height: rowH - 6, rx: 1, class: v.ok ? 'g-ok' : 'g-fault' }, s('title', {}, v.ok ? 'track circuit clear' : `fault: ${v.failed.join(', ')}`))),
+      r.outcome === 'cleared' ? s('circle', { cx: x(end), cy: y + (rowH - 14) / 2, r: 5, class: 'g-clear' }) : null,
+      r.outcome === 'rolled-back' ? s('path', { d: `M${x(end) - 4},${y}l8,${rowH - 14}M${x(end) + 4},${y}l-8,${rowH - 14}`, class: 'g-rollback' }) : null,
+      s('title', {}, `${r.agent} in ${r.task}: ${r.outcome}`))
+    g.append(bar)
+  }
+  for (const e of model.events.slice(0, upto + 1).filter((e) => e.t === 'deny' && rowY[e.task] != null)) {
+    const xx = x(Date.parse(e.at))
+    const y = rowY[e.task] + rowH / 2
+    g.append(s('path', { d: `M${xx},${y - 6}l6,6l-6,6l-6,-6z`, class: 'g-deny' }, s('title', {}, `${e.agent} held at signal`)))
+  }
+  g.append(s('line', { x1: x(now), x2: x(now), y1: top - 10, y2: H - 22, class: 'g-now' }))
+  el.replaceChildren(g, h('ul', { class: 'g-legend' }, agents.map((a) => h('li', {}, h('i', { style: `background:${color(a)}` }), a))))
+}
+
 // ------------------------------------------------------------------ alert strip
 
 function updateAlert() {
@@ -533,6 +598,7 @@ function render() {
   updateDescriber()
   updateAlert()
   updateTimeline()
+  updateGraph()
   renderPanel()
 }
 
@@ -624,5 +690,8 @@ async function start() {
   model.selected = layout.stations[hash] ? hash : null
   render()
 }
+
+let resizeTimer
+addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => view && updateGraph(), 150) })
 
 start()

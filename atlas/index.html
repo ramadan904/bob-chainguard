@@ -58,6 +58,14 @@
       </div>
     </section>
 
+    <section class="graph-card" aria-labelledby="graph-title">
+      <div class="board-top">
+        <h2 id="graph-title">Train graph</h2>
+        <p>Time runs left to right, one row per block. Each bar is a Bob subagent occupying a block. Bars that overlap are agents working in parallel. Marks are track circuit runs: green passed, red fault.</p>
+      </div>
+      <div class="graph-wrap" id="graph"></div>
+    </section>
+
     <footer class="foot">
       <p>Everything here comes from the signal box ledger and real <code>chainguard</code> scans of real commits. The agents are IBM Bob subagents. Keys: ← → step through events, Esc returns to the overview.</p>
     </footer>

@@ -27,6 +27,7 @@ Open the signal box and put the live panel on screen:
 
 ```bash
 npm run -s sb -- init          # scans, plans 6 blocks in 3 waves, writes .signalbox/ledger.jsonl
+npm run -s sb -- install-hook  # block files can only be committed by `release` (no bypass)
 npm run signalbox              # builds the UI and serves it live at http://localhost:4700
 ```
 
@@ -47,14 +48,16 @@ Give this to Bob's top-level agent (Agent mode, subagents / parallel tasks enabl
 
 ```text
 You are the dispatcher for a migration that runs under Signalbox interlocking.
-Loop until `npm run -s sb -- status` shows every block CLEARED:
-1. Run `npm run -s sb -- status`.
-2. For every block whose signal is CLEAR and that no agent occupies, start a parallel subagent
+Loop until `npm run -s sb -- next` prints ALL BLOCKS CLEARED:
+1. Run `npm run -s sb -- next` (add --json if you prefer structured output).
+2. For every READY block, start a parallel subagent
    named bob-<n> (n = 1, 2, 3...). Give it exactly the output of
    `npm run -s sb -- prompt <block> --agent bob-<n>` as its task. Run the subagents of a wave
    in parallel; never start a block whose signal is at DANGER.
 3. Wait for the subagents of the wave to finish. If a subagent reports a FAULT it could not fix
-   after two releases, tell it to roll back, then start a fresh subagent on that block.
+   after two releases, tell it to roll back, then start a fresh subagent on that block. If a
+   subagent stops responding, free its block with
+   `npm run -s sb -- rollback <block> --agent dispatcher --operator`.
 4. After each wave, summarize what cleared, what faulted and why (from `npm run -s sb -- log`).
 Never edit files yourself and never bypass the signal box.
 ```
@@ -99,8 +102,9 @@ receipt status handling). List findings with file:line.
 
 - [ ] Bob session summary screenshots for the dispatcher and every subagent, from **every** team
       member, in `bob_sessions/`.
-- [ ] `npm run -s sb -- log > reports/signalbox-log.txt` and `npm run report`, then commit
-      `.signalbox/ledger.jsonl` and `reports/`.
+- [ ] `npm run -s sb -- report --out reports/signalbox-report.md`,
+      `npm run -s sb -- log > reports/signalbox-log.txt` and `npm run report`, then commit
+      `.signalbox/ledger.jsonl` and `reports/`. The report has every number the statements need.
 - [ ] `npm run atlas` (exports the ledger into the static build), commit `atlas/src/data/`, then
       deploy `atlas/` (docs/submission/CHECKLIST.md). The deployed site replays the real run.
 - [ ] Fill the numbers in `docs/submission/*.md` from the ledger: blocks, agents, faults caught,
