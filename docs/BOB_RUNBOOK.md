@@ -16,17 +16,26 @@ npm test                                   # chainguard, dApp behavior and signa
 git tag before-bob && git push origin before-bob
 ```
 
-Ask Bob (Agent mode) to add the target libraries first, so no block has to touch `package.json`:
+Ask Bob (Agent mode) for the **expand step** first: the new libraries and new modules are added
+next to the old ones, and nothing uses them yet. This is what lets the blocks migrate in parallel
+later (see "Expand → migrate → contract" in the playbook):
 
 ```text
-In legacy-dapp, add viem@2, wagmi@3 and @tanstack/react-query@5 as dependencies. Do not change
-any source file. Run npm test --prefix legacy-dapp, then commit "Add viem and wagmi".
+Read @docs/MIGRATION_PLAYBOOK.md, sections "Expand → migrate → contract" and "Clients".
+Do only the expand step:
+1. In legacy-dapp, add viem@2, wagmi@3 and @tanstack/react-query@5 as dependencies.
+2. Create legacy-dapp/src/lib/viem.js exporting chain, publicClient, getWalletClient(account) and
+   hasInjectedWallet(), exactly as in the playbook.
+3. Create legacy-dapp/src/wagmi.js and wrap <App /> in legacy-dapp/src/main.jsx with WagmiProvider
+   and QueryClientProvider.
+Do not change any other file. Run npm test --prefix legacy-dapp and npm run build --prefix legacy-dapp,
+then commit "Expand: add viem and wagmi alongside ethers and web3".
 ```
 
 Open the signal box and put the live panel on screen:
 
 ```bash
-npm run -s sb -- init          # scans, plans 6 blocks in 3 waves, writes .signalbox/ledger.jsonl
+npm run -s sb -- init          # scans, plans 6 blocks in 2 waves, writes .signalbox/ledger.jsonl
 npm run -s sb -- install-hook  # block files can only be committed by `release` (no bypass)
 npm run -s sb -- doctor        # preflight: clean tree, hook, deps, UI built, tests green on HEAD
 npm run signalbox              # builds the UI and serves it live at http://localhost:4700
@@ -78,11 +87,12 @@ What judges see on the panel:
 - A SPAD banner appears if an agent edits outside its block.
 - When a wave clears, the next wave's signals turn green.
 
-## 3. Setup files for the hooks block
+## 3. The contract step
 
-The `w2-hooks` block also owns app setup (`src/wagmi.js`, `src/main.jsx`), as the playbook says.
-Its subagent must run `npm run -s sb -- extend w2-hooks legacy-dapp/src/wagmi.js legacy-dapp/src/main.jsx --agent <name>`
-before touching them. If it forgets, the release fails with a SPAD. That's a great moment to keep in the video.
+The last wave includes the block that owns `lib/clients.js`. Its prompt says "Contract step": by
+then every caller imports from `lib/viem.js`, so the old exports can go. If a wave-1 subagent left
+an import of `readProvider` behind, the contract check names that file and the release is
+refused. That's a good moment for the video: the interlock protecting code another agent owns.
 
 ## 4. Cleanup and guard
 
@@ -121,7 +131,7 @@ the commits. From the repo root, with nothing you want to keep uncommitted:
 
 ```bash
 git branch practice-$(date +%H%M)                 # keep the attempt, just in case
-git reset --hard <commit before 'signalbox: clear ...' commits>   # usually the "Add viem and wagmi" commit
+git reset --hard <commit before 'signalbox: clear ...' commits>   # the "Expand: ..." commit
 npm run -s sb -- init --force                     # archives the old ledger as .signalbox/ledger.<time>.jsonl
 rm -rf .signalbox/checkpoints
 npm run -s sb -- doctor

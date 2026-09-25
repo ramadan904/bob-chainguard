@@ -78,12 +78,13 @@ test('computeWaves survives import cycles', () => {
   assert.ok(w['a.js'] >= 1 && w['b.js'] >= 1)
 })
 
-test('buildPlan puts consumers in a later wave with repo-relative paths', () => {
+test('buildPlan orders waves by the import graph with repo-relative paths', () => {
   const plan = buildPlan(scanDir(fixture), { scanPath: 'app/src' })
   assert.equal(plan.waves, 2)
-  assert.deepEqual(plan.tasks.map((t) => [t.wave, t.files]), [
-    [1, ['app/src/lib/client.js']],
-    [2, ['app/src/ui/Balance.jsx']],
+  // lib/client.js exports a legacy provider object, so it is contracted after its caller.
+  assert.deepEqual(plan.tasks.map((t) => [t.wave, t.files, t.contracts]), [
+    [1, ['app/src/ui/Balance.jsx'], []],
+    [2, ['app/src/lib/client.js'], ['app/src/lib/client.js']],
   ])
   assert.match(planToMarkdown(plan), /## Wave 2/)
 })
@@ -133,4 +134,36 @@ test('atlas: scans every commit that touched the directory', async () => {
   } finally {
     rmSync(repo, { recursive: true, force: true })
   }
+})
+
+test('computeWaves: providers of legacy objects wait for their callers', () => {
+  const imports = { 'clients.js': [], 'gas.js': ['clients.js', 'units.js'], 'units.js': [], 'Form.jsx': ['gas.js'] }
+  const flagged = new Set(['clients.js', 'gas.js', 'units.js', 'Form.jsx'])
+  assert.deepEqual(computeWaves(flagged, imports), { 'clients.js': 1, 'units.js': 1, 'gas.js': 2, 'Form.jsx': 3 })
+  assert.deepEqual(computeWaves(flagged, imports, new Set(['clients.js'])), { 'clients.js': 3, 'units.js': 1, 'gas.js': 2, 'Form.jsx': 3 })
+})
+
+test('buildPlan marks provider files as contract steps', () => {
+  const report = {
+    root: 'src', totals: { findings: 2 },
+    findings: [
+      { ruleId: 'ETH003', file: 'lib/clients.js', line: 2, snippet: 'export const provider = new ethers.providers.JsonRpcProvider(url)' },
+      { ruleId: 'ETH004', file: 'lib/gas.js', line: 3, snippet: 'return BigNumber.from(x)' },
+    ],
+    imports: { 'lib/clients.js': [], 'lib/gas.js': ['lib/clients.js'] },
+  }
+  const plan = buildPlan(report, { scanPath: 'src' })
+  const byId = Object.fromEntries(plan.tasks.map((t) => [t.files[0], t]))
+  assert.ok(byId['src/lib/gas.js'].wave < byId['src/lib/clients.js'].wave)
+  assert.deepEqual(byId['src/lib/clients.js'].contracts, ['src/lib/clients.js'])
+  assert.match(byId['src/lib/clients.js'].prompt, /Contract step/)
+})
+
+test('isLegacyValueExport tells objects from functions', async () => {
+  const { isLegacyValueExport } = await import('../src/plan.js')
+  assert.equal(isLegacyValueExport('export const web3 = new Web3(RPC_URL)'), true)
+  assert.equal(isLegacyValueExport('export const one = () => BigNumber.from(1)'), false)
+  assert.equal(isLegacyValueExport('export const f = async (a) => web3.eth.getGasPrice()'), false)
+  assert.equal(isLegacyValueExport('export const g = function () { return ethers.utils.id(x) }'), false)
+  assert.equal(isLegacyValueExport('export function h() { return new Web3() }'), false)
 })

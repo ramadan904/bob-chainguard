@@ -205,20 +205,65 @@ export function checkScope(root, state, taskId) {
   return { ok: outside.length === 0 && protectedFiles.length === 0, outside: [...outside, ...protectedFiles], protected: protectedFiles }
 }
 
-export function checkContract(root, files) {
+// Which names each working-tree source file imports from `target` (repo-relative path).
+// Returns [{ file, names: Set | '*' }]. Test files count: they are consumers too.
+export function importersOf(root, target, searchDir) {
+  const out = []
+  const exts = ['', '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '/index.js', '/index.ts']
+  const walk = (dir) => {
+    for (const d of readdirSync(join(root, dir), { withFileTypes: true })) {
+      if (d.name === 'node_modules' || d.name.startsWith('.')) continue
+      const rel = dir ? `${dir}/${d.name}` : d.name
+      if (d.isDirectory()) walk(rel)
+      else if (/\.(m?[jt]sx?|cjs)$/.test(d.name) && rel !== target) {
+        const text = readFileSync(join(root, rel), 'utf8')
+        const names = importedNames(text, (spec) => exts.some((e) => normalize(root, join(dirname(rel), spec + e)) === target))
+        if (names) out.push({ file: rel, names })
+      }
+    }
+  }
+  if (existsSync(join(root, searchDir))) walk(searchDir)
+  return out
+}
+
+function importedNames(text, isTarget) {
+  let names = null
+  const add = (n) => { if (names !== '*') (names ||= new Set()).add(n) }
+  for (const m of text.matchAll(/(?:import|export)\s+([\s\S]*?)\s+from\s+['"](\.{1,2}\/[^'"]+)['"]/g)) {
+    if (!isTarget(m[2])) continue
+    const clause = m[1].replace(/^type\s+/, '')
+    if (/\*\s+as\s+\w+/.test(clause) || clause.trim() === '*') { names = '*'; continue }
+    const braces = clause.match(/\{([^}]*)\}/)
+    if (braces) for (const part of braces[1].split(',')) { const n = part.trim().split(/\s+as\s+/)[0].trim(); if (n) add(n) }
+    const def = clause.replace(/\{[^}]*\}/, '').replace(/,/g, ' ').trim()
+    if (def && !/^(import|export)$/.test(def)) add('default')
+  }
+  for (const m of text.matchAll(/(?:import\s*\(\s*|import\s+)['"](\.{1,2}\/[^'"]+)['"]/g)) if (isTarget(m[1])) names = '*'
+  return names
+}
+
+// Exported contract: an export may disappear only once nothing imports it any more
+// (expand -> migrate -> contract). Removals nobody depends on are reported as `retired`.
+export function checkContract(root, files, searchDir = '.') {
   const removed = []
+  const retired = []
   for (const f of files) {
     const before = headText(root, f)
     if (before == null || !/\.(m?[jt]sx?|cjs)$/.test(f)) continue
     const after = readWorking(root, f)
-    if (after == null) {
-      removed.push({ file: f, name: '(file deleted)' })
-      continue
+    const now = after == null ? new Set() : exportsOf(after)
+    const gone = [...exportsOf(before)].filter((n) => !now.has(n))
+    if (!gone.length && after != null) continue
+    const users = importersOf(root, f, searchDir)
+    const usedBy = (n) => users.filter((u) => u.names === '*' || u.names.has(n)).map((u) => u.file)
+    if (after == null && users.length) removed.push({ file: f, name: '(file deleted)', usedBy: users.map((u) => u.file) })
+    for (const name of gone) {
+      const by = usedBy(name)
+      if (by.length) removed.push({ file: f, name, usedBy: by })
+      else retired.push({ file: f, name })
     }
-    const now = exportsOf(after)
-    for (const name of exportsOf(before)) if (!now.has(name)) removed.push({ file: f, name })
   }
-  return { ok: removed.length === 0, removed }
+  return { ok: removed.length === 0, removed, retired }
 }
 
 // The rule pack the box was opened with (recorded in the init event).
@@ -300,7 +345,7 @@ export function release(root, taskId, agent, { commit = true, runTests = true } 
     const allowed = modifiedFiles(root).filter((f) => ownerOf(state, f) === 'allow' && !f.startsWith('.signalbox/') && /package(-lock)?\.json$/.test(f))
     const checks = {
       scope: checkScope(root, state, taskId),
-      contract: checkContract(root, files),
+      contract: checkContract(root, files, state.scanDir),
       scan: checkScan(root, files, packOf(root, state).rules),
     }
     checks.tests = runTests ? checkTests(root, state, [...files, ...allowed]) : { ok: true, skipped: true }

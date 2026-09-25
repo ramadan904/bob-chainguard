@@ -3,7 +3,7 @@
 | Metric | Value |
 | --- | --- |
 | Files scanned | 18 |
-| Files with legacy Web3 APIs | 10 |
+| Files with legacy APIs | 10 |
 | Legacy-free files | 44.4% |
 | Findings | 72 (58 errors, 14 warnings) |
 | ethers-v5 call sites | 57 |

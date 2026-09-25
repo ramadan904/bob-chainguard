@@ -3,10 +3,15 @@ import { DEFAULT_PACK } from './rules.js'
 
 const MAX_FILES_PER_TASK = 3
 
-// Wave of each flagged file = 1 + the highest wave among the flagged files it imports
-// (directly or through clean files). Files in the same wave never depend on each other,
-// so their tasks can run as parallel Bob subagents.
-export function computeWaves(flagged, imports = {}) {
+// Wave of each flagged file = 1 + the highest wave among the flagged files it depends on.
+// Normally a file depends on the flagged files it imports (directly or through clean files), so
+// helpers migrate before their callers. A *provider* (a file that exports legacy objects, e.g.
+// `export const provider = new ethers.providers...`) is the reverse: its exports can only change
+// once no caller needs them, so it waits for its callers (expand -> migrate -> contract).
+// Files in the same wave never depend on each other, so their tasks can run in parallel.
+export function computeWaves(flagged, imports = {}, providers = new Set()) {
+  const importersOf = {}
+  for (const [f, deps] of Object.entries(imports)) for (const d of deps) (importersOf[d] ||= []).push(f)
   const waves = {}
   const visiting = new Set()
   const flaggedDeps = (file, seen = new Set()) => {
@@ -14,9 +19,11 @@ export function computeWaves(flagged, imports = {}) {
     for (const dep of imports[file] || []) {
       if (seen.has(dep)) continue
       seen.add(dep)
+      if (providers.has(dep)) continue
       if (flagged.has(dep)) out.add(dep)
       else for (const d of flaggedDeps(dep, seen)) out.add(d)
     }
+    if (providers.has(file)) for (const user of importersOf[file] || []) if (flagged.has(user) && !providers.has(user)) out.add(user)
     return out
   }
   const waveOf = (file) => {
@@ -32,6 +39,12 @@ export function computeWaves(flagged, imports = {}) {
   return waves
 }
 
+export function isLegacyValueExport(line) {
+  const m = line.match(/^export\s+(?:const|let|var)\s+[\w$]+\s*=\s*(.*)$/)
+  if (!m) return false
+  return !/^(async\s+)?(function\b|\([^)]*\)\s*=>|[\w$]+\s*=>)/.test(m[1])
+}
+
 export function buildPlan(report, { pack = DEFAULT_PACK, scanPath = report.root } = {}) {
   const { to: target, from, playbook } = pack
   const byFile = new Map()
@@ -39,7 +52,9 @@ export function buildPlan(report, { pack = DEFAULT_PACK, scanPath = report.root 
     if (!byFile.has(f.file)) byFile.set(f.file, [])
     byFile.get(f.file).push(f)
   }
-  const waves = computeWaves(new Set(byFile.keys()), report.imports)
+  // Providers: a legacy call on an exported value declaration (not an exported function).
+  const providers = new Set(report.findings.filter((f) => isLegacyValueExport(f.snippet)).map((f) => f.file))
+  const waves = computeWaves(new Set(byFile.keys()), report.imports, providers)
 
   // Group by (wave, directory), then split into subagent-sized chunks.
   const groups = new Map()
@@ -62,6 +77,7 @@ export function buildPlan(report, { pack = DEFAULT_PACK, scanPath = report.root 
         wave: Number(wave),
         files: chunk.map((f) => posix.join(scanPath, f)),
         findings: findings.length,
+        contracts: chunk.filter((f) => providers.has(f)).map((f) => posix.join(scanPath, f)),
         rules: ruleIds.map((id) => ({ id, title: pack.byId[id]?.title || id })),
       })
     })
@@ -73,7 +89,9 @@ export function buildPlan(report, { pack = DEFAULT_PACK, scanPath = report.root 
       `Migrate these files from ${from} to ${target}: ${t.files.map((f) => `@${f}`).join(' ')}`,
       `Follow @${playbook} (mapping table and rules). Do not edit any other file.`,
       `chainguard found ${t.findings} legacy call sites: ${t.rules.map((r) => `${r.id} ${r.title}`).join(', ')}.`,
-      'Keep every exported name and call signature stable. Raw amounts become bigint; functions that returned strings still return strings.',
+      t.contracts.length
+        ? `Contract step: ${t.contracts.map((f) => `\`${f}\``).join(', ')} exports legacy objects. Its callers were migrated in earlier waves; remove the legacy exports (or the whole file) now. The signal box refuses the release if anything still imports a removed name.`
+        : 'Keep every exported name and call signature stable. Raw amounts become bigint; functions that returned strings still return strings.',
       `Done when \`node chainguard/bin/chainguard.js scan ${scanPath}\` lists none of these files and \`npm test --prefix legacy-dapp\` passes.`,
     ].join('\n')
   }

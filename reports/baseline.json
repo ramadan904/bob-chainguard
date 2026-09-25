@@ -1,7 +1,7 @@
 {
   "tool": "chainguard",
   "root": "legacy-dapp/src",
-  "scannedAt": "2026-09-25T16:10:48.614Z",
+  "scannedAt": "2026-09-25T17:26:28.652Z",
   "rulesActive": 25,
   "filesScanned": 18,
   "filesAffected": 10,

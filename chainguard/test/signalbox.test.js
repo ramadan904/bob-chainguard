@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { reduce, canClaim, ownerOf, matchGlob, summary, metrics, timeline } from '../src/signalbox-state.js'
-import { init, claim, extend, release, rollback, loadState, readLedger, exportsOf, installHook, hookCheck, checkpoint, listCheckpoints, recover, SignalboxError } from '../src/signalbox.js'
+import { init, claim, extend, release, rollback, loadState, readLedger, exportsOf, installHook, hookCheck, checkpoint, listCheckpoints, recover, checkContract, importersOf, SignalboxError } from '../src/signalbox.js'
 
 const plan = {
   waves: 2,
@@ -68,7 +68,7 @@ function makeRepo() {
   mkdirSync(join(root, 'src'))
   writeFileSync(join(root, 'src/a.js'), "import { ethers } from 'ethers'\nexport const one = () => BigNumber.from(1)\nexport const keep = 1\n")
   writeFileSync(join(root, 'src/b.js'), "import Web3 from 'web3'\nexport const two = 2\n")
-  writeFileSync(join(root, 'src/c.js'), "import { a } from './a.js'\nimport { ethers } from 'ethers'\nexport const three = 3\n")
+  writeFileSync(join(root, 'src/c.js'), "import { keep } from './a.js'\nimport { ethers } from 'ethers'\nexport const three = keep + 2\n")
   // The "test suite": fails while src/a.js contains the word BROKEN.
   writeFileSync(join(root, 'check.js'), "const fs = require('fs'); if (fs.readFileSync('src/a.js','utf8').includes('BROKEN')) { console.log(' Tests  1 failed | 1 passed (2)'); process.exit(1) } console.log(' Tests  2 passed (2)')\n")
   run('add', '.')
@@ -113,11 +113,11 @@ test('e2e: SPAD, broken contract and rollback', () => {
     const a = Object.values(loadState(root).tasks).find((t) => t.files.includes('src/a.js'))
     claim(root, a.id, 'bob-1')
     writeFileSync(join(root, 'src/a.js'), 'export const one = () => 1n\n') // drops `keep`
-    writeFileSync(join(root, 'src/c.js'), 'export const three = 3 // edited outside the block\n')
+    writeFileSync(join(root, 'src/c.js'), "import { keep } from './a.js'\nexport const three = keep + 2 // edited outside the block\n")
     const r = release(root, a.id, 'bob-1')
     assert.equal(r.ok, false)
     assert.deepEqual(r.verify.checks.scope.outside, ['src/c.js'])
-    assert.deepEqual(r.verify.checks.contract.removed, [{ file: 'src/a.js', name: 'keep' }])
+    assert.deepEqual(r.verify.checks.contract.removed, [{ file: 'src/a.js', name: 'keep', usedBy: ['src/c.js'] }])
 
     // Extending the block to c.js is refused: c.js belongs to a later block? No: it is unowned, so it is allowed.
     extend(root, a.id, 'bob-1', ['src/c.js'])
@@ -241,6 +241,34 @@ test('e2e: black-box checkpoints survive a rogue git checkout', () => {
     assert.equal(readLedger(root).at(-1).t, 'recover')
     assert.ok(listCheckpoints(root, a.id).length >= 1)
     assert.throws(() => recover(root, 'nope', 'x'), /unknown block/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('contract: exports retire once unused (expand -> migrate -> contract)', () => {
+  const { root, run } = makeRepo()
+  try {
+    writeFileSync(join(root, 'src/d.js'), "import * as all from './b.js'\nexport default all\n")
+    run('add', '.')
+    run('commit', '-qm', 'namespace import of b')
+    assert.deepEqual(importersOf(root, 'src/a.js', 'src').map((u) => [u.file, [...u.names]]), [['src/c.js', ['keep']]])
+    assert.equal(importersOf(root, 'src/b.js', 'src')[0].names, '*')
+
+    // `one` is unused: removing it is fine. `keep` is imported by c.js: removing it is not.
+    writeFileSync(join(root, 'src/a.js'), 'export const keep = 1\n')
+    let c = checkContract(root, ['src/a.js'], 'src')
+    assert.equal(c.ok, true)
+    assert.deepEqual(c.retired, [{ file: 'src/a.js', name: 'one' }])
+    writeFileSync(join(root, 'src/a.js'), 'export const other = 1\n')
+    c = checkContract(root, ['src/a.js'], 'src')
+    assert.deepEqual(c.removed.map((r) => [r.name, r.usedBy]), [['keep', ['src/c.js']]])
+
+    // Deleting a file is a contract break while anything still imports it.
+    rmSync(join(root, 'src/b.js'))
+    assert.equal(checkContract(root, ['src/b.js'], 'src').removed[0].name, '(file deleted)')
+    rmSync(join(root, 'src/d.js'))
+    assert.equal(checkContract(root, ['src/b.js'], 'src').ok, true)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

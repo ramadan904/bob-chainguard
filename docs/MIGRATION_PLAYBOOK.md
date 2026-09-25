@@ -12,9 +12,26 @@ Each rule id (ETH001, W3J004, ...) matches a chainguard finding (`npm run scan`)
 | `@tanstack/react-query` | `^5` | required by wagmi |
 | `ethers`, `web3` | removed | uninstall in the final step, once chainguard reports 0 findings |
 
+## Expand → migrate → contract
+
+Parallel blocks can't all edit the shared client module at once, so the migration follows the
+classic safe-refactor order:
+
+1. **Expand** (one commit, before the signal box opens): add the new pieces next to the old ones.
+   - `src/lib/viem.js`: `publicClient`, `getWalletClient(account)`, `chain` (see "Clients" below)
+   - `src/wagmi.js` and the `WagmiProvider` + `QueryClientProvider` wrap in `src/main.jsx`
+   - Nothing uses them yet, so nothing breaks.
+2. **Migrate** (signal box waves): every block switches its own files to the new pieces. **Never
+   import from `lib/clients.js` in migrated code**; import `publicClient` / `getWalletClient` from
+   `lib/viem.js` instead.
+3. **Contract** (the last wave): `lib/clients.js` exports the legacy objects themselves
+   (`readProvider`, `web3`, ...). Once no file imports them, its block deletes them (or deletes
+   the whole file). The signal box refuses to release a removed export that anything still imports.
+
 ## Hard rules
 
-1. **Do not change exported names or call signatures.** Components and tests import them.
+1. **Do not change exported names or call signatures** that other files still import (the signal
+   box checks this). Components and tests import them.
    The `wallet` object returned by `useWallet()` keeps its shape
    `{ account, chainId, signer, ensName, error, connect, switchChain, wrongChain }`.
    `signer` now holds a viem `WalletClient` (or `undefined`).
@@ -51,16 +68,19 @@ export const web3 = new Web3(RPC_URL)
 const browserProvider = new ethers.providers.Web3Provider(window.ethereum, 'any')
 const signer = browserProvider.getSigner()
 
-// after (lib/clients.js)
+// after: lib/viem.js (created in the expand step)
 import { createPublicClient, createWalletClient, custom, http } from 'viem'
 import { sepolia } from 'viem/chains'
+import { RPC_URL } from '../config.js'
+export const chain = sepolia
 export const publicClient = createPublicClient({ chain: sepolia, transport: http(RPC_URL) })
 export function getWalletClient(account) {
   return createWalletClient({ account, chain: sepolia, transport: custom(window.ethereum) })
 }
 ```
 
-There is one read client now. Everything that used `readProvider` or `web3` uses `publicClient`.
+There is one read client now. Everything that used `readProvider` or `web3` imports `publicClient`
+from `lib/viem.js`. `hasInjectedWallet()` moves to `lib/viem.js` too, if a migrated file needs it.
 
 ### Units and math (ETH004, ETH007, ETH008, ETH010, W3J005)
 
@@ -144,9 +164,9 @@ Hooks use wagmi and keep their return shapes:
 | ENS | `useEnsName({ address })` |
 | `accountsChanged` / `chainChanged` listeners | not needed; wagmi tracks them |
 
-The hooks task also owns app setup, because wagmi needs providers:
-- create `src/wagmi.js` with `createConfig({ chains: [sepolia], connectors: [injected()], transports: { [sepolia.id]: http(RPC_URL) } })`
-- wrap `<App />` in `src/main.jsx` with `<WagmiProvider config={config}><QueryClientProvider client={queryClient}>`.
+App setup is part of the expand step (done before the waves), so hooks can use wagmi right away:
+- `src/wagmi.js`: `createConfig({ chains: [sepolia], connectors: [injected()], transports: { [sepolia.id]: http(RPC_URL) } })`
+- `src/main.jsx`: wrap `<App />` in `<WagmiProvider config={config}><QueryClientProvider client={queryClient}>`.
 
 ## Definition of done (whole migration)
 
