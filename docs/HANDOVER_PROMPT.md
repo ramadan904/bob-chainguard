@@ -72,40 +72,40 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
   - `signalbox-pr.yml`: bot comment on pull requests.
 
 ## Status right now
-- Done, tested (87 tests: 41 chainguard/signalbox, 22 dApp, 18 panel, 6 Moment.js sample) and pushed on the branch: everything above.
-- Already live on `main`: the panel with the night colours.
-- **Not yet on `main`** (needs one more PR merge): the deck, the hash-chained ledger + audit + "Ledger verified" badge, "Review bob-N's change" diffs, blast radius, crew roster, risk scores, the PR bot, and the guided tour. To merge: open https://github.com/ramadan904/bob-chainguard/compare/main...claude/dazzling-ptolemy-c288r3 → Create pull request → Merge pull request → Confirm merge.
-- **Not done yet:** the real Bob run. **The migration must be done by IBM Bob, not by you or by me**, because it's what the judges score. `legacy-dapp/src` is still the untouched "before" code, and that's correct.
+- **All building is done and live on `main`** (Vercel + GitHub Pages redeploy on every merge). 91 tests pass on Linux and Windows in CI.
+- Panel features: wave schedule, control tower (one lane per Bob subagent), desk (`sb ask`), risk heatmap, "Ledger verified" + tamper test, rule-pack switcher, train graph with a parallelism band, chaos drill buttons (live mode only), guided tour, "Bob at work" screenshot gallery (appears once `bob_sessions/` has screenshots), 11–12-slide deck whose results slide reads the real ledger.
+- Run helpers: `npm run bob:prep`, `npm run bob:open`, `npm run bob:retake`, `npm run finalize`, `npm run record:tour`, `npm run record:deck`.
+- **Not done yet (this is what I need help with):** the real IBM Bob run, the screenshots, finalize, the video and the lablab.ai submission. **The migration must be done by IBM Bob, not by you or by me**, because it's what the judges score. `legacy-dapp/src` is still the untouched "before" code (72 legacy call sites, 22/22 tests), and that's correct.
+- Do **not** suggest new features. Help me finish the steps below.
 
 ## What's left, in order (help me with exactly this)
-1. Merge the PR above, so the site has every feature.
-2. On my computer:
+1. **Prep** on my computer (Node 20+, Git):
    ```bash
-   git clone https://github.com/ramadan904/bob-chainguard && cd bob-chainguard
-   npm ci --prefix legacy-dapp && npm ci --prefix atlas
-   npm test
-   git tag before-bob
+   git clone https://github.com/ramadan904/bob-chainguard && cd bob-chainguard   # or: git pull
+   npm run bob:prep
    ```
-3. Follow `docs/BOB_RUNBOOK.md` with IBM Bob:
-   1. Paste the "expand step" prompt into Bob (it adds viem@2, wagmi@3, @tanstack/react-query@5, `src/lib/viem.js`, `src/wagmi.js` and the providers in `main.jsx`, then commits).
-   2. `npm run -s sb -- init`, then `npm run -s sb -- install-hook`, then `npm run -s sb -- doctor`. Every line must say ok.
-   3. `npm run signalbox`, then open http://localhost:4700 next to Bob and start screen recording.
-   4. Paste the **dispatcher prompt** into Bob. Bob starts subagents (bob-1, bob-2…) that claim, edit, release, and fix faults.
-   5. When every block is cleared, give Bob the cleanup prompt: remove ethers and web3.
-   6. Save **Bob session summary screenshots from every team member** into `bob_sessions/` (the hackathon requires them).
-4. `npm run finalize`. It must end with "Warnings: None". Then:
+   Every line must say `ok`. It installs dependencies, runs all tests, tags `before-bob` and prints two prompts. Then `git push origin before-bob`.
+2. **Bob, part 1** (Agent mode): paste the **onboarding** prompt, then the **expand step** prompt that `bob:prep` printed. Bob adds viem/wagmi alongside the old libraries and commits "Expand: …". Screenshot each Bob session summary: `bob_sessions/<myname>-onboarding.png`, `<myname>-expand.png`.
+3. **Open the signal box:** `npm run bob:open`. It refuses until the expand commit exists, then runs doctor (all `ok`), prints the **dispatcher prompt** and serves the live panel at http://localhost:4700.
+   - Optional but strong: connect the MCP tools first (`docs/BOB_MCP.md`) so Bob calls `signalbox_claim` / `signalbox_release` as tools. Screenshot it as `<myname>-mcp.png`.
+4. **Bob, part 2 — record this:** Bob on the left, the panel on the right, screen recording on. Paste the dispatcher prompt. Bob starts subagents bob-1, bob-2… in parallel; one wave-2 claim is deliberately refused; faults get fixed; waves clear.
+   - During wave 1, **between two releases**, click **⚡ Simulate chaos: SPAD** in the panel (it edits a file for 6 s, catches it, restores it).
+   - Screenshot the dispatcher and each subagent: `<myname>-dispatcher.png`, `<myname>-w1-lib-1.png`, …
+   - If a take goes wrong: `npm run bob:retake -- --yes` (keeps the attempt on a branch, resets to the expand commit, fresh signal box), then paste the dispatcher prompt again.
+5. **Bob, part 3:** when every block is cleared, paste the cleanup prompt (runbook section 4: remove ethers and web3) and then the review prompt (section 5). Screenshots: `<myname>-cleanup.png`, `<myname>-review.png`. **Every team member** needs Bob screenshots in `bob_sessions/` (hackathon rule). Check none shows a key or `.env` value.
+6. **Finalize:** `npm run finalize`. It must end with "Warnings: None" (fix what it lists). It writes the reports, the replay, the gallery and **paste-ready statements in `docs/submission/final/`** with every number filled in and word counts printed. Then:
    ```bash
    git add .signalbox/ledger.jsonl reports/ atlas/src/data/ atlas/public/bob/ bob_sessions/ docs/submission/final/
    git commit -m "Finalize: Bob run reports and replay"
    git push
    ```
-   Then merge to `main` again (a PR from the branch I pushed to).
-5. `npm run finalize` wrote paste-ready statements to `docs/submission/final/` with every number filled in. It prints their word counts (each must be **≤ 500**) and warns if a screenshot is missing. Name screenshots by what they show: `name-onboarding.png`, `name-dispatcher.png`, `name-mcp.png`, `name-review.png`, `name-<block>.png`.
-6. Media:
-   - Video ≤ 3 min, following `DEMO_SCRIPT.md`. An easy segment: record `…/bob-chainguard/?tour`.
-   - Slides: open `deck.html` → "Save as PDF" with background graphics on.
-   - Cover image: use `media/cover-baseline.png`, or a screenshot of the finished panel.
-7. Fill in the lablab.ai form using the text in `SUBMIT_TOMORROW.md`: title, short and long description, tags, repo URL, application URL `https://bob-chainguard.vercel.app/`, the statements, and the Bob screenshots. Then fill in the post-hackathon feedback form (needed for the $100 reward).
+   Then merge to `main`: open https://github.com/ramadan904/bob-chainguard/compare/main...<my branch> → Create pull request → Merge. Check https://bob-chainguard.vercel.app/?tour replays the run.
+7. **Media:**
+   - `npm run record:tour` and `npm run record:deck` make 1920×1080 clips in `docs/submission/media/` (first time: `npm i --no-save playwright && npx playwright install chromium`).
+   - Video **≤ 3 min** following `docs/submission/DEMO_SCRIPT.md` (the 90-second cut is the core: desk → dispatch → parallel lanes → held at signal → chaos → fault → fix → clear). Upload to YouTube (unlisted is fine).
+   - Slides: open https://bob-chainguard.vercel.app/deck.html → **Save as PDF** with background graphics on.
+   - Cover image: a screenshot of the finished panel (or `docs/submission/media/cover-baseline.png`).
+8. **Submit on lablab.ai before Sun Sep 27, 11:00 AM EDT (aim for 9:00):** use the text in `SUBMIT_TOMORROW.md` (title, descriptions, tags), repo https://github.com/ramadan904/bob-chainguard, app URL https://bob-chainguard.vercel.app/, paste the two files from `docs/submission/final/`, upload the video link, deck PDF, cover and Bob screenshots. Then fill in the post-hackathon feedback form (needed for the $100 reward).
 
 ## Rules and gotchas you must respect
 - **Never fake data** in the final version: no invented numbers, no pre-written ledgers.
