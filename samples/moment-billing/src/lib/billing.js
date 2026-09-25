@@ -4,9 +4,11 @@ import { parse, today } from './dates.js'
 export function nextRenewal(startIso, plan, from = today()) {
   const start = parse(startIso)
   const step = plan === 'yearly' ? 'years' : 'months'
-  let next = start.clone()
-  while (!next.isAfter(from)) next = next.add(1, step)
-  return next
+  // Count whole periods from the start date (never step from the previous renewal: Jan 31 + 1
+  // month is Feb 28, and stepping again would drift to Mar 28).
+  let n = 0
+  while (!start.clone().add(n, step).isAfter(from)) n++
+  return start.clone().add(n, step)
 }
 
 // Days left in the current period, for proration on upgrade.

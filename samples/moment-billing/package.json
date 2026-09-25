@@ -1,0 +1,13 @@
+{
+  "name": "moment-billing",
+  "private": true,
+  "description": "Sample subscription-billing code on Moment.js, for Signalbox's second rule pack (Moment.js -> date-fns).",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"src/__tests__/*.test.js\""
+  },
+  "dependencies": {
+    "moment": "^2.30.1",
+    "moment-timezone": "^0.6.0"
+  }
+}
