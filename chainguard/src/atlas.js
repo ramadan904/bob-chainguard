@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { relative, resolve, posix, sep } from 'node:path'
+import { posix } from 'node:path'
 import { scanDir, scanEntries, isSourcePath } from './scan.js'
 import { buildPlan } from './plan.js'
 import { DEFAULT_PACK } from './rules.js'
@@ -10,7 +10,9 @@ const git = (cwd, args) => execFileSync('git', args, { cwd, encoding: 'utf8', ma
 // uncommitted changes there. Every snapshot is a real scan of real code.
 export function gitSnapshots(dir, rules = DEFAULT_PACK.rules) {
   const top = git(dir, ['rev-parse', '--show-toplevel']).trim()
-  const sub = relative(top, resolve(dir)).split(sep).join('/')
+  // git computes the prefix itself: on Windows a temp dir may be an 8.3 short path (RUNNER~1) that
+  // path.relative can't match against git's long-form toplevel.
+  const sub = git(dir, ['rev-parse', '--show-prefix']).trim().replace(/\/$/, '')
   const log = git(top, ['log', '--reverse', '--format=%H%x1f%ct%x1f%s', '--', sub]).trim()
   const snapshots = []
   for (const line of log ? log.split('\n') : []) {

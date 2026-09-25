@@ -14,6 +14,8 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
 - Live site (GitHub Pages, deployed from `main`): https://ramadan904.github.io/bob-chainguard/
 - Deck: https://ramadan904.github.io/bob-chainguard/deck.html
 - Guided replay: https://ramadan904.github.io/bob-chainguard/?tour
+- Vercel is also connected to the repo and deploys previews of the branch (a second hosting option).
+- Works on Windows, macOS and Linux (CI runs the full suite on Windows too). Needs Node.js 20+ (22 LTS recommended); `sb doctor` checks it.
 - Working branch: `claude/dazzling-ptolemy-c288r3`. `main` gets updated by merging a pull request from that branch, and every push to `main` redeploys the site automatically (workflow `deploy panel`, about 1 minute).
 
 **The idea:** running several AI agents on one codebase at once usually ends in collisions, broken contracts and edited tests. Signalbox applies railway *interlocking* to IBM Bob subagents:
