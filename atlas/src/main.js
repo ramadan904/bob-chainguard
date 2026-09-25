@@ -9,7 +9,8 @@ import staticAtlas from './data/atlas-data.json'
 import { layoutAtlas, LABEL_OFFSET } from './layout.js'
 import { dependentsOf, baselineIndex } from './state.js'
 import { buildStops, findingsAt, signalStateAt, blockIndex, faultsCaught, checkLamps, stripRoot } from './signal.js'
-import { reduce, describe, summary, timeline } from '../../chainguard/src/signalbox-state.js'
+import { reduce, describe, summary, timeline, verifyChain } from '../../chainguard/src/signalbox-state.js'
+import { blastRadius as blastOf, blockRisk as riskOf, crewStats, tourStep } from './insights.js'
 
 // A recorded ledger (from a real Bob run) ships with the static build for replay. Optional.
 const ledgerModules = import.meta.glob('./data/ledger.json', { eager: true, import: 'default' })
@@ -50,6 +51,7 @@ const model = {
   selected: null,
   focusTask: null,
   focusRule: null,
+  blast: null,
   playing: null,
 }
 let layout
@@ -184,6 +186,7 @@ function updateMap() {
     : [],
   )
   const spadNow = new Set(liveViolations().map((v) => v.file))
+  const blast = model.blast && layout.stations[model.blast] ? blastRadius(model.blast) : null
   const related = new Set()
   if (model.selected) {
     related.add(model.selected)
@@ -205,7 +208,10 @@ function updateMap() {
     n.agent.querySelector('rect').setAttribute('width', occupied ? 16 + b.agent.length * 7.4 : 0)
     n.g.setAttribute('aria-label', `${id}: ${status === 'legacy' ? `${count} legacy call sites` : status}${b ? `, block ${b.task} ${b.state}${occupied ? ` by ${b.agent}` : ''}` : ''}`)
     n.g.classList.toggle('selected', model.selected === id)
-    n.g.classList.toggle('dim', (focus.size > 0 && !focus.has(id)) || (!focus.size && related.size > 0 && !related.has(id)))
+    n.g.classList.toggle('dim', blast ? !blast.has(id) : (focus.size > 0 && !focus.has(id)) || (!focus.size && related.size > 0 && !related.has(id)))
+    n.g.classList.toggle('blast', Boolean(blast && blast.has(id) && blast.get(id) > 0))
+    n.g.classList.toggle('blast-src', Boolean(blast && blast.get(id) === 0))
+    if (blast?.has(id)) n.g.style.setProperty('--d', String(blast.get(id)))
   }
   for (const e of edgeNodes) {
     const on = model.selected && (e.from === model.selected || e.to === model.selected)
@@ -288,7 +294,8 @@ function flap(text, width, cls = '') {
 
 function updateBoard() {
   const head = h('div', { class: 'board-row board-head', role: 'row' },
-    ['Signal', 'Wave', 'Block', 'Train', 'Track circuit', 'Status'].map((t) => h('span', { role: 'columnheader' }, t)))
+    ['Signal', 'Wave', 'Block', 'Risk', 'Train', 'Track circuit', 'Status'].map((t) => h('span', { role: 'columnheader' }, t)))
+  const risk = blockRisk()
   const tasks = Object.values(view.sb.tasks).sort((a, b) => a.wave - b.wave || a.id.localeCompare(b.id))
   const rows = tasks.map((t) => {
     const lamps = checkLamps(t.lastVerify)
@@ -305,6 +312,7 @@ function updateBoard() {
       h('span', { class: `signal-head s-${t.state}`, 'aria-label': `signal ${STATUS_TEXT[t.state]}` }, h('i', { class: 'lamp red' }), h('i', { class: 'lamp amber' }), h('i', { class: 'lamp green' })),
       h('span', { class: 'wave-plate' }, String(t.wave)),
       h('span', { class: 'block-cell' }, flap(t.id, 14), h('span', { class: 'dest' }, taskFiles(t.id).map((f) => f.split('/').pop().replace(/\.(jsx?|tsx?)$/, '')).join(' · '))),
+      h('span', { class: `risk r-${risk[t.id].level}`, title: `${t.findings || 0} legacy call sites · ${risk[t.id].reach} dependent files outside the block` }, risk[t.id].level.toUpperCase()),
       h('span', { class: 'train' }, t.agent && !t.commit ? t.agent.toUpperCase() : t.commit ? t.commit.slice(0, 7) : '—'),
       h('span', { class: 'lamps' }, lamps.map((l) => h('span', { class: `chk ${l.state}`, title: `${CHECK_NAME[l.key]}: ${l.state}` }, CHECK_LETTER[l.key]))),
       flap(STATUS_TEXT[t.state], 9, 'status'),
@@ -456,8 +464,10 @@ function buildTimeline() {
     }, h('span', { class: 'tick-dot' }), n <= 12 ? h('span', { class: 'tick-label' }, stop.kind === 'event' ? stop.label : stop.label) : null))
   const play = h('button', { class: 'play', id: 'play', 'aria-label': 'Replay', onclick: togglePlay, disabled: n < 2 },
     s('svg', { viewBox: '0 0 16 16', width: 14, height: 14 }, s('path', { d: 'M4 2.5v11l9-5.5z', fill: 'currentColor' })))
+  const tour = h('button', { class: 'tour-btn', id: 'tour', onclick: () => (model.tour ? stopTour() : startTour()), disabled: !view.opened, title: view.opened ? 'Guided replay with captions' : 'Available once the signal box has a run' }, 'Tour')
   $('#timeline').replaceChildren(
     play,
+    tour,
     h('div', { class: `track${n === 1 ? ' pending' : ''}` }, h('div', { class: 'track-fill', id: 'track-fill' }), ticks,
       n === 1 ? h('span', { class: 'track-note' }, 'Bob subagents arrive here →') : null),
     h('div', { class: 'commit', id: 'commit' }),
@@ -489,6 +499,64 @@ function goTo(i) {
   render()
 }
 
+// ------------------------------------------------------------------ guided tour
+// Replays the ledger like a film: dwells on faults, clears and held signals, opens the block in
+// question, and captions each step in plain words. Everything shown is the recorded run.
+
+function startTour() {
+  if (!view.opened) return
+  stopPlay()
+  stopTour()
+  document.body.classList.add('touring')
+  $('#tour').classList.add('on')
+  model.tour = { i: 0 }
+  goTo(0)
+  select(null)
+  tourTick()
+}
+
+function tourTick() {
+  if (!model.tour) return
+  const stop = view.stops[view.i]
+  const step = tourStep(model.events, stop.event)
+  const files = step.focus ? taskFiles(step.focus) : []
+  if (['fault', 'clear', 'held', 'rollback', 'recover'].includes(step.kind) && files[0]) select(files[0])
+  else if (step.kind === 'init') select(null)
+  showCaption(step)
+  model.tour.timer = setTimeout(() => {
+    if (!model.tour) return
+    if (view.i >= view.stops.length - 1) return finishTour()
+    goTo(view.i + 1)
+    tourTick()
+  }, step.dwell)
+}
+
+function finishTour() {
+  const base = Object.values(view.baseline).reduce((n, l) => n + l.length, 0)
+  const now = Object.values(view.findings).reduce((n, l) => n + l.length, 0)
+  const sum = summary(view.sb)
+  select(null)
+  showCaption({ kind: 'done', text: `${sum.cleared} of ${sum.total} blocks cleared by ${crewStats(model.events, view.stops[view.i].event).length} Bob subagents. Legacy call sites: ${base} → ${now}. Every step is in a hash-chained ledger.` })
+  model.tour.timer = setTimeout(stopTour, 6000)
+}
+
+function stopTour() {
+  if (model.tour?.timer) clearTimeout(model.tour.timer)
+  model.tour = null
+  document.body.classList.remove('touring')
+  $('#tour')?.classList.remove('on')
+  $('#caption')?.classList.remove('show')
+}
+
+function showCaption(step) {
+  const el = $('#caption')
+  el.dataset.kind = step.kind
+  el.replaceChildren(h('span', { class: 'cap-kind' }, { fault: 'Fault', held: 'Held at signal', clear: 'Cleared', done: 'Result', init: 'Signal box', rollback: 'Rolled back', recover: 'Recovered', claim: 'Claim', verify: 'Track circuit', extend: 'Extend' }[step.kind] || step.kind), h('span', { class: 'cap-text' }, step.text))
+  el.classList.remove('show')
+  void el.offsetWidth
+  el.classList.add('show')
+}
+
 function togglePlay() {
   if (model.playing) return stopPlay()
   if (view.i === view.stops.length - 1) goTo(0)
@@ -502,6 +570,79 @@ function stopPlay() {
   clearInterval(model.playing)
   model.playing = null
   $('#play')?.classList.remove('on')
+}
+
+// ------------------------------------------------------------------ blast radius
+
+function blastRadius(id) {
+  return blastOf(model.atlas.files, id)
+}
+
+// ------------------------------------------------------------------ risk
+
+function blockRisk() {
+  return riskOf(model.atlas.files, Object.values(view.sb.tasks), (t) => taskFiles(t.id))
+}
+
+// ------------------------------------------------------------------ crew roster
+
+function crew() {
+  if (!view.opened) return []
+  return crewStats(model.events, view.stops[view.i].event).map((a) => ({ ...a, color: AGENT_COLORS[a.index % AGENT_COLORS.length] }))
+}
+
+function crewSection() {
+  const list = crew()
+  if (!list.length) return null
+  const fmt = (ms) => (ms >= 60e3 ? `${Math.floor(ms / 60e3)}m ${Math.round((ms % 60e3) / 1e3)}s` : `${Math.round(ms / 1e3)}s`)
+  return [
+    h('p', { class: 'eyebrow' }, `Crew · ${list.length} Bob subagent${list.length > 1 ? 's' : ''}`),
+    h('ul', { class: 'crew' }, list.map((a) => h('li', { style: `--c:${a.color}` },
+      h('span', { class: 'crew-name' }, a.agent.toUpperCase()),
+      h('span', { class: 'crew-state' }, a.active ? `in ${a.active}` : a.cleared ? 'off duty' : 'standing by'),
+      h('span', { class: 'crew-stats' },
+        h('b', {}, String(a.cleared)), ' cleared · ',
+        h('b', {}, String(a.releases)), ' releases · ',
+        h('b', { class: a.faults ? 'f' : '' }, String(a.faults)), ' faults fixed · ',
+        h('b', {}, fmt(a.ms)))))),
+  ]
+}
+
+// ------------------------------------------------------------------ Bob's change (diff viewer)
+
+function diffFor(task) {
+  return task.commit ? model.atlas.snapshots.find((s) => s.commit === task.commit)?.diff || null : null
+}
+
+function openDiff(task) {
+  const patch = diffFor(task)
+  if (!patch) return
+  const lines = patch.split('\n')
+  const added = lines.filter((l) => l.startsWith('+') && !l.startsWith('+++')).length
+  const removed = lines.filter((l) => l.startsWith('-') && !l.startsWith('---')).length
+  const cls = (l) => (l.startsWith('diff --git') ? 'd-file' : l.startsWith('@@') ? 'd-hunk' : l.startsWith('+++') || l.startsWith('---') || l.startsWith('index ') ? 'd-meta' : l.startsWith('+') ? 'd-add' : l.startsWith('-') ? 'd-del' : 'd-ctx')
+  const dialog = $('#diff')
+  dialog.replaceChildren(
+    h('div', { class: 'diff-head' },
+      h('div', {}, h('p', { class: 'eyebrow' }, `${task.id} · committed ${task.commit.slice(0, 7)}`),
+        h('h2', {}, `What ${task.agent || 'the agent'} changed`),
+        h('p', { class: 'diff-stat' }, h('span', { class: 'd-add' }, `+${added}`), ' ', h('span', { class: 'd-del' }, `−${removed}`), ' · passed scope, contract, scan and isolated tests before this commit')),
+      h('button', { class: 'back', 'aria-label': 'Close', onclick: () => dialog.close() }, '✕')),
+    h('pre', { class: 'diff-body' }, lines.map((l) => h('span', { class: cls(l) }, `${l}\n`))),
+  )
+  dialog.showModal()
+}
+
+// ------------------------------------------------------------------ ledger integrity badge
+
+async function updateLedgerBadge() {
+  const el = $('#ledger')
+  if (!model.events.length || !globalThis.crypto?.subtle) return el.replaceChildren()
+  const hex = async (t) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map((b) => b.toString(16).padStart(2, '0')).join('')
+  const r = await verifyChain(model.events, hex)
+  el.dataset.state = !r.chained ? 'unchained' : r.ok ? 'ok' : 'broken'
+  el.replaceChildren(!r.chained ? 'Ledger unsigned' : r.ok ? `Ledger verified · ${r.checked} events · ${r.head.slice(0, 8)}` : `Ledger tampered at event ${r.brokenAt + 1}`)
+  el.title = !r.chained ? 'Written by an older signalbox without a hash chain' : r.ok ? 'Every event is SHA-256 chained to the previous one and re-verified in your browser' : r.reason
 }
 
 // ------------------------------------------------------------------ side panel
@@ -519,6 +660,7 @@ function overviewPanel() {
     h('p', { class: 'lede' }, view.opened
       ? `${sum.cleared} of ${sum.total} blocks cleared. Every block is released only after its scope, exported contract, legacy scan and tests pass on an isolated copy of the code, and is then committed on its own.`
       : 'Bob subagents will each claim a block, the files one task owns. A block\'s signal stays at danger until every earlier wave has cleared.'),
+    crewSection(),
     ranked.length ? h('p', { class: 'eyebrow' }, 'Legacy patterns still in service') : null,
     h('ul', { class: 'rules' }, ranked.map(([id, n]) => {
       const r = model.atlas.rules[id]
@@ -544,9 +686,11 @@ function blockSection(b) {
   return h('div', { class: `block-card s-${t.state}` },
     h('div', { class: 'block-head' },
       h('span', { class: `signal-head s-${t.state}` }, h('i', { class: 'lamp red' }), h('i', { class: 'lamp amber' }), h('i', { class: 'lamp green' })),
-      h('div', {}, h('strong', {}, t.id), h('span', {}, `Wave ${t.wave} · ${STATUS_TEXT[t.state].toLowerCase()}${t.agent && !t.commit ? ` · ${t.agent}` : ''}${t.commit ? ` · ${t.commit.slice(0, 7)}` : ''}`))),
+      h('div', {}, h('strong', {}, t.id), h('span', {}, `Wave ${t.wave} · ${STATUS_TEXT[t.state].toLowerCase()}${t.agent && !t.commit ? ` · ${t.agent}` : ''}${t.commit ? ` · ${t.commit.slice(0, 7)}` : ''}`)),
+      (() => { const r = blockRisk()[t.id]; return h('span', { class: `risk r-${r.level}`, title: `${t.findings || 0} legacy call sites · ${r.reach} dependent files` }, `${r.level.toUpperCase()} RISK`) })()),
     checks ? h('ul', { class: 'checks' }, checks.map(([k, ok, text]) => h('li', { class: ok ? 'ok' : 'fail' }, h('b', {}, k), h('span', {}, text)))) : null,
     v && !v.checks.tests.ok && v.checks.tests.failures?.length ? h('pre', { class: 'failures' }, v.checks.tests.failures.join('\n')) : null,
+    diffFor(t) ? h('button', { class: 'diff-open', onclick: () => openDiff(t) }, `Review ${t.agent ? `${t.agent}'s` : 'the'} change`, h('span', {}, ` ${t.commit.slice(0, 7)} →`)) : null,
     t.state !== 'cleared' ? h('div', { class: 'prompt' },
       h('div', { class: 'prompt-head' }, h('p', { class: 'eyebrow' }, 'Subagent prompt'), h('button', { class: 'copy', onclick: (e) => copy(t.prompt, e.currentTarget) }, 'Copy')),
       h('pre', {}, t.prompt)) : null,
@@ -570,6 +714,13 @@ function stationPanel(id) {
     h('p', { class: 'path mono' }, `${model.atlas.root}/${id}`),
     h('p', { class: 'lede' }, statusText),
     b ? blockSection(b) : null,
+    (() => {
+      const reach = blastRadius(id).size - 1
+      return h('div', { class: 'blast-row' },
+        h('button', { class: `blast-btn${model.blast === id ? ' on' : ''}`, 'aria-pressed': String(model.blast === id), onclick: () => { model.blast = model.blast === id ? null : id; renderPanel(); updateMap() } },
+          model.blast === id ? 'Hide blast radius' : 'Show blast radius'),
+        h('span', {}, reach ? `A change here can reach ${reach} file${reach > 1 ? 's' : ''}` : 'Nothing depends on this file'))
+    })(),
     list.length ? h('p', { class: 'eyebrow' }, 'Call sites') : null,
     list.length ? h('ol', { class: 'findings' }, groupByLine(list).map(({ line, snippet, rules }) => {
       const known = rules.filter((r) => model.atlas.rules[r])
@@ -615,6 +766,7 @@ function renderPanel() {
 function select(id) {
   model.selected = id && layout.stations[id] ? id : null
   model.focusRule = null
+  if (model.blast !== model.selected) model.blast = null
   history.replaceState(null, '', model.selected ? `#${model.selected}` : ' ')
   renderPanel()
   updateMap()
@@ -634,6 +786,7 @@ function render() {
 }
 
 function rebuild() {
+  updateLedgerBadge()
   view = derive()
   buildMap()
   buildTimeline()
@@ -653,9 +806,9 @@ function initTheme() {
 
 document.addEventListener('keydown', (e) => {
   if (e.target.closest('input, textarea')) return
-  if (e.key === 'ArrowLeft') goTo(view.i - 1)
-  else if (e.key === 'ArrowRight') goTo(view.i + 1)
-  else if (e.key === 'Escape') select(null)
+  if (e.key === 'ArrowLeft') { stopTour(); goTo(view.i - 1) }
+  else if (e.key === 'ArrowRight') { stopTour(); goTo(view.i + 1) }
+  else if (e.key === 'Escape') { if (model.tour) stopTour(); else select(null) }
 })
 
 // Live mode: the page is served by `signalbox serve`. Anywhere else the fetch fails and the
@@ -718,9 +871,12 @@ async function start() {
   view = derive()
   buildMap()
   buildTimeline()
+  updateLedgerBadge()
   const hash = decodeURIComponent(location.hash.slice(1))
   model.selected = layout.stations[hash] ? hash : null
   render()
+  // ?tour starts the guided replay on load (handy for recording the demo video).
+  if (new URLSearchParams(location.search).has('tour')) setTimeout(startTour, 700)
 }
 
 let resizeTimer

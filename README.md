@@ -57,6 +57,20 @@ npm run -s sb -- status | log | prompt <block>
 - **Live panel.** `signalbox serve` streams ledger events and a rescan on every file change.
   Deployed statically, the UI replays the recorded ledger.
 
+- **Tamper-evident ledger.** Every event is SHA-256 chained to the previous one. `npm run -s sb -- audit`
+  verifies the chain and checks that every cleared block's commit exists on the branch, is signed by
+  the agent the ledger names, and changed only that block's files. CI runs it, and the panel re-verifies
+  the chain in the browser ("Ledger verified").
+- **Review every agent's change.** Each cleared block's real diff ships with the panel. Open a
+  block and click "Review bob-N's change".
+- **Blast radius.** Pick a file to see every file that depends on it, ripple by ripple.
+- **Guided tour.** Press "Tour" (or open the panel with `?tour`) to replay the run like a film:
+  captions in plain words, dwelling on faults, held signals and clears, opening the block in question.
+- **Risk scores.** Each block is ranked HIGH, MED or LOW by its legacy call sites plus 3 × the files that
+  depend on it, so reviewers know where to look hardest.
+- **Pull request bot.** `.github/workflows/signalbox-pr.yml` keeps one Signalbox comment updated on every
+  pull request: legacy calls before and after, the signal box report, and the ledger audit.
+- **Crew roster.** A record for each Bob subagent: blocks cleared, releases, faults fixed, time in blocks.
 - **Black-box recorder.** Every occupied block's in-flight files are saved (content-addressed) on
   every signal box command and every file change. If an agent runs `git stash` or `checkout .`
   anyway, `npm run -s sb -- recover <block>` puts the work back.

@@ -186,3 +186,27 @@ export function metrics(events) {
     firstTimeRight: cleared.filter((t) => t.attempts === 1).length,
   }
 }
+
+// ------------------------------------------------------------------ tamper-evident ledger
+// Every event carries `prev` (the previous event's hash) and `h` = sha256(prev + event without h).
+// Editing, deleting or reordering any past event breaks every hash after it. `hashHex` is injected
+// (node:crypto in the CLI, crypto.subtle in the browser) so this stays dependency-free.
+
+export function canonical(event) {
+  const { h, ...rest } = event
+  return JSON.stringify(rest)
+}
+
+export async function verifyChain(events, hashHex) {
+  if (!events.length) return { ok: true, chained: false, checked: 0 }
+  if (!events.some((e) => e.h)) return { ok: true, chained: false, checked: 0 }
+  let prev = null
+  for (let i = 0; i < events.length; i++) {
+    const e = events[i]
+    if ((e.prev ?? null) !== prev) return { ok: false, chained: true, brokenAt: i, reason: `event ${i + 1} does not follow event ${i}` }
+    const want = await hashHex(`${prev ?? ''}${canonical(e)}`)
+    if (e.h !== want) return { ok: false, chained: true, brokenAt: i, reason: `event ${i + 1} was modified after it was written` }
+    prev = e.h
+  }
+  return { ok: true, chained: true, checked: events.length, head: prev }
+}

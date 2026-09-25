@@ -12,9 +12,11 @@ Record the Bob IDE on the left and the live Signalbox panel (`npm run signalbox`
 | 1:15–1:30 | Bob fixes the implementation; release → CLEARED, commit hash on the board | "Bob reads the failure and fixes the code, not the test. The block clears and is committed on its own, signed by its agent." |
 | 1:30–1:50 | Wave 1 cleared → wave 2 signals turn green automatically; a third agent held at signal earlier shows in the describer | "When a wave clears, the next signals turn green. An agent that tried to jump ahead was held at the signal." |
 | 1:50–2:20 | Time-lapse (4–8x) of waves 2 and 3; then the finished map: 0 legacy calls, 6/6 blocks | "Six blocks, three waves, [N] Bob subagents. [N] faults caught before they ever reached a commit." |
-| 2:20–2:40 | Deployed site: press play to replay the ledger | "Every event is in a ledger. The deployed site replays the real run, so reviewers can see what happened and why it was safe." |
+| 2:20–2:40 | Deployed site opened with `?tour`: the guided replay captions each step, stops on the fault and opens Bob's diff | "Every event is in a hash-chained ledger. Anyone can replay the run, see exactly what each agent changed, and verify nothing was tampered with." |
 | 2:40–2:50 | Impact table | "Signalbox: parallel Bob subagents you can actually trust." |
 
 Recording tips:
+- Short on time? Open `https://ramadan904.github.io/bob-chainguard/?tour` after `npm run finalize` and a
+  merge. The tour narrates the real run by itself (about 45–90 seconds), which gives you a clean segment.
 - Speed up long Bob thinking segments, but show the real subagent names and timestamps.
 - Never show `.env` or any key.

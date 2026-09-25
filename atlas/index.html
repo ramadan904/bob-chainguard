@@ -23,6 +23,7 @@
         <div>
           <h1>Chainguard Signalbox <span class="mode" id="mode" data-mode="baseline">Baseline</span></h1>
           <p class="route" id="route"></p>
+          <span class="ledger" id="ledger" role="status"></span>
         </div>
       </div>
       <dl class="stats" id="stats"></dl>
@@ -75,8 +76,11 @@
       <div class="graph-wrap" id="graph"></div>
     </section>
 
+    <div class="caption" id="caption" role="status" aria-live="polite"></div>
+    <dialog class="diff" id="diff" aria-label="Bob's change"></dialog>
+
     <footer class="foot">
-      <p>Everything here comes from the signal box ledger and real <code>chainguard</code> scans of real commits. The agents are IBM Bob subagents. Keys: ← → step through events, Esc returns to the overview.</p>
+      <p>Everything here comes from the signal box ledger and real <code>chainguard</code> scans of real commits. The agents are IBM Bob subagents. Keys: ← → step through events, Esc returns to the overview. · <a href="./deck.html">Pitch deck</a></p>
     </footer>
     <script type="module" src="/src/main.js"></script>
   </body>

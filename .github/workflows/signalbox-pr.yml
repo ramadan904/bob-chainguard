@@ -1,0 +1,52 @@
+name: signalbox pr report
+
+# Posts (and keeps updating) one Signalbox comment on every pull request: legacy call sites
+# before/after, the signal box report from the ledger, and the ledger audit.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build the report
+        run: |
+          {
+            echo "<!-- signalbox-report -->"
+            echo "## 🚦 Signalbox"
+            echo
+            node chainguard/bin/chainguard.js scan legacy-dapp/src --baseline reports/baseline.json --format md | awk '/^## Before vs after/{f=1} /^## By rule/{f=0} f'
+            if [ -f .signalbox/ledger.jsonl ]; then
+              node chainguard/bin/signalbox.js report | sed '1,4d'
+            else
+              echo "_No signal box run on this branch yet._"
+            fi
+            echo
+            echo '```text'
+            node chainguard/bin/signalbox.js audit || true
+            echo '```'
+          } > signalbox-comment.md
+          cat signalbox-comment.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Post or update the comment
+        # Fork PRs get a read-only token; the report is still in the job summary.
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = require('fs').readFileSync('signalbox-comment.md', 'utf8')
+            const { owner, repo } = context.repo
+            const issue_number = context.issue.number
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number })
+            const mine = comments.find((c) => c.body?.includes('<!-- signalbox-report -->'))
+            if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body })
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body })

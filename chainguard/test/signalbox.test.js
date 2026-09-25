@@ -3,9 +3,10 @@ import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
-import { reduce, canClaim, ownerOf, matchGlob, summary, metrics, timeline } from '../src/signalbox-state.js'
-import { init, claim, extend, release, rollback, loadState, readLedger, exportsOf, installHook, hookCheck, checkpoint, listCheckpoints, recover, checkContract, importersOf, SignalboxError } from '../src/signalbox.js'
+import { reduce, canClaim, ownerOf, matchGlob, summary, metrics, timeline, verifyChain } from '../src/signalbox-state.js'
+import { init, claim, extend, release, rollback, loadState, readLedger, exportsOf, installHook, hookCheck, checkpoint, listCheckpoints, recover, checkContract, importersOf, audit, sha256, ledgerPath, SignalboxError } from '../src/signalbox.js'
 
 const plan = {
   waves: 2,
@@ -162,7 +163,7 @@ test('e2e: pre-commit hook blocks direct commits of block files but not releases
     installHook(root)
     // Point the hook at this checkout's CLI (the temp repo has no chainguard/ folder).
     const hook = join(root, '.git/hooks/pre-commit')
-    writeFileSync(hook, `#!/bin/sh\nexec node ${JSON.stringify(new URL('../bin/signalbox.js', import.meta.url).pathname)} hook-check\n`, { mode: 0o755 })
+    writeFileSync(hook, `#!/bin/sh\nexec node ${JSON.stringify(fileURLToPath(new URL('../bin/signalbox.js', import.meta.url)).split('\\').join('/'))} hook-check\n`, { mode: 0o755 })
     const a = Object.values(loadState(root).tasks).find((t) => t.files.includes('src/a.js'))
     claim(root, a.id, 'bob-1')
     writeFileSync(join(root, 'src/a.js'), 'export const one = () => 1n\nexport const keep = 1\n')
@@ -269,6 +270,42 @@ test('contract: exports retire once unused (expand -> migrate -> contract)', () 
     assert.equal(checkContract(root, ['src/b.js'], 'src').removed[0].name, '(file deleted)')
     rmSync(join(root, 'src/d.js'))
     assert.equal(checkContract(root, ['src/b.js'], 'src').ok, true)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('e2e: ledger is hash-chained and audit catches tampering', async () => {
+  const { root } = makeRepo()
+  try {
+    init(root, { scanPath: 'src', testCmd: 'node check.js', allow: [] })
+    const a = Object.values(loadState(root).tasks).find((t) => t.files.includes('src/a.js'))
+    claim(root, a.id, 'bob-1')
+    writeFileSync(join(root, 'src/a.js'), 'export const one = () => 1n\nexport const keep = 1\n')
+    writeFileSync(join(root, 'src/b.js'), 'export const two = 2\n')
+    assert.equal(release(root, a.id, 'bob-1').ok, true)
+
+    const events = readLedger(root)
+    assert.equal(events[0].prev, null)
+    for (let i = 1; i < events.length; i++) assert.equal(events[i].prev, events[i - 1].h)
+    let r = await audit(root)
+    assert.equal(r.ok, true, r.findings.join('; '))
+    assert.equal(r.clears, 1)
+
+    // Rewrite history: pretend a different agent cleared the block.
+    const lines = readFileSync(ledgerPath(root), 'utf8').trim().split('\n')
+    const i = lines.findIndex((l) => l.includes('"t":"clear"'))
+    lines[i] = lines[i].replace('"agent":"bob-1"', '"agent":"bob-9"')
+    writeFileSync(ledgerPath(root), lines.join('\n') + '\n')
+    r = await audit(root)
+    assert.equal(r.ok, false)
+    assert.match(r.findings.join('\n'), /modified after it was written/)
+    assert.match(r.findings.join('\n'), /signed by bob-1, ledger says bob-9/)
+
+    // Deleting an event breaks the chain too.
+    const chain = await verifyChain(events.filter((_, k) => k !== 1), async (t) => sha256(t))
+    assert.equal(chain.ok, false)
+    assert.equal(chain.brokenAt, 1)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

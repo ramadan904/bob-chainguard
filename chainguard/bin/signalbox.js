@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { init, claim, extend, release, rollback, loadState, readLedger, repoRoot, writeReplay, installHook, hookCheck, doctor, checkpoint, listCheckpoints, recover, SignalboxError, DEFAULT_TEST } from '../src/signalbox.js'
+import { init, claim, extend, release, rollback, loadState, readLedger, repoRoot, writeReplay, installHook, hookCheck, doctor, checkpoint, listCheckpoints, recover, audit, SignalboxError, DEFAULT_TEST } from '../src/signalbox.js'
 import { summary, describe, metrics, timeline } from '../src/signalbox-state.js'
 import { writeFileSync } from 'node:fs'
 import { resolve as resolvePath } from 'node:path'
@@ -16,6 +16,7 @@ Usage:
   signalbox report [--out file]                          impact report from the ledger (Markdown)
   signalbox install-hook                                 pre-commit guard: block files only via release
   signalbox doctor [--no-tests]                          preflight before a run or a recording
+  signalbox audit                                        verify the ledger hash chain and every cleared commit
   signalbox checkpoints <block>                          black-box copies of a block's in-flight work
   signalbox recover <block> --agent <name> [--from <stamp>]  restore the latest (or a named) checkpoint
   signalbox prompt <block>                               the subagent prompt for a block
@@ -212,6 +213,14 @@ async function main() {
       const checks = doctor(root, { runTests: opts.tests !== false })
       for (const c of checks) console.log(`  ${c.ok ? 'ok  ' : 'FAIL'}  ${c.name.padEnd(30)} ${c.detail}`)
       return checks.every((c) => c.ok) ? 0 : 1
+    }
+    case 'audit': {
+      const r = await audit(root)
+      console.log(`ledger: ${r.events} events, ${r.chain.chained ? `hash chain ${r.chain.ok ? 'intact' : 'BROKEN'}${r.chain.head ? ` (head ${r.chain.head.slice(0, 12)})` : ''}` : 'not hash-chained'}`)
+      console.log(`cleared blocks checked against git: ${r.clears}`)
+      for (const f of r.findings) console.log(`  FAIL  ${f}`)
+      console.log(r.ok ? 'AUDIT PASSED' : 'AUDIT FAILED')
+      return r.ok ? 0 : 1
     }
     case 'install-hook':
       console.log(`installed ${installHook(root)}`)

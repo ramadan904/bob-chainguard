@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { relative, resolve, posix, sep } from 'node:path'
+import { posix } from 'node:path'
 import { scanDir, scanEntries, isSourcePath } from './scan.js'
 import { buildPlan } from './plan.js'
 import { DEFAULT_PACK } from './rules.js'
@@ -10,7 +10,9 @@ const git = (cwd, args) => execFileSync('git', args, { cwd, encoding: 'utf8', ma
 // uncommitted changes there. Every snapshot is a real scan of real code.
 export function gitSnapshots(dir, rules = DEFAULT_PACK.rules) {
   const top = git(dir, ['rev-parse', '--show-toplevel']).trim()
-  const sub = relative(top, resolve(dir)).split(sep).join('/')
+  // git computes the prefix itself: on Windows a temp dir may be an 8.3 short path (RUNNER~1) that
+  // path.relative can't match against git's long-form toplevel.
+  const sub = git(dir, ['rev-parse', '--show-prefix']).trim().replace(/\/$/, '')
   const log = git(top, ['log', '--reverse', '--format=%H%x1f%ct%x1f%s', '--', sub]).trim()
   const snapshots = []
   for (const line of log ? log.split('\n') : []) {
@@ -20,12 +22,19 @@ export function gitSnapshots(dir, rules = DEFAULT_PACK.rules) {
       .map((p) => ({ path: p, rel: posix.relative(sub, p) }))
       .filter((e) => isSourcePath(e.rel))
       .map((e) => ({ rel: e.rel, text: git(top, ['show', `${commit}:${e.path}`]) }))
-    snapshots.push({ commit, time: Number(time) * 1000, subject, report: scanEntries(sub, entries, rules) })
+    // Block commits carry their patch, so the panel can show exactly what each agent changed.
+    const diff = /^signalbox: clear /.test(subject) ? capDiff(git(top, ['show', '--format=', '--patch', '--no-color', '--no-ext-diff', commit])) : null
+    snapshots.push({ commit, time: Number(time) * 1000, subject, report: scanEntries(sub, entries, rules), diff })
   }
   if (git(top, ['status', '--porcelain', '--', sub]).trim() || snapshots.length === 0) {
     snapshots.push({ commit: null, time: Date.now(), subject: 'Working tree (uncommitted)', report: scanDir(dir, rules) })
   }
   return { root: sub, snapshots }
+}
+
+const MAX_DIFF = 60_000
+function capDiff(patch) {
+  return patch.length > MAX_DIFF ? `${patch.slice(0, MAX_DIFF)}\n… (diff truncated at ${MAX_DIFF / 1000} kB)\n` : patch
 }
 
 // Longest import chain below each file (files importing nothing sit at depth 0).
@@ -90,6 +99,7 @@ export function buildAtlas({ root, snapshots }, pack = DEFAULT_PACK) {
         byLib: s.report.byLib,
         present: Object.keys(s.report.imports).sort(),
         findings: byFile,
+        ...(s.diff ? { diff: s.diff } : {}),
       }
     }),
   }

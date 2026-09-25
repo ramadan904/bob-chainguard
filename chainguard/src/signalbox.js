@@ -11,7 +11,7 @@ import { createHash } from 'node:crypto'
 import { scanDir, scanSource } from './scan.js'
 import { buildPlan } from './plan.js'
 import { loadPack } from './pack.js'
-import { reduce, canClaim, blockFiles, ownerOf, isProtected } from './signalbox-state.js'
+import { reduce, canClaim, blockFiles, ownerOf, isProtected, canonical, verifyChain } from './signalbox-state.js'
 
 export const DEFAULT_ALLOW = ['legacy-dapp/package.json', 'legacy-dapp/package-lock.json', '.signalbox/**', 'reports/**', 'bob_sessions/**', 'atlas/src/data/**']
 export const DEFAULT_TEST = 'npm test --prefix legacy-dapp'
@@ -36,8 +36,14 @@ export function readLedger(root) {
   return readFileSync(p, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l))
 }
 
+export const sha256 = (text) => createHash('sha256').update(text).digest('hex')
+
+// Appends one event, chained to the previous one (see verifyChain in signalbox-state.js).
 function append(root, event) {
-  const e = { at: new Date().toISOString(), ...event }
+  const events = readLedger(root)
+  const prev = events.length ? events[events.length - 1].h ?? null : null
+  const e = { at: new Date().toISOString(), ...event, prev }
+  e.h = sha256(`${prev ?? ''}${canonical(e)}`)
   mkdirSync(dirname(ledgerPath(root)), { recursive: true })
   appendFileSync(ledgerPath(root), JSON.stringify(e) + '\n')
   return e
@@ -306,10 +312,12 @@ export function checkTests(root, state, files, { timeoutMs = 300_000 } = {}) {
     }
     for (const nm of nodeModuleDirs(root)) {
       const dst = join(wt, nm)
-      if (!existsSync(dst) && existsSync(dirname(dst))) symlinkSync(join(root, nm), dst, 'dir')
+      // Junctions need no admin rights on Windows; elsewhere a plain directory symlink.
+      if (!existsSync(dst) && existsSync(dirname(dst))) symlinkSync(join(root, nm), dst, process.platform === 'win32' ? 'junction' : 'dir')
     }
     const started = Date.now()
-    const r = spawnSync('sh', ['-c', state.testCmd], { cwd: wt, encoding: 'utf8', timeout: timeoutMs, env: { ...process.env, CI: '1', FORCE_COLOR: '0', NO_COLOR: '1' } })
+    // shell: true uses sh on Linux/macOS and cmd.exe on Windows.
+    const r = spawnSync(state.testCmd, { shell: true, cwd: wt, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 32 << 20, env: { ...process.env, CI: '1', FORCE_COLOR: '0', NO_COLOR: '1' } })
     const out = `${r.stdout || ''}\n${r.stderr || ''}`.replace(/\x1b\[[0-9;]*m/g, '')
     const lines = out.split('\n').map((l) => l.trimEnd()).filter((l) => l.trim())
     const summaryLine = [...lines].reverse().find((l) => /^\s*Tests\s+/.test(l)) || ''
@@ -429,6 +437,8 @@ export function hookCheck(root, env = process.env) {
 export function doctor(root, { runTests = true } = {}) {
   const checks = []
   const add = (name, ok, detail) => checks.push({ name, ok, detail })
+  const [major, minor] = process.versions.node.split('.').map(Number)
+  add('Node.js 20 or newer', major > 20 || (major === 20 && minor >= 0), `found ${process.versions.node}${major < 20 ? ' (install Node 22 LTS from nodejs.org)' : ''}`)
   const events = readLedger(root)
   const state = reduce(events)
   add('signal box opened', Boolean(state), state ? `${Object.keys(state.tasks).length} blocks, base ${state.base.slice(0, 7)}` : 'run: npm run -s sb -- init')
@@ -505,4 +515,41 @@ export function recover(root, taskId, agent, { stamp } = {}) {
     }
     return append(root, { t: 'recover', task: taskId, agent, from: cp.stamp, files: cp.files })
   })
+}
+
+// ------------------------------------------------------------------ audit
+
+// Independent check that the ledger tells the truth: the hash chain is intact, and every cleared
+// block's commit exists on this branch, is signed by the agent the ledger names, and changed
+// only the files the ledger says it did.
+export async function audit(root) {
+  const events = readLedger(root)
+  const findings = []
+  const chain = await verifyChain(events, async (t) => sha256(t))
+  if (!chain.ok) findings.push(`hash chain broken: ${chain.reason}`)
+  else if (!chain.chained && events.length) findings.push('ledger is not hash-chained (written by an older signalbox)')
+  const clears = events.filter((e) => e.t === 'clear')
+  for (const e of clears) {
+    try {
+      git(root, ['cat-file', '-e', `${e.commit}^{commit}`], { stdio: 'ignore' })
+    } catch {
+      findings.push(`${e.task}: commit ${e.commit.slice(0, 7)} does not exist`)
+      continue
+    }
+    try {
+      git(root, ['merge-base', '--is-ancestor', e.commit, 'HEAD'], { stdio: 'ignore' })
+    } catch {
+      findings.push(`${e.task}: commit ${e.commit.slice(0, 7)} is not on this branch`)
+    }
+    const body = git(root, ['log', '-1', '--format=%B', e.commit])
+    const signed = body.match(/^Signalbox-Agent:\s*(.+)$/m)?.[1]?.trim()
+    const isBlockCommit = /^signalbox: clear /m.test(body)
+    if (isBlockCommit && signed !== e.agent) findings.push(`${e.task}: commit signed by ${signed || 'nobody'}, ledger says ${e.agent}`)
+    if (isBlockCommit) {
+      const changed = git(root, ['show', '--name-only', '--format=', e.commit]).split('\n').filter(Boolean)
+      const extra = changed.filter((f) => !(e.files || []).includes(f))
+      if (extra.length) findings.push(`${e.task}: commit also changed ${extra.join(', ')}`)
+    }
+  }
+  return { ok: findings.length === 0, events: events.length, clears: clears.length, chain, findings }
 }
