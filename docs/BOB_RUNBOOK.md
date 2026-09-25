@@ -59,16 +59,22 @@ Give this to Bob's top-level agent (Agent mode, subagents / parallel tasks enabl
 ```text
 You are the dispatcher for a migration that runs under Signalbox interlocking.
 Loop until `npm run -s sb -- next` prints ALL BLOCKS CLEARED:
-1. Run `npm run -s sb -- next` (add --json if you prefer structured output).
-2. For every READY block, start a parallel subagent
+1. Run `npm run -s sb -- next` (add --json if you prefer structured output). For anything you
+   need to decide, ask the signal box in plain words, e.g.
+   `npm run -s sb -- ask "start all green wave-1 blocks"`, `... ask "riskiest remaining block"`,
+   `... why <block>`. Its answers come from the ledger; act on them.
+2. Interlocking proof, once, at the start: while wave 1 is running, start one extra subagent on
+   a wave-2 block. Its claim must be REFUSED ("signal at danger"). Report the refusal and end
+   that subagent; do not retry until `next` lists the block as READY.
+3. For every READY block, start a parallel subagent
    named bob-<n> (n = 1, 2, 3...). Give it exactly the output of
    `npm run -s sb -- prompt <block> --agent bob-<n>` as its task. Run the subagents of a wave
    in parallel; never start a block whose signal is at DANGER.
-3. Wait for the subagents of the wave to finish. If a subagent reports a FAULT it could not fix
+4. Wait for the subagents of the wave to finish. If a subagent reports a FAULT it could not fix
    after two releases, tell it to roll back, then start a fresh subagent on that block. If a
    subagent stops responding, free its block with
    `npm run -s sb -- rollback <block> --agent dispatcher --operator`.
-4. After each wave, summarize what cleared, what faulted and why (from `npm run -s sb -- log`).
+5. After each wave, summarize what cleared, what faulted and why (from `npm run -s sb -- log`).
 Never edit files yourself and never bypass the signal box.
 Never run git commands (commit, stash, checkout, reset, clean) and never let a subagent run them:
 other subagents are editing at the same time, and release/rollback already handle git.
@@ -86,6 +92,28 @@ What judges see on the panel:
 - A fault flashes red with the failing test, and the block stays uncommitted.
 - A SPAD banner appears if an agent edits outside its block.
 - When a wave clears, the next wave's signals turn green.
+- The **control tower** shows one lane per Bob subagent: what it holds, what it just did, and
+  an amber "Held at signal" lane (plus an amber pulse on the map) for the refused wave-2 claim.
+
+### 2a. Chaos drill (the 20-second moment)
+
+While wave 1 is running, **between two releases**, click **⚡ Simulate chaos: SPAD** in the
+control tower (or run `npm run -s sb -- drill spad --hold 6`). The signal box makes a real stray
+edit to the most-imported file no agent holds. The scope check catches it in milliseconds, the
+map and screen flash red, and after 6 seconds the file is restored from git. **Break a contract**
+does the same with a renamed export and lights up every file that still imports it. Both are in
+the hash-chained ledger, so the public replay shows them too.
+
+If an agent releases during those 6 seconds, its release is refused (scope fault): that's the
+interlock working, and the agent simply releases again. For a Bob-driven version, give one
+subagent this prompt instead:
+
+```text
+Chaos subagent: claim <block> as bob-chaos, then deliberately also edit
+legacy-dapp/src/config.js (a file outside your block) and release. Report exactly what the
+signal box says. Then roll back your block with
+`npm run -s sb -- rollback <block> --agent bob-chaos` and stop.
+```
 
 ## 3. The contract step
 

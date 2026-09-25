@@ -102,7 +102,18 @@ const slides = [
     <p class="note">Files are stations, folders are lines, imports are tunnels. Blocks light up as agents enter, faults flash red with the failing test, and the train graph shows the agents running in parallel.</p>
   </section>`,
 
-  // 8. results
+  // 8. command
+  `<section class="slide">
+    <div class="kicker">Operate it live</div>
+    <h2>A control tower, a chaos button and a dispatcher that answers.</h2>
+    <div class="cards three">
+      <div class="card"><div class="icon">${lamp('amber')}${lamp('green')}</div><b>Control tower</b><p>One lane per Bob subagent, streamed from the ledger: the block it holds, its last move, and an amber <em>Held at signal</em> the moment interlocking refuses a claim.</p></div>
+      <div class="card red"><div class="icon">${lamp('red')}</div><b>Chaos drill</b><p>One click makes a <strong>real</strong> stray edit or breaks a real export. The checks catch it in milliseconds, every release locks, and the file is restored from git. It's in the ledger too.</p></div>
+      <div class="card"><div class="icon">${lamp('green')}</div><b>Dispatcher desk</b><p>"Start all green wave-1 blocks." "Why is w2-lib at danger?" Answers come from the ledger. Bob Agent mode asks the same desk from its terminal: <code>sb ask</code>.</p></div>
+    </div>
+  </section>`,
+
+  // 9. results
   `<section class="slide">
     <div class="kicker">${ran ? 'Results from the real run' : 'Results'}</div>
     <h2>${ran ? 'Real numbers from the ledger, not a slide.' : 'Every number is computed from the run.'}</h2>
@@ -111,13 +122,13 @@ const slides = [
       <div><span class="n mint">${ran ? `${m.cleared}/${m.blocks}` : `0/${atlas.plan.tasks.length}`}</span><label>blocks cleared by Bob</label></div>
       <div><span class="n amber">${ran ? m.agents.length : '?'}</span><label>Bob subagents${ran ? `, up to ${m.peakParallel} at once` : ''}</label></div>
       <div><span class="n red">${ran ? m.faults : '?'}</span><label>faults caught before commit</label></div>
-      <div><span class="n">${ran ? `${m.spads} / ${m.rollbacks}` : '?'}</span><label>SPADs / rollbacks</label></div>
+      <div><span class="n">${ran ? `${m.denied} / ${m.drillsCaught}` : '?'}</span><label>claims refused at signal / chaos drills caught</label></div>
       <div><span class="n">${ran ? dur(m.wallClockMs) : '?'}</span><label>wall clock</label></div>
     </div>
     <p class="note">${ran ? 'Behavior tests: 22/22, never modified. The deployed panel replays this exact run.' : `Run pending: ${pending}. <code>npm run finalize</code> fills this slide from the ledger.`}</p>
   </section>`,
 
-  // 9. safety + beyond
+  // 10. safety + beyond
   `<section class="slide">
     <div class="kicker">Built to be trusted</div>
     <h2>Safe even when an agent misbehaves. Useful beyond this demo.</h2>
@@ -125,7 +136,7 @@ const slides = [
       <div class="card"><b>Safety net</b><ul>
         <li>Tamper-evident ledger: SHA-256 hash chain, audited against git in CI</li>
         <li>Tests and the checker are protected: agents can't edit them</li>
-        <li>Live SPAD alarm the second an unclaimed file changes</li>
+        <li>Live SPAD alarm the second an unclaimed file changes, proven on demand by the chaos drill</li>
         <li>Pre-commit guard: no bypassing the signal box</li>
         <li>Black-box recorder restores work a rogue <code>git checkout</code> would wipe</li>
         <li>Expand → migrate → contract: shared code changes last, and only when unused</li>
@@ -140,7 +151,7 @@ const slides = [
     </div>
   </section>`,
 
-  // 10. close
+  // 11. close
   `<section class="slide title close">
     <div class="signals">${lamp('green')}${lamp('green')}${lamp('green')}</div>
     <h2 class="huge">Parallel Bob subagents<br>you can actually trust.</h2>

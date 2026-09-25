@@ -2,32 +2,8 @@
 // signal box ledger, so they are unit-tested without a browser.
 import { reduce, timeline } from '../../chainguard/src/signalbox-state.js'
 
-// Every file that depends on `id` (directly or through other files), with its distance in hops.
-export function blastRadius(files, id) {
-  const users = {}
-  for (const f of files) for (const d of f.imports) (users[d] ||= []).push(f.id)
-  const dist = new Map([[id, 0]])
-  const queue = [id]
-  while (queue.length) {
-    const cur = queue.shift()
-    for (const u of users[cur] || []) if (!dist.has(u)) { dist.set(u, dist.get(cur) + 1); queue.push(u) }
-  }
-  return dist
-}
-
-// Risk of a block = legacy call sites + 3 × the files outside it that depend on it, ranked within
-// the plan into thirds. `filesOf(task)` returns the block's station ids.
-export function blockRisk(files, tasks, filesOf) {
-  const scored = tasks.map((t) => {
-    const own = filesOf(t)
-    const reach = new Set()
-    for (const f of own) for (const [d] of blastRadius(files, f)) if (!own.includes(d)) reach.add(d)
-    return { id: t.id, score: (t.findings || 0) + 3 * reach.size, reach: reach.size }
-  }).sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
-  const hi = Math.ceil(scored.length / 3)
-  const mid = Math.ceil((2 * scored.length) / 3)
-  return Object.fromEntries(scored.map((r, k) => [r.id, { ...r, level: k < hi ? 'high' : k < mid ? 'med' : 'low' }]))
-}
+// Blast radius and block risk live with the dispatcher so the CLI and Bob can use them too.
+export { blastRadius, blockRisk } from '../../chainguard/src/dispatch.js'
 
 // Per-agent record up to ledger event `upto` (inclusive), in order of first appearance.
 export function crewStats(events, upto) {
@@ -108,8 +84,50 @@ export function tourStep(events, i) {
       step.text = `${e.agent} recovers ${e.task} from the black-box recorder.`
       step.dwell = 3000
       break
+    case 'drill':
+      step.kind = 'chaos'
+      step.file = e.file
+      step.text = `Chaos drill: ${e.kind === 'contract' ? `${e.renamed.from} is renamed in ${e.file.split('/').pop()}, breaking ${e.usedBy.length} importer${e.usedBy.length === 1 ? '' : 's'}` : `a stray edit hits ${e.file.split('/').pop()}, a file no agent holds`}. Caught in ${e.detectMs} ms. Every release is refused while it is on the tracks.`
+      step.dwell = 4600
+      break
+    case 'drill-end':
+      step.kind = 'restored'
+      step.text = `${e.file.split('/').pop()} ${e.restored ? 'restored from git' : 'left as is'}. The agents' blocks were never touched.`
+      step.dwell = 2600
+      break
     default:
       step.text = e.t
   }
   return step
+}
+
+// Control tower: one lane per Bob subagent at ledger event `upto`. An agent gets a lane the first
+// time it claims or is refused a block. `fresh` marks the agent that produced event `upto`.
+export function towerLanes(events, upto) {
+  if (!events.length) return []
+  const seen = events.slice(0, upto + 1)
+  const order = [...new Set(events.filter((e) => e.t === 'claim' || e.t === 'deny').map((e) => e.agent))]
+  const lanes = new Map()
+  for (let k = 0; k < seen.length; k++) {
+    const e = seen[k]
+    if (!order.includes(e.agent)) continue
+    const l = lanes.get(e.agent) || { agent: e.agent, index: order.indexOf(e.agent), status: 'standby', task: null, claims: 0, clears: 0, faults: 0, denies: 0, last: null, lastIndex: -1 }
+    if (e.t === 'claim') { l.claims++; l.task = e.task; l.status = 'working' }
+    if (e.t === 'deny') { l.denies++; l.status = 'held'; l.heldFor = e.task; l.reason = e.reason }
+    if (e.t === 'verify') { if (!e.ok) l.faults++; l.status = e.ok ? 'working' : 'fault' }
+    if (e.t === 'clear') { l.clears++; l.task = null; l.status = 'off' }
+    if (e.t === 'rollback') { l.task = null; l.status = 'off' }
+    if (e.t === 'recover') { l.task = e.task; l.status = 'working' }
+    if (e.t !== 'deny') { l.heldFor = null; l.reason = null }
+    l.last = e
+    l.lastIndex = k
+    lanes.set(e.agent, l)
+  }
+  // Operator rollbacks name "dispatcher (operator, over bob-2)": free that agent's block too.
+  for (const e of seen) {
+    const over = e.t === 'rollback' && /over ([^)]+)\)/.exec(e.agent || '')?.[1]
+    const l = over && lanes.get(over)
+    if (l && l.task === e.task && Date.parse(e.at) >= Date.parse(l.last.at)) { l.task = null; l.status = 'off'; l.last = e }
+  }
+  return [...lanes.values()].sort((a, b) => a.index - b.index).map((l) => ({ ...l, fresh: l.lastIndex === upto }))
 }

@@ -10,7 +10,8 @@ import { layoutAtlas, LABEL_OFFSET } from './layout.js'
 import { dependentsOf, baselineIndex } from './state.js'
 import { buildStops, findingsAt, signalStateAt, blockIndex, faultsCaught, checkLamps, stripRoot } from './signal.js'
 import { reduce, describe, summary, timeline, verifyChain } from '../../chainguard/src/signalbox-state.js'
-import { blastRadius as blastOf, blockRisk as riskOf, crewStats, tourStep } from './insights.js'
+import { ask, EXAMPLES } from '../../chainguard/src/dispatch.js'
+import { blastRadius as blastOf, blockRisk as riskOf, crewStats, tourStep, towerLanes } from './insights.js'
 
 // A recorded ledger (from a real Bob run) ships with the static build for replay. Optional.
 const ledgerModules = import.meta.glob('./data/ledger.json', { eager: true, import: 'default' })
@@ -186,6 +187,10 @@ function updateMap() {
     : [],
   )
   const spadNow = new Set(liveViolations().map((v) => v.file))
+  const heldNow = new Set(view.event?.t === 'deny' ? taskFiles(view.event.task) : [])
+  const drill = activeDrill()
+  if (drill) spadNow.add(stripRoot(view.sb.scanDir)(drill.file))
+  const broken = new Set((drill?.usedBy || []).map(stripRoot(view.sb.scanDir)))
   const blast = model.blast && layout.stations[model.blast] ? blastRadius(model.blast) : null
   const related = new Set()
   if (model.selected) {
@@ -198,6 +203,8 @@ function updateMap() {
     const b = view.blocks[id]
     n.g.dataset.status = status
     n.g.dataset.block = spadNow.has(id) ? 'spad' : b ? b.state : 'none'
+    n.g.classList.toggle('held', heldNow.has(id))
+    n.g.classList.toggle('broken', broken.has(id))
     n.ring.setAttribute('r', stationRadius(count))
     n.count.textContent = count > 0 ? String(count) : ''
     const task = b && view.sb.tasks[b.task]
@@ -206,6 +213,7 @@ function updateMap() {
     const occupied = b && (b.state === 'occupied' || b.state === 'fault') && b.agent
     n.agentText.textContent = occupied ? b.agent.toUpperCase() : ''
     n.agent.querySelector('rect').setAttribute('width', occupied ? 16 + b.agent.length * 7.4 : 0)
+    n.agent.style.setProperty('--c', occupied ? agentColor(b.agent) : '')
     n.g.setAttribute('aria-label', `${id}: ${status === 'legacy' ? `${count} legacy call sites` : status}${b ? `, block ${b.task} ${b.state}${occupied ? ` by ${b.agent}` : ''}` : ''}`)
     n.g.classList.toggle('selected', model.selected === id)
     n.g.classList.toggle('dim', blast ? !blast.has(id) : (focus.size > 0 && !focus.has(id)) || (!focus.size && related.size > 0 && !related.has(id)))
@@ -351,6 +359,140 @@ function faultReasons(v) {
   return out
 }
 
+// ------------------------------------------------------------------ control tower
+// One lane per Bob subagent, straight from the ledger: what it holds, what it just did, and
+// whether interlocking is holding it at a signal. Live mode streams it; replay steps through it.
+
+const LANE_TEXT = { working: 'In section', held: 'Held at signal', fault: 'Fault · fixing', off: 'Off duty', standby: 'Standing by' }
+
+function agentColor(agent) {
+  const order = [...new Set(model.events.filter((e) => e.t === 'claim' || e.t === 'deny').map((e) => e.agent))]
+  const k = order.indexOf(agent)
+  return AGENT_COLORS[(k < 0 ? 0 : k) % AGENT_COLORS.length]
+}
+
+function updateTower() {
+  const upto = view.opened ? view.stops[view.i].event : -1
+  const lanes = view.opened && upto != null ? towerLanes(model.events, upto) : []
+  const sum = summary(view.sb)
+  const green = Object.values(view.sb.tasks).filter((t) => t.state === 'clear')
+  const held = lanes.filter((l) => l.status === 'held').length
+  $('#tower-sub').textContent = lanes.length
+    ? `${sum.agents.length} Bob subagent${sum.agents.length === 1 ? '' : 's'} in section · ${held} held at a signal · ${green.length} green block${green.length === 1 ? '' : 's'} waiting`
+    : `${green.length} green block${green.length === 1 ? '' : 's'} waiting for Bob subagents. Lanes open as agents claim them.`
+  const cards = lanes.map((l) => {
+    const t = l.task && view.sb.tasks[l.task]
+    return h('li', { class: `lane l-${l.status}${l.fresh ? ' fresh' : ''}`, style: `--c:${agentColor(l.agent)}`, tabindex: 0,
+      onclick: () => l.task && select(taskFiles(l.task)[0]),
+      onkeydown: (e) => { if (e.key === 'Enter' && l.task) select(taskFiles(l.task)[0]) },
+      onmouseenter: () => { model.focusTask = l.task || l.heldFor; updateMap() },
+      onmouseleave: () => { model.focusTask = null; updateMap() },
+    },
+      h('div', { class: 'lane-top' },
+        h('span', { class: 'lane-name' }, l.agent.toUpperCase()),
+        h('span', { class: `signal-head s-${{ working: 'occupied', held: 'danger', fault: 'fault', off: 'cleared', standby: 'clear' }[l.status]}` }, h('i', { class: 'lamp red' }), h('i', { class: 'lamp amber' }), h('i', { class: 'lamp green' }))),
+      h('p', { class: 'lane-status' }, LANE_TEXT[l.status]),
+      h('p', { class: 'lane-block' }, t ? [h('b', {}, l.task), ` · wave ${t.wave} · `, taskFiles(l.task).map((f) => f.split('/').pop()).join(', ')] : l.status === 'off' ? 'Block cleared and committed' : l.status === 'held' ? 'Waiting at the signal, holding nothing' : '—'),
+      l.heldFor ? h('p', { class: 'lane-held' }, h('b', {}, `Refused ${l.heldFor}: `), l.reason.replace(/^signal at danger: /, '')) : h('p', { class: 'lane-last' }, h('time', {}, l.last.at.slice(11, 19)), ' ', describe(l.last)),
+      h('p', { class: 'lane-stats' }, h('b', {}, String(l.clears)), ' cleared · ', h('b', { class: l.faults ? 'f' : '' }, String(l.faults)), ' faults · ', h('b', { class: l.denies ? 'd' : '' }, String(l.denies)), ' refused'))
+  })
+  const ghosts = lanes.length ? [] : green.slice(0, 4).map((t, k) => h('li', { class: 'lane l-ghost' },
+    h('div', { class: 'lane-top' }, h('span', { class: 'lane-name' }, `LANE ${k + 1}`)),
+    h('p', { class: 'lane-status' }, 'Awaiting a subagent'),
+    h('p', { class: 'lane-block' }, h('b', {}, t.id), ` · wave ${t.wave} · signal green`)))
+  $('#lanes').replaceChildren(...cards, ...ghosts)
+  document.body.classList.toggle('held-now', view.event?.t === 'deny')
+}
+
+// The drill whose stray edit is on the tracks at the current stop (it ends with a drill-end).
+function activeDrill() {
+  if (!view.opened) return null
+  const upto = view.stops[view.i].event
+  for (let k = upto; k >= 0; k--) {
+    const e = model.events[k]
+    if (e.t === 'drill-end') return null
+    if (e.t === 'drill') return e
+  }
+  return null
+}
+
+function chaosFlash() {
+  document.body.classList.remove('chaos')
+  void document.body.offsetWidth
+  document.body.classList.add('chaos')
+  setTimeout(() => document.body.classList.remove('chaos'), 1600)
+}
+
+async function runDrill(kind, btn) {
+  const all = document.querySelectorAll('.chaos-btn')
+  all.forEach((b) => (b.disabled = true))
+  try {
+    const r = await fetch(`./api/drill?kind=${kind}`, { method: 'POST' })
+    const body = await r.json()
+    if (!r.ok) showCaption({ kind: 'fault', text: body.error })
+  } catch (err) {
+    showCaption({ kind: 'fault', text: `Drill failed: ${err.message}` })
+  }
+  setTimeout(() => all.forEach((b) => (b.disabled = false)), 7000)
+  btn.blur()
+}
+
+function updateTowerActions() {
+  const el = $('#tower-actions')
+  if (model.mode === 'live') {
+    if (el.dataset.mode === 'live') return
+    el.dataset.mode = 'live'
+    el.replaceChildren(
+      h('button', { class: 'chaos-btn', title: 'Makes a real edit to a file no agent holds. The checks catch it, then the file is restored from git.', onclick: (e) => runDrill('spad', e.currentTarget) }, h('span', { 'aria-hidden': 'true' }, '⚡ '), 'Simulate chaos: SPAD'),
+      h('button', { class: 'chaos-btn alt', title: 'Renames an export other files still import. The contract check catches it, then the file is restored from git.', onclick: (e) => runDrill('contract', e.currentTarget) }, 'Break a contract'))
+    return
+  }
+  const first = model.events.findIndex((e) => e.t === 'drill')
+  el.dataset.mode = model.mode
+  el.replaceChildren(...(first < 0 ? [] : [h('button', { class: 'chaos-btn', onclick: () => { stopTour(); goTo(view.stops.findIndex((st) => st.event === first)); chaosFlash() } }, h('span', { 'aria-hidden': 'true' }, '⚡ '), 'Replay the chaos drill')]))
+}
+
+// ------------------------------------------------------------------ dispatcher desk
+// Plain-language questions answered from the signal box state at the current stop, by the same
+// deterministic desk Bob calls as `sb ask`. "Start …" answers with the dispatch to give Bob.
+
+function askDesk(question) {
+  const input = $('#ask-input')
+  if (question != null) input.value = question
+  const q = input.value.trim()
+  const a = ask(q, { state: view.sb, files: model.atlas.files, selected: model.selected })
+  const out = $('#ask-answer')
+  out.dataset.intent = a.intent
+  out.replaceChildren(...[
+    h('p', { class: 'ask-q' }, h('span', {}, '›'), q || 'help'),
+    h('p', { class: 'ask-a' }, a.text),
+    a.lines?.length ? h('ul', { class: 'ask-lines' }, a.lines.map((l) => h('li', {}, a.intent === 'help' || a.intent === 'unknown' ? h('button', { class: 'ask-chip', onclick: () => askDesk(l) }, l) : l))) : null,
+    a.prompt ? h('div', { class: 'prompt' },
+      h('div', { class: 'prompt-head' }, h('p', { class: 'eyebrow' }, 'Dispatch for Bob (Agent mode)'), h('button', { class: 'copy', onclick: (e) => copy(a.prompt, e.currentTarget) }, 'Copy')),
+      h('pre', {}, a.prompt)) : null,
+  ].filter(Boolean))
+  out.hidden = false
+  if (a.blast && layout.stations[a.blast]) {
+    model.blast = a.blast
+    select(a.blast)
+  } else if (a.focus && view.sb.tasks[a.focus]) {
+    model.focusTask = a.focus
+    updateMap()
+    updateBoard()
+  }
+}
+
+function buildDesk() {
+  $('#ask').replaceChildren(
+    h('form', { class: 'ask-form', onsubmit: (e) => { e.preventDefault(); askDesk() } },
+      h('label', { for: 'ask-input', class: 'ask-label' }, 'Dispatcher'),
+      h('input', { id: 'ask-input', type: 'text', autocomplete: 'off', placeholder: 'Ask the signal box… “Why is w2-lib at danger?”  (press / )' }),
+      h('button', { type: 'submit', class: 'ask-go' }, 'Ask')),
+    h('div', { class: 'ask-examples' }, EXAMPLES.slice(0, 4).map((x) => h('button', { type: 'button', class: 'ask-chip', onclick: () => askDesk(x) }, x))),
+    h('div', { class: 'ask-answer', id: 'ask-answer', hidden: true, 'aria-live': 'polite' }),
+    h('p', { class: 'ask-note' }, 'Answers are computed from the ledger by keyword intents, not a language model. Bob Agent mode uses the same desk from its terminal: ', h('code', {}, 'npm run -s sb -- ask "…"'), '.'))
+}
+
 // ------------------------------------------------------------------ train graph
 
 const AGENT_COLORS = ['#ffb000', '#33b1ff', '#ff7eb6', '#42be65', '#08bdba', '#d4bbff', '#fa4d56', '#a7f0ba']
@@ -366,7 +508,7 @@ function updateGraph() {
   const tl = timeline(model.events.slice(0, upto + 1))
   const now = Date.parse(model.events[upto].at)
   const agents = [...new Set(full.runs.map((r) => r.agent))]
-  const color = (a) => AGENT_COLORS[agents.indexOf(a) % AGENT_COLORS.length]
+  const color = agentColor
   const tasks = [...full.tasks].sort((a, b) => a.wave - b.wave || a.id.localeCompare(b.id))
   const W = Math.max(640, el.clientWidth || 900)
   const left = 150
@@ -424,16 +566,30 @@ function liveViolations() {
   return Object.entries(model.live.owners || {}).filter(([, o]) => o === null || o === 'protected').map(([f, o]) => ({ file: f, protected: o === 'protected' }))
 }
 
+function drillAlert(e) {
+  return h('div', { class: 'alert spad chaos' },
+    h('strong', {}, 'Chaos drill'),
+    h('span', {}, `${e.kind === 'contract' ? `${e.renamed.from} renamed in` : 'Stray edit to'} ${e.file}. Caught in ${e.detectMs} ms: `, [e.caught.scope, e.caught.contract].filter(Boolean).join(' · ')),
+    h('span', { class: 'alert-note' }, 'Every release is refused while this edit is on the tracks. The signal box restores the file from git.'))
+}
+
 function updateAlert() {
   const e = view.event
   const el = $('#alert')
   let content = null
   const live = liveViolations()
-  if (live.length) {
+  const drill = activeDrill()
+  if (drill && e?.t !== 'drill') {
+    content = drillAlert(drill)
+  } else if (live.length && e?.t !== 'drill') {
     content = h('div', { class: 'alert spad' },
       h('strong', {}, 'SPAD in progress'),
       h('span', {}, live.map((v) => `${v.file}${v.protected ? ' (protected)' : ''}`).join(', ')),
       h('span', { class: 'alert-note' }, 'No occupied block owns this edit. Every release is refused until it is claimed or reverted.'))
+  } else if (e?.t === 'drill') {
+    content = drillAlert(e)
+  } else if (e?.t === 'drill-end') {
+    content = h('div', { class: 'alert rollback' }, h('strong', {}, 'Drill over'), h('span', {}, `${e.file} ${e.restored ? 'restored from git' : 'left as is (someone changed it)'} after ${(e.heldMs / 1000).toFixed(1)} s. No agent's work was touched.`))
   } else if (e?.t === 'verify' && !e.ok) {
     const spad = e.checks.scope && !e.checks.scope.ok
     content = h('div', { class: `alert ${spad ? 'spad' : 'fault'}` },
@@ -521,8 +677,10 @@ function tourTick() {
   const step = tourStep(model.events, stop.event)
   const files = step.focus ? taskFiles(step.focus) : []
   if (['fault', 'clear', 'held', 'rollback', 'recover'].includes(step.kind) && files[0]) select(files[0])
+  else if (step.kind === 'chaos' && step.file) select(stripRoot(view.sb.scanDir)(step.file))
   else if (step.kind === 'init') select(null)
   showCaption(step)
+  if (step.kind === 'chaos') chaosFlash()
   model.tour.timer = setTimeout(() => {
     if (!model.tour) return
     if (view.i >= view.stops.length - 1) return finishTour()
@@ -551,7 +709,7 @@ function stopTour() {
 function showCaption(step) {
   const el = $('#caption')
   el.dataset.kind = step.kind
-  el.replaceChildren(h('span', { class: 'cap-kind' }, { fault: 'Fault', held: 'Held at signal', clear: 'Cleared', done: 'Result', init: 'Signal box', rollback: 'Rolled back', recover: 'Recovered', claim: 'Claim', verify: 'Track circuit', extend: 'Extend' }[step.kind] || step.kind), h('span', { class: 'cap-text' }, step.text))
+  el.replaceChildren(h('span', { class: 'cap-kind' }, { fault: 'Fault', held: 'Held at signal', clear: 'Cleared', done: 'Result', init: 'Signal box', rollback: 'Rolled back', recover: 'Recovered', claim: 'Claim', verify: 'Track circuit', extend: 'Extend', chaos: 'Chaos drill', restored: 'Drill over' }[step.kind] || step.kind), h('span', { class: 'cap-text' }, step.text))
   el.classList.remove('show')
   void el.offsetWidth
   el.classList.add('show')
@@ -588,7 +746,7 @@ function blockRisk() {
 
 function crew() {
   if (!view.opened) return []
-  return crewStats(model.events, view.stops[view.i].event).map((a) => ({ ...a, color: AGENT_COLORS[a.index % AGENT_COLORS.length] }))
+  return crewStats(model.events, view.stops[view.i].event).map((a) => ({ ...a, color: agentColor(a.agent) }))
 }
 
 function crewSection() {
@@ -780,6 +938,8 @@ function render() {
   updateBoard()
   updateDescriber()
   updateAlert()
+  updateTower()
+  updateTowerActions()
   updateTimeline()
   updateGraph()
   renderPanel()
@@ -806,6 +966,7 @@ function initTheme() {
 
 document.addEventListener('keydown', (e) => {
   if (e.target.closest('input, textarea')) return
+  if (e.key === '/') { e.preventDefault(); $('#ask-input').focus(); return }
   if (e.key === 'ArrowLeft') { stopTour(); goTo(view.i - 1) }
   else if (e.key === 'ArrowRight') { stopTour(); goTo(view.i + 1) }
   else if (e.key === 'Escape') { if (model.tour) stopTour(); else select(null) }
@@ -830,9 +991,11 @@ async function connectLive() {
   const es = new EventSource('./api/stream')
   let refetch = null
   es.addEventListener('ledger', (msg) => {
-    model.events = [...model.events, JSON.parse(msg.data)]
+    const e = JSON.parse(msg.data)
+    model.events = [...model.events, e]
     if (model.follow) model.stop = Infinity
     rebuild()
+    if (e.t === 'drill') chaosFlash()
   })
   es.addEventListener('live', (msg) => {
     const prev = model.live
@@ -861,6 +1024,7 @@ async function connectLive() {
 async function start() {
   initTheme()
   buildStats()
+  buildDesk()
   const live = await connectLive()
   if (!live) {
     model.mode = model.events.length ? 'replay' : 'baseline'

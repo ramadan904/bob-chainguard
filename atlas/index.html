@@ -39,6 +39,16 @@
     <nav class="timeline" id="timeline" aria-label="Signal box history"></nav>
     <div class="alert-strip" id="alert" role="status" aria-live="polite"></div>
 
+    <section class="tower" id="tower" aria-labelledby="tower-title">
+      <div class="tower-head">
+        <h2 id="tower-title"><span class="tower-dot" aria-hidden="true"></span>Control tower</h2>
+        <p id="tower-sub"></p>
+        <div class="tower-actions" id="tower-actions"></div>
+      </div>
+      <ol class="lanes" id="lanes" aria-live="polite"></ol>
+      <div class="ask" id="ask"></div>
+    </section>
+
     <main class="layout">
       <section class="map-card" aria-label="Transit map of the codebase">
         <div class="map-scroll"><svg id="map" role="group" aria-label="Files as stations, folders as lines, imports as tunnels"></svg></div>

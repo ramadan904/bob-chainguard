@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { blastRadius, blockRisk, crewStats, tourStep, faultReasons } from '../src/insights.js'
+import { blastRadius, blockRisk, crewStats, tourStep, faultReasons, towerLanes } from '../src/insights.js'
 
 const files = [
   { id: 'lib/a.js', imports: [] },
@@ -49,5 +49,14 @@ describe('insights', () => {
   it('explains every kind of fault', () => {
     const r = faultReasons({ checks: { scope: { ok: false, outside: ['src/x/y.js'] }, contract: { ok: false, removed: [{ name: 'keep' }] }, scan: { ok: false, remaining: 3 }, tests: { ok: true } } })
     expect(r).toEqual(['edit outside its block (y.js)', 'removed an export others still use (keep)', '3 legacy call sites left'])
+  })
+  it('runs a control tower lane per agent', () => {
+    const held = towerLanes(events, 2)
+    expect(held.map((l) => [l.agent, l.status, l.task, l.heldFor, l.fresh])).toEqual([['bob-1', 'working', 'w1', null, false], ['bob-2', 'held', null, 'w2', true]])
+    const faulted = towerLanes(events, 3)
+    expect(faulted[0]).toMatchObject({ status: 'fault', faults: 1, fresh: true })
+    const end = towerLanes(events, events.length - 1)
+    expect(end.map((l) => [l.agent, l.status, l.task, l.clears, l.denies])).toEqual([['bob-1', 'off', null, 1, 0], ['bob-2', 'working', 'w2', 0, 1]])
+    expect(towerLanes([], 0)).toEqual([])
   })
 })

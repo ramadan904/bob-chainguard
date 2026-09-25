@@ -28,6 +28,8 @@ npm run -s sb -- next [--json]                          # what a dispatcher may 
 npm run -s sb -- report --out reports/signalbox-report.md   # impact numbers from the ledger
 npm run -s sb -- install-hook                           # pre-commit guard: block files only via release
 npm run -s sb -- status | log | prompt <block>
+npm run -s sb -- ask "why is w2-lib at danger?"          # dispatcher desk: start / why / risk / blast / who
+npm run -s sb -- drill spad --hold 6                    # chaos drill: real stray edit, caught, restored
 ```
 
 - **Blocks and waves.** chainguard's import graph splits the change into blocks of disjoint files.
@@ -56,6 +58,16 @@ npm run -s sb -- status | log | prompt <block>
   bars are Bob subagents working in parallel, and every track circuit run is marked.
 - **Live panel.** `signalbox serve` streams ledger events and a rescan on every file change.
   Deployed statically, the UI replays the recorded ledger.
+- **Control tower.** One lane per Bob subagent: the block it holds, its last move, faults, and an
+  amber "Held at signal" lane (with a pulse on the map) when interlocking refuses a claim.
+- **Chaos drill.** `⚡ Simulate chaos` (or `sb drill spad|contract`) makes a real stray edit to the
+  most-imported free file, or renames an export others still import. The checks catch it, every
+  release is refused, and the file is restored from git after 6 s unless someone else changed it.
+  Drills are ledger events, so the replay shows them.
+- **Dispatcher desk.** Plain-language questions ("start all green wave-1 blocks", "riskiest
+  remaining block", "why is w2-lib at danger?") answered from the ledger by keyword intents, not a
+  language model. The panel's command bar and `sb ask` share one module, so Bob Agent mode can use
+  it as a tool. "Start" answers with the exact dispatch for Bob to run.
 
 - **Tamper-evident ledger.** Every event is SHA-256 chained to the previous one. `npm run -s sb -- audit`
   verifies the chain and checks that every cleared block's commit exists on the branch, is signed by

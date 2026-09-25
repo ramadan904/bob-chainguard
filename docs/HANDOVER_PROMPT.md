@@ -36,18 +36,19 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
 ## Repository map
 - `chainguard/`: zero-dependency Node CLI and engine.
   - `bin/chainguard.js`: `scan | plan | atlas | rules`, with `--pack` for rule packs.
-  - `bin/signalbox.js`: `init | claim | extend | release | rollback | next | prompt | status | log | report | audit | doctor | install-hook | checkpoints | recover | export | serve`.
+  - `bin/signalbox.js`: `init | claim | extend | release | rollback | next | ask | why | risk | drill | drill-end | prompt | status | log | report | audit | doctor | install-hook | checkpoints | recover | export | serve`.
+  - `src/dispatch.js`: the dispatcher desk behind `sb ask` and the panel's command bar (keyword intents over the ledger, no model). Also blast radius and block risk.
   - `src/signalbox.js`: operations (ledger, locks, the four checks, isolated worktree tests, commits, checkpoints, audit).
   - `src/signalbox-state.js`: a pure reducer shared by the CLI and the browser (states, `canClaim`, `metrics`, `timeline`, `verifyChain`, `describe`).
   - `src/signalbox-server.js`: live server with a JSON snapshot endpoint and server-sent events.
   - `src/plan.js`: waves from the import graph. "Provider" files, which export legacy objects, go *after* their callers: expand → migrate → contract.
   - `src/rules.js`: 25 Web3 rules plus rule-pack loading. `packs/moment-to-date-fns.json` is a second pack.
 - `atlas/`: the web panel (Vite, plain JS + SVG, IBM Plex fonts, night theme by default).
-  - `src/main.js`: the panel.
+  - `src/main.js`: the panel, including the **control tower** (one lane per Bob subagent, amber when a claim is refused), the **⚡ Simulate chaos** buttons (live mode: a real stray edit or contract break, caught, restored from git after 6 s, recorded as `drill`/`drill-end` in the ledger) and the **dispatcher desk**.
   - `src/insights.js`: blast radius, risk, crew stats, tour captions.
   - `src/signal.js`: joins the ledger with git history.
   - `src/layout.js`: the transit-map layout.
-  - `deck.html` + `src/deck.js`: the 10-slide pitch deck. Its results slide reads the real ledger.
+  - `deck.html` + `src/deck.js`: the 11-slide pitch deck. Its results slide reads the real ledger.
   - Data: `atlas/src/data/atlas-data.json` and `atlas/src/data/ledger.json`, written by `npm run atlas` / `npm run finalize`.
 - `legacy-dapp/`: the dApp being migrated. Its tests are the behavior contract.
 - `scripts/finalize.mjs` (`npm run finalize`): guard, tests, a check that test files are unchanged since tag `before-bob`, build + gzip bundle size against `reports/baseline-bundle.json` (549 kB), audit, reports, replay bundle. Writes `reports/submission-numbers.md`.
@@ -67,7 +68,7 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
   - `signalbox-pr.yml`: bot comment on pull requests.
 
 ## Status right now
-- Done, tested (75 tests: 36 chainguard/signalbox, 22 dApp, 17 panel) and pushed on the branch: everything above.
+- Done, tested (78 tests: 38 chainguard/signalbox, 22 dApp, 18 panel) and pushed on the branch: everything above.
 - Already live on `main`: the panel with the night colours.
 - **Not yet on `main`** (needs one more PR merge): the deck, the hash-chained ledger + audit + "Ledger verified" badge, "Review bob-N's change" diffs, blast radius, crew roster, risk scores, the PR bot, and the guided tour. To merge: open https://github.com/ramadan904/bob-chainguard/compare/main...claude/dazzling-ptolemy-c288r3 → Create pull request → Merge pull request → Confirm merge.
 - **Not done yet:** the real Bob run. **The migration must be done by IBM Bob, not by you or by me**, because it's what the judges score. `legacy-dapp/src` is still the untouched "before" code, and that's correct.
@@ -117,6 +118,8 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
 
 ## Useful commands when debugging
 - `npm run -s sb -- status`, `sb next`, `sb log`: see what the agents are doing.
+- `npm run -s sb -- ask "why is w2-lib at danger?"`, `sb risk`, `sb why <block>`: the dispatcher desk.
+- `npm run -s sb -- drill spad --hold 6` (or `drill contract`): chaos drill from the terminal. Do it between releases.
 - `npm run -s sb -- report`: impact numbers.
 - `npm run -s sb -- audit`: check the ledger against git.
 - `npm run -s sb -- rollback <block> --agent dispatcher --operator`: free a block held by a stuck agent.
