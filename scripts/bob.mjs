@@ -2,10 +2,11 @@
 // Helpers around the real IBM Bob run. They never edit legacy-dapp/src: Bob does the migration.
 //   npm run bob:prep   before Bob: machine check, dependencies, tests, tag before-bob, first prompts
 //   npm run bob:open   after Bob's expand commit: open the signal box, guard, doctor, live panel
+//   npm run bob:retake after a failed take: back to the expand commit with a fresh signal box
 // Prompts are read from docs/BOB_RUNBOOK.md, so there is one source for them.
 
 import { execSync, spawnSync, spawn } from 'node:child_process'
-import { existsSync, readFileSync, copyFileSync } from 'node:fs'
+import { existsSync, readFileSync, copyFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { promptFrom } from '../chainguard/src/statements.js'
 
@@ -81,7 +82,33 @@ if (cmd === 'prep') {
   console.log('During wave 1, between two releases: click ⚡ Simulate chaos in the panel (or npm run -s sb -- drill spad --hold 6).')
   console.log('\nStarting the live panel at http://localhost:4700  (Ctrl+C to stop; the ledger keeps everything)\n')
   spawn('npm run signalbox', { shell: true, cwd: root, stdio: 'inherit' })
+} else if (cmd === 'retake') {
+  // Back to Bob's expand commit with a fresh signal box: code and ledger go back together, so the
+  // replay never shows events the commits don't have. The attempt is kept on a branch.
+  const expand = quiet("git log --grep=^Expand -n 1 --format=%H").stdout.trim()
+  if (!expand) {
+    fail('no "Expand: ..." commit found: nothing to go back to (run bob:prep and the expand step first)')
+    process.exit()
+  }
+  const since = quiet(`git rev-list --count ${expand}..HEAD`).stdout.trim()
+  const dirty = quiet('git status --porcelain --untracked-files=no').stdout.trim()
+  console.log(`Retake: back to ${expand.slice(0, 7)} ${quiet(`git log -1 --format=%s ${expand}`).stdout.trim()}`)
+  console.log(`  ${since} commit(s) after it will leave this branch (kept on a practice branch)`)
+  if (dirty) console.log(`  uncommitted changes that will be discarded:\n${dirty.split('\n').map((l) => `    ${l}`).join('\n')}`)
+  if (!process.argv.includes('--yes')) {
+    console.log('\nNothing changed. To do it: npm run bob:retake -- --yes')
+    process.exit()
+  }
+  const stamp = new Date().toISOString().slice(11, 16).replace(':', '')
+  quiet(`git branch practice-${stamp}`).status === 0 ? ok(`attempt kept on branch practice-${stamp}`) : warn('could not create the practice branch (name taken?)')
+  sh(`git reset --hard ${expand}`).status === 0 ? ok('code reset to the expand commit') : fail('git reset failed')
+  sh('node chainguard/bin/signalbox.js init --force', { stdio: 'ignore' }).status === 0 ? ok('fresh signal box (old ledger archived in .signalbox/)') : fail('signalbox init failed')
+  rmSync(join(root, '.signalbox', 'checkpoints'), { recursive: true, force: true })
+  ok('black-box checkpoints cleared')
+  console.log('')
+  sh('node chainguard/bin/signalbox.js doctor')
+  console.log('\nReload the panel (or restart npm run bob:open), then paste the dispatcher prompt into Bob again.')
 } else {
-  console.log('usage: npm run bob:prep | npm run bob:open')
+  console.log('usage: npm run bob:prep | npm run bob:open | npm run bob:retake [-- --yes]')
   process.exitCode = 2
 }
