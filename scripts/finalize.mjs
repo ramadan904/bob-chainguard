@@ -3,7 +3,7 @@
 // bundle for the deployed panel, and the exact numbers for the statements' [brackets].
 // Everything is computed from the ledger, real scans and a real build. Nothing is typed in.
 
-import { execSync } from 'node:child_process'
+import { execSync, execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs'
 import { gzipSync } from 'node:zlib'
 import { join } from 'node:path'
@@ -36,7 +36,12 @@ console.log(`  ${base.totals.findings} → ${scan.totals.findings} legacy call s
 step('Behavior tests')
 let tests = ''
 try { tests = run('npm test --prefix legacy-dapp').split('\n').find((l) => /^\s*Tests\s+/.test(l))?.trim() || 'passed' } catch (e) { tests = 'FAILED'; warnings.push('legacy-dapp tests fail') }
-const testsChanged = run('git diff --name-only before-bob -- "legacy-dapp/src/**/__tests__/**" 2>/dev/null || true').trim()
+let testsChanged = ''
+try {
+  testsChanged = execFileSync('git', ['diff', '--name-only', 'before-bob', '--', 'legacy-dapp/src/lib/__tests__'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+} catch {
+  warnings.push("tag before-bob not found: run `git tag before-bob` on the commit before Bob's changes")
+}
 if (testsChanged) warnings.push(`test files changed since before-bob: ${testsChanged.split('\n').join(', ')}`)
 console.log(`  ${tests}${testsChanged ? ' (TEST FILES CHANGED)' : ', test files unchanged'}`)
 

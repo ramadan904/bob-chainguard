@@ -12,7 +12,7 @@
     "test": "npm test --prefix chainguard && npm test --prefix legacy-dapp && npm test --prefix atlas",
     "dev": "npm run dev --prefix legacy-dapp",
     "build": "npm run build --prefix legacy-dapp && npm run build --prefix atlas",
-    "atlas": "npm run data --prefix atlas && (test -f .signalbox/ledger.jsonl && node chainguard/bin/signalbox.js export || true) && npm run build --prefix atlas",
+    "atlas": "node scripts/atlas.mjs",
     "atlas:dev": "npm run data --prefix atlas && npm run dev --prefix atlas",
     "sb": "node chainguard/bin/signalbox.js",
     "signalbox": "npm run build --prefix atlas && node chainguard/bin/signalbox.js serve",

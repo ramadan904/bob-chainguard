@@ -312,10 +312,12 @@ export function checkTests(root, state, files, { timeoutMs = 300_000 } = {}) {
     }
     for (const nm of nodeModuleDirs(root)) {
       const dst = join(wt, nm)
-      if (!existsSync(dst) && existsSync(dirname(dst))) symlinkSync(join(root, nm), dst, 'dir')
+      // Junctions need no admin rights on Windows; elsewhere a plain directory symlink.
+      if (!existsSync(dst) && existsSync(dirname(dst))) symlinkSync(join(root, nm), dst, process.platform === 'win32' ? 'junction' : 'dir')
     }
     const started = Date.now()
-    const r = spawnSync('sh', ['-c', state.testCmd], { cwd: wt, encoding: 'utf8', timeout: timeoutMs, env: { ...process.env, CI: '1', FORCE_COLOR: '0', NO_COLOR: '1' } })
+    // shell: true uses sh on Linux/macOS and cmd.exe on Windows.
+    const r = spawnSync(state.testCmd, { shell: true, cwd: wt, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 32 << 20, env: { ...process.env, CI: '1', FORCE_COLOR: '0', NO_COLOR: '1' } })
     const out = `${r.stdout || ''}\n${r.stderr || ''}`.replace(/\x1b\[[0-9;]*m/g, '')
     const lines = out.split('\n').map((l) => l.trimEnd()).filter((l) => l.trim())
     const summaryLine = [...lines].reverse().find((l) => /^\s*Tests\s+/.test(l)) || ''
@@ -435,6 +437,8 @@ export function hookCheck(root, env = process.env) {
 export function doctor(root, { runTests = true } = {}) {
   const checks = []
   const add = (name, ok, detail) => checks.push({ name, ok, detail })
+  const [major, minor] = process.versions.node.split('.').map(Number)
+  add('Node.js 20 or newer', major > 20 || (major === 20 && minor >= 0), `found ${process.versions.node}${major < 20 ? ' (install Node 22 LTS from nodejs.org)' : ''}`)
   const events = readLedger(root)
   const state = reduce(events)
   add('signal box opened', Boolean(state), state ? `${Object.keys(state.tasks).length} blocks, base ${state.base.slice(0, 7)}` : 'run: npm run -s sb -- init')

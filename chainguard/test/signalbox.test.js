@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { reduce, canClaim, ownerOf, matchGlob, summary, metrics, timeline, verifyChain } from '../src/signalbox-state.js'
 import { init, claim, extend, release, rollback, loadState, readLedger, exportsOf, installHook, hookCheck, checkpoint, listCheckpoints, recover, checkContract, importersOf, audit, sha256, ledgerPath, SignalboxError } from '../src/signalbox.js'
@@ -162,7 +163,7 @@ test('e2e: pre-commit hook blocks direct commits of block files but not releases
     installHook(root)
     // Point the hook at this checkout's CLI (the temp repo has no chainguard/ folder).
     const hook = join(root, '.git/hooks/pre-commit')
-    writeFileSync(hook, `#!/bin/sh\nexec node ${JSON.stringify(new URL('../bin/signalbox.js', import.meta.url).pathname)} hook-check\n`, { mode: 0o755 })
+    writeFileSync(hook, `#!/bin/sh\nexec node ${JSON.stringify(fileURLToPath(new URL('../bin/signalbox.js', import.meta.url)).split('\\').join('/'))} hook-check\n`, { mode: 0o755 })
     const a = Object.values(loadState(root).tasks).find((t) => t.files.includes('src/a.js'))
     claim(root, a.id, 'bob-1')
     writeFileSync(join(root, 'src/a.js'), 'export const one = () => 1n\nexport const keep = 1\n')
