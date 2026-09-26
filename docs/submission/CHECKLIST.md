@@ -4,7 +4,7 @@ Aim to submit by **Sep 27, 09:00 EDT** to leave a buffer for upload problems.
 
 ## Basic info
 - [ ] **Title:** bob-chainguard: Bob-driven, test-guarded Web3 frontend migration
-- [ ] **Short description:** IBM Bob migrates a legacy web3.js + ethers v5 dApp to viem/wagmi in parallel waves planned by chainguard, verified by behavior tests and guarded in CI.
+- [ ] **Short description:** copy it from `SUBMIT_TOMORROW.md` section 4.
 - [ ] **Long description:** adapt docs/submission/PROBLEM_SOLUTION.md
 - [ ] **Tags:** IBM Bob, Agentic AI, Developer Tools, Code Migration, Web3, Ethereum, viem, wagmi, React
 

@@ -33,21 +33,21 @@ const slides = [
   `<section class="slide title">
     <div class="kicker">IBM Bob 2.0 Hackathon</div>
     <h1>Signal<span>box</span></h1>
-    <p class="big">Interlocking for parallel IBM&nbsp;Bob subagents.</p>
-    <p class="sub">Many Bob subagents, one codebase, no collisions. Every change is proven before it's committed, and a rogue agent is caught and rolled back while the others keep working.</p>
+    <p class="big">Every Bob agent at once. Nothing unproven gets in.</p>
+    <p class="sub">The missing control layer for multi-agent development: railway interlocking for IBM&nbsp;Bob subagents.</p>
     <div class="signals">${lamp('red')}${lamp('amber')}${lamp('green')}</div>
   </section>`,
 
   // 2. problem
   `<section class="slide">
     <div class="kicker">The problem</div>
-    <h2>Parallel AI agents don't trust each other. Neither do we.</h2>
+    <h2>You put three agents on one codebase to go three times faster. By morning, you can't trust any of it.</h2>
     <div class="cards three">
-      <div class="card red"><b>They collide</b><p>Two agents edit the same file. One overwrites the other.</p></div>
-      <div class="card red"><b>They break contracts</b><p>One agent renames a function another agent's code still calls.</p></div>
-      <div class="card red"><b>They cheat</b><p>A failing test gets "fixed" by editing the test.</p></div>
+      <div class="card red"><b>They collide</b><p>Two agents edit the same file. One silently overwrites the other.</p></div>
+      <div class="card red"><b>They break each other</b><p>One renames a function the other two still call.</p></div>
+      <div class="card red"><b>They cheat</b><p>A failing test gets "fixed" by rewriting the test.</p></div>
     </div>
-    <p class="note">The result is one giant diff nobody can review. So teams run one agent at a time, and big migrations stay slow.</p>
+    <p class="note">What's left is a 4,000-line diff nobody can review. So you throw it away and go back to <strong>one agent at a time</strong>, and the work that needs parallel agents most stays slow.</p>
   </section>`,
 
   // 3. insight
@@ -103,8 +103,8 @@ const slides = [
 
   // 6. bob
   `<section class="slide">
-    <div class="kicker">IBM Bob does the work</div>
-    <h2>Every capability the challenge names, doing real work.</h2>
+    <div class="kicker">${ran ? 'IBM Bob does the work' : 'Built for IBM Bob'}</div>
+    <h2>${ran ? 'Every capability the challenge names, doing real work.' : 'Every capability the challenge names, wired into the signal box.'}</h2>
     <table class="bob">
       <tr><td>Full-repo context + document understanding</td><td>Bob reads the repo and the migration playbook before touching anything</td></tr>
       <tr><td>Agent mode, multi-step orchestration</td><td>A dispatcher agent reads the signal box, starts subagents, handles faults, moves wave by wave</td></tr>
@@ -140,8 +140,8 @@ const slides = [
     </div>
   </section>`,
 
-  // 9. results
-  `<section class="slide">
+  // 9. results: the real Bob run once recorded; until then, only what actually ran
+  ran ? `<section class="slide">
     <div class="kicker">${ran ? 'Results from the real run' : 'Results'}</div>
     <h2>${ran ? 'Real numbers from the ledger, not a slide.' : 'Every number is computed from the run.'}</h2>
     <div class="metrics">
@@ -153,7 +153,19 @@ const slides = [
       <div><span class="n">${ran ? dur(m.wallClockMs) : '?'}</span><label>wall clock</label></div>
     </div>
     <p class="note">${ran ? 'Behavior tests: 22/22, never modified. The deployed panel replays this exact run.' : `Run pending: ${pending}. <code>npm run finalize</code> fills this slide from the ledger.`}</p>
-  </section>`,
+  </section>` : pv ? `<section class="slide dense">
+    <div class="kicker">What we proved</div>
+    <h2>Every number here comes from a real run of the system.</h2>
+    <div class="metrics">
+      <div><span class="n amber">${pv.agents}</span><label>agents at once in the safety proof</label></div>
+      <div><span class="n red">${pv.faults}</span><label>rogue change caught before commit (scope + contract)</label></div>
+      <div><span class="n mint">${pv.collisions}</span><label>collisions</label></div>
+      <div><span class="n mint">${pv.cleared}</span><label>blocks committed alone while the rogue was rolled back</label></div>
+      <div><span class="n">93</span><label>automated tests, Linux + Windows</label></div>
+      <div><span class="n orange">${base.totals.findings}</span><label>legacy call sites planned for Bob: ${atlas.plan.tasks.length} blocks, ${atlas.plan.waves} waves</label></div>
+    </div>
+    <p class="note">The recorded IBM Bob migration run was not completed before the deadline, so no Bob numbers are shown. Run <code>npm run bob:prep</code> and the runbook to record one; this slide then fills from its ledger.</p>
+  </section>` : '',
 
   // 10. safety + beyond
   `<section class="slide">
@@ -181,7 +193,7 @@ const slides = [
   // 11. close
   `<section class="slide title close">
     <div class="signals">${lamp('green')}${lamp('green')}${lamp('green')}</div>
-    <h2 class="huge">Parallel Bob subagents<br>you can actually trust.</h2>
+    <h2 class="huge">Every Bob agent at once.<br>Nothing unproven gets in.</h2>
     <p class="sub">bob-chainguard.vercel.app · github.com/ramadan904/bob-chainguard</p>
   </section>`,
 ]
