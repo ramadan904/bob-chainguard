@@ -480,11 +480,12 @@ function updateTowerView() {
   el.hidden = false
   const bobEvents = model.proof ? model.proof.home.events : model.events
   const bobAgents = [...new Set(bobEvents.filter((e) => e.t === 'claim').map((e) => e.agent))]
-  const bobSub = bobAgents.length ? `${bobAgents.length} Bob subagent${bobAgents.length > 1 ? 's' : ''} · ${bobEvents.length} ledger events` : bobEvents.length ? 'signal box open · no claims yet' : 'not recorded yet'
+  const plan = (model.proof ? model.proof.home.atlas : model.atlas).plan
+  const bobSub = bobAgents.length ? `${bobAgents.length} Bob subagent${bobAgents.length > 1 ? 's' : ''} · ${bobEvents.length} ledger events` : bobEvents.length ? 'signal box open · no claims yet' : `ready · ${plan.tasks.length} blocks, ${plan.waves} waves planned`
   const tab = (on, label, sub, onclick, cls) => h('button', { class: `tv-tab ${cls}${on ? ' on' : ''}`, 'aria-pressed': String(on), onclick }, h('b', {}, label), h('small', {}, sub))
   el.replaceChildren(
     h('div', { class: 'tv-tabs', role: 'group', 'aria-label': 'Which run' },
-      tab(!model.proof, 'IBM Bob run', `legacy-dapp · ${bobSub}`, () => model.proof && exitProof(), 'bob'),
+      tab(!model.proof, 'IBM Bob', `legacy-dapp · ${bobSub}`, () => model.proof && exitProof(), 'bob'),
       tab(Boolean(model.proof), '◆ Safety proof', model.mode === 'live' || model.proof?.source === 'live' ? 'drill agents · run it live' : 'drill agents · recorded run', () => !model.proof && startProof(), 'proof')),
     compareRuns(bobEvents, model.proof ? model.proof.home.atlas : model.atlas),
     h('p', { class: 'tv-same' }, 'Same signal box for both: claim → track circuit (scope · contract · scan · isolated tests) → one commit per block → SHA-256 chained ledger.'))
@@ -502,7 +503,7 @@ function compareRuns(bobEvents, bobAtlas) {
   const proof = recordedProof ? col(recordedProof.events) : null
   if (!proof) return null
   const rows = [['Agents', 'agents'], ['Blocks cleared', 'cleared'], ['Stopped before commit', 'caught'], ['Collisions', 'collisions'], ['Ledger events', 'events']]
-  const pending = h('span', { class: 'tv-pending' }, `recorded after IBM Bob's run · plan: ${bobAtlas.plan.tasks.length} blocks, ${bobAtlas.plan.waves} waves`)
+  const pending = h('span', { class: 'tv-pending' }, `ready for Bob: ${bobAtlas.plan.tasks.length} blocks in ${bobAtlas.plan.waves} waves planned · fills from Bob's ledger when run`)
   return h('div', { class: 'tv-compare', role: 'table', 'aria-label': 'IBM Bob run and safety proof, side by side' },
     h('div', { class: 'tv-row tv-headrow', role: 'row' }, h('span', {}, ''), h('b', { class: 'bob' }, 'IBM Bob · legacy-dapp'), h('b', { class: 'proof' }, '◆ Safety proof · drill agents')),
     rows.map(([label, key], k) => h('div', { class: 'tv-row', role: 'row' },
