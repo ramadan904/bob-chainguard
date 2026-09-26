@@ -2,6 +2,7 @@
 // Records the guided replay (or the deck) as a 1920×1080 video for the demo edit.
 //   npm run record:tour            the ?tour replay of the recorded run, until the tour ends
 //   npm run record:tour -- --deck  every deck slide, 5 s each
+//   npm run record:proof           the safety proof replay (about 20 s), until its verdict + 4 s
 // Serves atlas/dist itself, so run `npm run atlas` (or `npm run finalize`) first. Needs Playwright:
 //   npm i --no-save playwright && npx playwright install chromium
 // Writes docs/submission/media/tour.webm (or deck.webm), plus .mp4 when ffmpeg is on the PATH.
@@ -14,7 +15,8 @@ import { spawnSync, execSync } from 'node:child_process'
 const root = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim()
 const dist = join(root, 'atlas', 'dist')
 const deck = process.argv.includes('--deck')
-const name = deck ? 'deck' : 'tour'
+const proof = process.argv.includes('--proof')
+const name = deck ? 'deck' : proof ? 'proof' : 'tour'
 const outDir = join(root, 'docs', 'submission', 'media')
 
 let chromium
@@ -28,7 +30,11 @@ if (!existsSync(join(dist, 'index.html'))) {
   console.error('atlas/dist is missing. Run `npm run atlas` (or `npm run finalize`) first.')
   process.exit(2)
 }
-if (!deck && !existsSync(join(root, 'atlas', 'src', 'data', 'ledger.json'))) {
+if (proof && !existsSync(join(root, 'atlas', 'src', 'data', 'proof.json'))) {
+  console.error('No recorded safety proof (atlas/src/data/proof.json). Run `npm run atlas` first.')
+  process.exit(2)
+}
+if (!deck && !proof && !existsSync(join(root, 'atlas', 'src', 'data', 'ledger.json'))) {
   console.error('No recorded run in the panel yet (atlas/src/data/ledger.json). The tour needs the Bob run: `npm run finalize` first.')
   process.exit(2)
 }
@@ -53,7 +59,11 @@ const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePa
 const context = await browser.newContext({ viewport: { width: 1920, height: 1080 }, recordVideo: { dir: tmp, size: { width: 1920, height: 1080 } }, colorScheme: 'dark' })
 const page = await context.newPage()
 const t0 = Date.now()
-if (deck) {
+if (proof) {
+  await page.goto(`${base}/?prove`)
+  await page.waitForFunction(() => ['ok', 'fail'].includes(document.getElementById('proof')?.dataset.state), null, { timeout: 120e3, polling: 250 })
+  await page.waitForTimeout(4000)
+} else if (deck) {
   await page.goto(`${base}/deck.html#1`)
   const total = await page.$$eval('.slide', (s) => s.length)
   for (let i = 0; i < total; i++) {

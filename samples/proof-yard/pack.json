@@ -1,0 +1,9 @@
+{
+  "name": "var-to-const",
+  "from": "var",
+  "to": "const / let",
+  "playbook": "README.md",
+  "rules": [
+    { "id": "VAR001", "title": "var declaration", "pattern": "\\bvar\\s", "replacement": "const (or let when reassigned)", "severity": "error" }
+  ]
+}

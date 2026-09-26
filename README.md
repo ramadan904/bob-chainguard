@@ -10,6 +10,7 @@ Built for the IBM Bob 2.0 Hackathon (Sep 25–27, 2026).
 
 | Try this | What you'll see |
 | --- | --- |
+| Click **◆ Prove safety** (or type *simulate bad agent* in the Desk) | Three drill agents enter three blocks at once; one edits outside its block and breaks an export. It is caught before commit and rolled back, the other two commit, and the verdict is re-checked in your browser: *All changes proven. Zero collisions. Ledger verified.* (20 s; the deployed site replays a real recorded run, `npm run signalbox` runs it live) |
 | Open **https://bob-chainguard.vercel.app/?tour** | The recorded Bob run replays itself with captions: subagents claiming blocks, a claim refused at a red signal, a fault caught before commit, the chaos drill |
 | Click **Ledger verified** under the title, then **Tamper test** | Your browser re-hashes every event; editing one event in memory breaks the chain right there |
 | Type *why w2-lib* in the **Desk** bar under the control tower | An answer computed from the ledger, and the block lights up |
@@ -88,6 +89,12 @@ node chainguard/bin/signalbox.js mcp                    # MCP server: the signal
 - **MCP tools for Bob.** `signalbox mcp` serves claim, release, rollback, next, ask and more as
   Model Context Protocol tools over stdio (zero dependencies), so Bob's agents use the signal box
   natively. Faults come back as tool errors naming every failing check.
+- **Safety proof.** `sb prove` (the panel's **Prove safety** button, or *simulate bad agent* in the
+  Desk) runs three scripted drill agents as three processes at once on `samples/proof-yard` in a
+  throwaway repo: one edits outside its block and renames an export another file imports. The track
+  circuit catches the SPAD and the contract break, the agent rolls back its block and the stray
+  file, and the other two release and commit. The verdict (collisions, faults contained, clears,
+  audit) comes from the ledger and is re-checked in the browser. Your repository is never touched.
 - **Dispatcher desk.** Plain-language questions ("start all green wave-1 blocks", "riskiest
   remaining block", "why is w2-lib at danger?") answered from the ledger by keyword intents, not a
   language model. The panel's command bar and `sb ask` share one module, so Bob Agent mode can use

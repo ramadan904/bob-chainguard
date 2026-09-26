@@ -34,6 +34,7 @@ export function blockRisk(files, tasks, filesOf) {
 
 export const EXAMPLES = [
   'Start all green wave-1 blocks',
+  'Simulate a bad agent',
   'Show the riskiest remaining block',
   'Why is w2-lib at danger?',
   'Who is working right now?',
@@ -119,6 +120,28 @@ export function ask(question, { state, files = [], selected = null }) {
     return { intent: 'help', text: 'Ask about the signal box in plain words. It answers from the ledger; Bob carries out the moves.', lines: EXAMPLES }
   }
 
+  // Actions: the panel carries these out (live: for real; deployed site: the recorded proof).
+  if (/\b(chaos|drill|spad|stray|break (a |the )?contract)\b/.test(text)) {
+    const kind = /contract/.test(text) ? 'contract' : 'spad'
+    return {
+      intent: 'drill',
+      action: 'drill',
+      kind,
+      text: kind === 'contract'
+        ? 'Chaos drill: rename an export other files still import, in a file no agent holds. The contract check names every importer; git restores the file after 6 s.'
+        : 'Chaos drill: a real stray edit to the most-imported file no agent holds. The scope check flags the SPAD in milliseconds; git restores it after 6 s.',
+      lines: [`CLI: npm run -s sb -- drill ${kind} --hold 6`],
+    }
+  }
+
+  if (/\b(prove|proof|safety|safe\s+to|bad agent|rogue|misbehav|simulate)\b/.test(text) && !/\bwhy\b/.test(text)) {
+    return {
+      intent: 'prove',
+      action: 'prove',
+      text: 'Safety proof: three drill agents enter three blocks at once on a throwaway fixture repo. One edits outside its block and breaks an export. Watch the interlocking catch it, roll it back, and let the other two commit.',
+      lines: ['CLI: npm run -s sb -- prove   (add --pace 1500 to watch it)'],
+    }
+  }
   if (/\b(start|dispatch|launch|send|begin|go|run)\b/.test(text) && !/\bwhy\b/.test(text)) {
     const wave = Number(/wave[\s-]*(\d+)/.exec(text)?.[1]) || null
     const pool = tasks.filter((t) => !wave || t.wave === wave)
@@ -135,7 +158,7 @@ export function ask(question, { state, files = [], selected = null }) {
     const used = new Set(tasks.flatMap((t) => (t.agent ? [t.agent] : [])))
     return {
       intent: 'dispatch',
-      text: `${ready.length} green block${ready.length > 1 ? 's' : ''} ready${wave ? ` in wave ${wave}` : ''}. Hand this dispatch to Bob (Agent mode): it starts one subagent per block, all in parallel.`,
+      text: `${ready.length} green block${ready.length > 1 ? 's' : ''} ready${wave ? ` in wave ${wave}` : ''}. Only Bob can start Bob subagents: paste this dispatch into Bob (Agent mode) and it starts one per block, all in parallel.`,
       lines: ready.map((t) => `${t.id} · wave ${t.wave} · ${blockFiles(t).map((f) => short(rel(f))).join(', ')}`),
       prompt: dispatchPrompt(ready, used),
       focus: ready[0].id,

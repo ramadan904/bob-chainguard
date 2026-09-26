@@ -5,24 +5,28 @@ Record the Bob IDE on the left and the live Signalbox panel (`npm run signalbox`
 
 | Time | On screen | Voice-over |
 | --- | --- | --- |
-| 0:00–0:15 | Signalbox panel: wave 1 green, wave 2 at danger, the map full of rust stations, control tower waiting | "Everyone wants AI agents working in parallel. Nobody trusts them to: they overwrite each other and break each other's code. Railways solved this 150 years ago with interlocking. This is interlocking for IBM Bob." |
-| 0:15–0:30 | Dispatcher desk: type "Start all green wave-1 blocks" → the dispatch appears → paste it into Bob Agent mode | "I ask the signal box in plain words. It answers from the ledger and writes the dispatch. Bob's dispatcher agent starts one subagent per green block, all in parallel." |
-| 0:30–0:45 | Control tower: BOB-1, BOB-2, BOB-3 lanes light up; map stations get agent tags and shrink live as Bob edits | "Three Bob subagents, three blocks, at the same time. Each one claims its files. Nobody else can touch them." |
-| 0:45–0:55 | A fourth lane flashes amber, HELD AT SIGNAL; amber pulse on the wave-2 station | "This one tried to jump ahead into wave two. Interlocking refused it: the signal stays red until wave one clears." |
-| 0:55–1:15 | Click **⚡ Simulate chaos: SPAD** → screen flashes red, CHAOS DRILL banner, "caught in 8 ms", station blinks; 6 s later "restored from git" | "Now chaos. A stray edit hits a file no agent owns. Caught in eight milliseconds, every release is locked, and six seconds later it's restored from git. Nobody's work was touched." |
-| 1:15–1:35 | A subagent's release → red FAULT lane + banner with the failing test → Bob fixes the code → CLEARED, commit hash on the board | "Every release runs four checks on an isolated copy. Here viem silently rounds a value ethers rejected. Fault caught, nothing committed. Bob fixes the code, not the test, and the block commits on its own." |
-| 1:35–1:50 | Wave 1 cleared → wave-2 signals turn green; desk: "Show the riskiest remaining block" | "When a wave clears, the next signals turn green. The desk tells us the riskiest block left, and why." |
-| 1:50–2:20 | Time-lapse (4–8x) of wave 2; then the finished map: 0 legacy calls, 6/6 blocks | "Six blocks, two waves, [N] Bob subagents, up to [P] at once. [F] faults caught before they ever reached a commit." |
-| 2:20–2:40 | Deployed site with `?tour`: guided replay, the chaos drill and the fault replayed; click "Ledger verified" → rows turn green → **Tamper test** breaks the chain at one event; flip the rule pack to Moment → date-fns for 2 seconds | "Every event, including the chaos drill, is in a hash-chained ledger. Anyone can replay the run and verify it in their own browser: change one event and the chain breaks right there. And it isn't only Web3: the same interlocking plans a Moment to date-fns migration." |
-| 2:40–2:50 | Impact table | "Signalbox: parallel Bob subagents you can actually trust." |
+| 0:00–0:10 | Signalbox panel: the headline, the wave schedule, wave 1 green, wave 2 red | "Everyone wants AI agents working in parallel. Nobody trusts them: they overwrite each other and break each other's code. Railways solved this with interlocking. This is interlocking for IBM Bob." |
+| 0:10–0:22 | Desk: type **start all safe wave 1** → the dispatch appears → paste it into Bob (Agent mode) | "I ask the signal box. Only Bob can start Bob, so it hands Bob the exact dispatch: one subagent per green block." |
+| 0:22–0:40 | Control tower: BOB-1, BOB-2, BOB-3 light up at once; stations shrink as Bob edits; one lane flashes amber, HELD AT SIGNAL | "Three Bob subagents, three blocks, at the same time. This one tried to jump into wave two: refused. The signal stays red until wave one clears." |
+| 0:40–1:05 | Desk: type **simulate bad agent** (or click **◆ Prove safety**) → DRILL-1/2/3 enter at once → DRILL-3 goes red, `index.js` flashes, FAULT → rolled back → the other two commit → **"All changes proven. Zero collisions. Ledger verified."** | "What if an agent goes rogue? Three drill agents enter at once; the third edits outside its block and breaks an export. Caught before commit, rolled back, stray file restored, and the other two commit untouched. Zero collisions, and the ledger re-verifies in the browser." |
+| 1:05–1:20 | Back to the Bob run: a Bob subagent's FAULT with the failing test → Bob fixes the code → CLEARED with its commit hash; wave 2 turns green | "The same checks run on every Bob release. Here viem silently rounds a value ethers rejected: fault, nothing committed. Bob fixes the code, not the test." |
+| 1:20–1:30 | Finished map: 0 legacy calls, 6/6 blocks; the train graph's PARALLEL band at ×3 | "[blocks] blocks, [agents] Bob subagents, up to [peak] at once (read them from `reports/submission-numbers.md`). Every change proven before it was committed." |
+| 1:30–2:30 *(optional)* | Deployed site: `?tour` replays the whole run; click **Ledger verified** → **Tamper test** breaks the chain at one event; flip the rule pack to Moment → date-fns | "Anyone can replay the run and verify it in their own browser. And it isn't only Web3." |
+| last 10 s | Impact table | "Signalbox: parallel Bob subagents you can actually trust." |
 
-**The 90-second cut** (if judges only watch the core): 0:15–1:35 above. It shows Agent mode
-(dispatcher), subagents in parallel (control tower), interlocking (held at signal), safety (chaos
-drill) and self-correction (fault → fix → clear).
+**The 90-second cut is 0:00–1:30.** It shows Agent mode (dispatcher), subagents in parallel
+(control tower), interlocking (held at signal), a rogue agent caught (safety proof) and
+self-correction (fault → fix → clear).
+
+**Say it plainly on camera:** the safety proof's DRILL agents are scripted, on a small fixture repo,
+so the rogue behaviour is guaranteed and repeatable; the BOB lanes are IBM Bob. Judges trust a
+demo that labels itself.
 
 Recording tips:
-- **Ready-made clips:** after `npm run finalize`, run `npm run record:tour` (the whole guided replay,
-  1920×1080, about 60–90 s) and `npm run record:deck` (every slide, 5 s each). They land in
+- **Ready-made clips:** `docs/submission/media/proof.webm` is the 0:40–1:05 segment already
+  (the safety proof, 1920×1080, about 25 s; `npm run record:proof` re-records it). After
+  `npm run finalize`, `npm run record:tour` records the whole guided replay (it ends with the
+  proof) and `npm run record:deck` every slide, 5 s each. They land in
   `docs/submission/media/` as .webm, plus .mp4 if ffmpeg is installed. First time only:
   `npm i --no-save playwright && npx playwright install chromium`.
 - Short on time? Open `https://bob-chainguard.vercel.app/?tour` after `npm run finalize` and a

@@ -74,6 +74,7 @@ You are taking over an in-progress hackathon project. Read this whole brief befo
 ## Status right now
 - **All building is done and live on `main`** (Vercel + GitHub Pages redeploy on every merge). 91 tests pass on Linux and Windows in CI.
 - Panel features: wave schedule, control tower (one lane per Bob subagent), desk (`sb ask`), risk heatmap, "Ledger verified" + tamper test, rule-pack switcher, train graph with a parallelism band, chaos drill buttons (live mode only), guided tour, "Bob at work" screenshot gallery (appears once `bob_sessions/` has screenshots), 11–12-slide deck whose results slide reads the real ledger.
+- Safety proof: **◆ Prove safety** button / `npm run prove` / Desk "simulate bad agent": 3 scripted drill agents at once on `samples/proof-yard` in a throwaway repo, one rogue (SPAD + contract), caught and rolled back, two commit; ready clip `docs/submission/media/proof.webm` (`npm run record:proof`).
 - Run helpers: `npm run bob:prep`, `npm run bob:open`, `npm run bob:retake`, `npm run finalize`, `npm run record:tour`, `npm run record:deck`.
 - **Not done yet (this is what I need help with):** the real IBM Bob run, the screenshots, finalize, the video and the lablab.ai submission. **The migration must be done by IBM Bob, not by you or by me**, because it's what the judges score. `legacy-dapp/src` is still the untouched "before" code (72 legacy call sites, 22/22 tests), and that's correct.
 - Do **not** suggest new features. Help me finish the steps below.

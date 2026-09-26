@@ -356,6 +356,10 @@ test('dispatcher desk: plain questions answered from the ledger', () => {
     assert.match(ask('who is working?', { state, files }).text, /1 agent in section/)
     assert.match(ask('start wave 2', { state, files }).text, /Nothing to start in wave 2/)
     assert.equal(ask('bake a cake', { state, files }).intent, 'unknown')
+    assert.equal(ask('simulate bad agent', { state, files }).action, 'prove')
+    assert.equal(ask('prove safety', { state, files }).action, 'prove')
+    assert.deepEqual([ask('simulate chaos', { state, files }).kind, ask('break a contract', { state, files }).kind], ['spad', 'contract'])
+    assert.equal(ask('start all safe wave 1', { state, files }).intent, 'dispatch')
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
@@ -418,6 +422,41 @@ test('server: chaos drills only from the local panel, restored after the hold', 
     assert.deepEqual(readLedger(root).map((e) => e.t), ['init', 'drill', 'drill-end'])
   } finally {
     await new Promise((r) => server.close(r))
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('prove: three drill agents, one strays, caught and contained, two clear', async () => {
+  const { prove } = await import('../src/prove.js')
+  const seen = []
+  const r = await prove({ onEvent: (e) => seen.push(e.t) })
+  assert.equal(r.verdict.ok, true, JSON.stringify(r.verdict))
+  assert.equal(r.verdict.collisions, 0)
+  assert.equal(r.verdict.spads, 1)
+  assert.equal(r.verdict.contractBreaks, 1)
+  assert.deepEqual(r.verdict.strays, ['src/index.js'])
+  assert.equal(r.verdict.cleared, 2)
+  assert.equal(r.verdict.peak, 3, 'all three agents in section at once')
+  assert.equal(r.verdict.audit, true)
+  assert.deepEqual(seen, r.events.map((e) => e.t), 'every ledger event is streamed, in order')
+  assert.equal(r.atlas.files.length, 4)
+})
+
+test('rollback --strays refuses a file another block owns', () => {
+  const { root } = makeRepo()
+  try {
+    init(root, { scanPath: 'src', testCmd: 'node check.js', allow: [] })
+    const [a, b] = Object.values(loadState(root).tasks)
+    claim(root, a.id, 'bob-1')
+    if (b.wave === a.wave) {
+      claim(root, b.id, 'bob-2')
+      assert.throws(() => rollback(root, a.id, 'bob-1', { strays: [b.files[0]] }), /not a stray file/)
+    }
+    writeFileSync(join(root, 'check.js'), `${readFileSync(join(root, 'check.js'), 'utf8')}// stray\n`)
+    const e = rollback(root, a.id, 'bob-1', { strays: ['check.js'] })
+    assert.deepEqual(e.strays, ['check.js'])
+    assert.doesNotMatch(readFileSync(join(root, 'check.js'), 'utf8'), /stray/)
+  } finally {
     rmSync(root, { recursive: true, force: true })
   }
 })

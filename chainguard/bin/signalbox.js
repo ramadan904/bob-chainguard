@@ -13,7 +13,7 @@ Usage:
   signalbox claim <block> --agent <name> [--also a,b]    enter a block (refused while its signal is at danger)
   signalbox extend <block> <file...> --agent <name>      add files to your block
   signalbox release <block> --agent <name> [--no-commit] run scope, contract, scan and isolated tests; commit the block if clear
-  signalbox rollback <block> --agent <name> [--operator] restore the block's files and free it
+  signalbox rollback <block> --agent <name> [--operator] [--strays a,b]  restore the block's files (and stray unowned files) and free it
   signalbox next [--json]                                blocks a dispatcher may start now, with prompts
   signalbox report [--out file]                          impact report from the ledger (Markdown)
   signalbox install-hook                                 pre-commit guard: block files only via release
@@ -30,6 +30,8 @@ Usage:
   signalbox prompt <block>                               the subagent prompt for a block
   signalbox status                                       the signal box panel, as text
   signalbox log                                          the train describer (every event)
+  signalbox prove [--pace 1200] [--out file]            safety proof: 3 drill agents at once on a throwaway fixture repo,
+                                                         one strays and breaks a contract; caught, rolled back, others clear
   signalbox mcp [--root <repo>]                          MCP server on stdio: the signal box as tools for Bob
   signalbox serve [--port 4700] [--host 127.0.0.1] [--dist atlas/dist]       live signal box panel in the browser
   signalbox export [--out atlas/src/data/ledger.json]     ledger for the static replay build
@@ -176,8 +178,8 @@ async function main() {
       return 0
     }
     case 'rollback': {
-      const e = rollback(root, block, opts.agent, { operator: opts.operator !== undefined })
-      console.log(`ROLLED BACK ${block}: restored ${e.files.join(', ') || 'nothing'}`)
+      const e = rollback(root, block, opts.agent, { operator: opts.operator !== undefined, strays: opts.strays ? opts.strays.split(',') : [] })
+      console.log(`ROLLED BACK ${block}: restored ${[...e.files, ...(e.strays || [])].join(', ') || 'nothing'}`)
       return 0
     }
     case 'checkpoints': {
@@ -298,6 +300,24 @@ async function main() {
       writeReplay(root, out)
       console.log(`wrote ${readLedger(root).length} events to ${out}`)
       return 0
+    }
+    case 'prove': {
+      const { prove, verdictLine } = await import('../src/prove.js')
+      const t0 = Date.now()
+      const r = await prove({
+        pace: Number(opts.pace || 0),
+        onEvent: (e) => { if (!opts.json) console.log(`  ${e.at.slice(11, 19)}  ${describe(e)}`) },
+        onStep: (s) => { if (!opts.json) console.log(`▸ ${s}`) },
+      })
+      if (opts.out) writeFileSync(resolvePath(opts.out), `${JSON.stringify({ recordedAt: r.recordedAt, atlas: r.atlas, events: r.events, verdict: r.verdict })}\n`)
+      if (opts.json) console.log(JSON.stringify(r.verdict, null, 2))
+      else {
+        console.log('')
+        for (const c of r.verdict.checks) console.log(`  ${c.ok ? 'ok  ' : 'FAIL'}  ${c.text}`)
+        console.log(`  ${r.verdict.audit ? 'ok  ' : 'FAIL'}  ledger hash chain and every commit audited`)
+        console.log(`\n${verdictLine(r.verdict)}  (${((Date.now() - t0) / 1000).toFixed(1)} s)`)
+      }
+      return r.verdict.ok ? 0 : 1
     }
     case 'mcp': {
       const { serveMcp } = await import('../src/signalbox-mcp.js')

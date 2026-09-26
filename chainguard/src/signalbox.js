@@ -388,7 +388,9 @@ export function release(root, taskId, agent, { commit = true, runTests = true } 
   })
 }
 
-export function rollback(root, taskId, agent, { operator = false } = {}) {
+// `strays`: files outside every block that this agent's SPAD touched. They are restored too, but
+// only while no occupied block owns them (never another agent's work), and the event lists them.
+export function rollback(root, taskId, agent, { operator = false, strays = [] } = {}) {
   return withLock(root, () => {
     const state = loadState(root)
     checkpoint(root, state)
@@ -408,7 +410,15 @@ export function rollback(root, taskId, agent, { operator = false } = {}) {
         restored.push(f)
       }
     }
-    return append(root, { t: 'rollback', task: taskId, agent: by, files: restored })
+    const strayed = []
+    for (const f of strays.map((x) => normalize(root, x))) {
+      if (ownerOf(state, f) !== null) throw new SignalboxError(`${f} is not a stray file (owner: ${ownerOf(state, f)}); only unowned files can be restored this way`)
+      if (!modifiedFiles(root).includes(f)) continue
+      if (headText(root, f) != null) git(root, ['checkout', 'HEAD', '--', f])
+      else rmSync(join(root, f), { force: true })
+      strayed.push(f)
+    }
+    return append(root, { t: 'rollback', task: taskId, agent: by, files: restored, ...(strayed.length ? { strays: strayed } : {}) })
   })
 }
 
