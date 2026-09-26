@@ -99,6 +99,6 @@ export async function prove({ pace = 0, keep = false, onOpen = () => {}, onEvent
 }
 
 export function verdictLine(v) {
-  return v.ok ? 'All changes proven. Zero collisions. Ledger verified.' : 'Proof FAILED: see the checks above.'
+  return v.ok ? 'All changes proven. Zero collisions. Ledger verified. Parallel agents safe.' : 'Proof FAILED: see the checks above.'
 }
 
