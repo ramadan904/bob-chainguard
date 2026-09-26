@@ -11,7 +11,7 @@ Built for the IBM Bob 2.0 Hackathon (Sep 25–27, 2026).
 | Try this | What you'll see |
 | --- | --- |
 | Click **◆ Prove safety** (or type *simulate bad agent* in the Desk) | Three drill agents enter three blocks at once; one edits outside its block and breaks an export. It is caught before commit and rolled back, the other two commit, and the verdict is re-checked in your browser: *All changes proven. Zero collisions. Ledger verified.* (20 s; the deployed site replays a real recorded run, `npm run signalbox` runs it live) |
-| Open **https://bob-chainguard.vercel.app/?tour** | The recorded Bob run replays itself with captions: subagents claiming blocks, a claim refused at a red signal, a fault caught before commit, the chaos drill |
+| Open **https://bob-chainguard.vercel.app/?tour** *(after a recorded Bob run)* | The Bob run replays itself with captions: subagents claiming blocks, a refused claim, a fault caught before commit; it ends with the safety proof |
 | Click **Ledger verified** under the title, then **Tamper test** | Your browser re-hashes every event; editing one event in memory breaks the chain right there |
 | Type *why w2-lib* in the **Desk** bar under the control tower | An answer computed from the ledger, and the block lights up |
 | Toggle **Risk heatmap** on the map | Every unfinished block glows by risk |
@@ -183,7 +183,7 @@ npm run atlas                     # scan history + static build in atlas/dist
 - **Lines are folders, stations are files.** Stations run top to bottom by import depth, so a file
   always sits below everything it imports. Lines are ordered by the folder-level import graph.
 - **Station size is the number of legacy call sites.** A rust ring means legacy code, a steel
-  check means Bob migrated it, and a plain tick means the file never used legacy APIs.
+  check means its block was cleared (migrated), and a plain tick means the file never used legacy APIs.
 - **Tunnels are imports between folders.** Select a station to light up what it imports and what
   uses it.
 - **The departures board** lists Bob's subagent tasks by wave. Each one moves from SCHEDULED to

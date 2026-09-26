@@ -85,16 +85,18 @@ makes Bob's parallelism safe, built on railway interlocking.
 - **The safety proof:** one click, three agents at once, one goes rogue. Caught before commit,
   rolled back, the other two commit. "Zero collisions. Ledger verified. Parallel agents safe."
 
-Bob migrated an ERC-20 wallet dApp from ethers v5 + web3.js to viem/wagmi under the signal box.
-Rule packs make it work for any migration (a Moment.js → date-fns pack is included).
+The demo target, an ERC-20 wallet dApp on ethers v5 + web3.js, is planned for Bob as 6 blocks in 2
+waves (72 legacy call sites); the recorded end-to-end Bob migration was not completed before the
+deadline, so we report only what ran. Rule packs make it work for any migration (a Moment.js →
+date-fns pack is included and proven in CI).
 
 **Tags:** IBM Bob, Agentic AI, Multi-agent, Developer Tools, Code Migration, Web3, viem
 
 **Repository:** https://github.com/ramadan904/bob-chainguard
 **Application URL:** https://bob-chainguard.vercel.app/
 
-**Problem & Solution statement:** paste `docs/submission/final/PROBLEM_SOLUTION.md`
-**IBM Bob Usage statement:** paste `docs/submission/final/IBM_BOB_USAGE.md`
+**Problem & Solution statement:** paste `docs/submission/final/PROBLEM_SOLUTION.md` (already written, honest version: no Bob run)
+**IBM Bob Usage statement:** paste `docs/submission/final/IBM_BOB_USAGE.md` (already written; if you later complete the Bob run, `npm run finalize` overwrites both with the real numbers)
 `npm run finalize` writes both with every number filled in from the ledger and prints their word
 counts (each must be ≤ 500). Name Bob screenshots in `bob_sessions/` by what they show, e.g.
 `alice-onboarding.png`, `alice-dispatcher.png`, `alice-mcp.png`, `alice-review.png`,

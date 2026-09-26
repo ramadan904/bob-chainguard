@@ -23,6 +23,19 @@ go from the human pain to the proof. Record the Bob IDE on the left and the live
 Don't rush the finale: two seconds of silence on "Parallel agents safe." is the moment judges remember.
 The ready clip `docs/submission/media/proof.webm` covers 0:44–1:24.
 
+### If there is no recorded Bob run (honest cut, about 90 s)
+
+| Time | On screen | Voice-over |
+| --- | --- | --- |
+| 0:00–0:16 | The huge `git diff` scrolling; a red test run | The same pain opening as above. |
+| 0:16–0:30 | Panel headline **"Every Bob agent at once. Nothing unproven gets in."**; the wave schedule: 72 legacy call sites planned as 6 blocks in 2 waves | "Signalbox is the control layer for parallel IBM Bob agents. It plans a change as blocks no two agents share, and opens waves like railway signals." |
+| 0:30–0:40 | Desk: **start all safe wave 1** → the dispatch prompt for Bob; then open a block's subagent prompt with its traps | "It hands Bob's dispatcher the exact job: one subagent per green block, each with the protocol and the traps its files hit." |
+| 0:40–1:20 | Desk: **simulate bad agent** → three agents at once → rogue → red alarm → ROLLED BACK → the other two commit → the finale | "Now the hard case: three agents at once, and one goes rogue…" (as above, 0:44–1:24) |
+| 1:20–1:30 | The **What we proved** slide | "Every number you saw came from a real run. Every Bob agent at once. Nothing unproven gets in." |
+
+Don't show or say anything about Bob migrating the dApp in this cut: the statements say plainly
+that the recorded Bob run wasn't completed.
+
 **Say it plainly on camera:** the DRILL agents are scripted, on a small fixture repo, so the rogue
 behaviour is guaranteed and repeatable; the BOB lanes are IBM Bob. Judges trust a demo that labels
 itself.
