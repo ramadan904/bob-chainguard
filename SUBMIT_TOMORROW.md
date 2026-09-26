@@ -58,9 +58,10 @@ Then merge to `main` again (step 0's link). The live panel and the deck's result
   Easy segment: `npm run record:tour` records the guided replay of your real run as a 1920×1080 clip
   (`docs/submission/media/tour.webm`), and `npm run record:deck` records the slides. First time only:
   `npm i --no-save playwright && npx playwright install chromium`.
-- **Slides:** open the deck link → **Save as PDF** button (in the print dialog, turn on "Background graphics").
-  `docs/submission/Signalbox-deck.pdf` is the pre-run version, if you're short on time.
-- **Cover image:** `docs/submission/media/cover-baseline.png`, or a screenshot of the finished panel (better).
+- **Slides:** `docs/submission/Signalbox-deck.pdf` is ready (all 12 slides, exported from the live deck).
+  If you record a Bob run later, re-export: deck link → **Save as PDF** with "Background graphics" on.
+- **Cover image:** `docs/submission/media/cover.png` (1920×1080, the safety proof's verdict). A second
+  image of the panel: `docs/submission/media/panel.png`.
 
 ## 4. The lablab.ai form: copy and paste
 
