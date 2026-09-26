@@ -20,4 +20,7 @@ const manifest = shots.map((f) => ({ src: `bob/${f}`, ...shotCaption(f) })).sort
 writeFileSync(join('atlas', 'src', 'data', 'bob-shots.json'), `${JSON.stringify(manifest, null, 2)}\n`)
 console.log(`bob_sessions: ${shots.length} screenshot${shots.length === 1 ? '' : 's'} published`)
 
+// A fresh, real safety-proof run for the deployed panel's "Prove safety" replay.
+run('node chainguard/bin/signalbox.js prove --json --out atlas/src/data/proof.json')
+
 run('npm run build --prefix atlas')

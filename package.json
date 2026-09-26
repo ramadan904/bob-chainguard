@@ -22,7 +22,9 @@
     "prove:pack": "node scripts/prove-pack.mjs",
     "bob:prep": "node scripts/bob.mjs prep",
     "bob:open": "node scripts/bob.mjs open",
-    "bob:retake": "node scripts/bob.mjs retake"
+    "bob:retake": "node scripts/bob.mjs retake",
+    "record:proof": "node scripts/record-tour.mjs --proof",
+    "prove": "node chainguard/bin/signalbox.js prove --pace 1200"
   },
   "license": "MIT"
 }

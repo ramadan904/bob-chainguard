@@ -11,7 +11,7 @@ import bobShots from './data/bob-shots.json'
 import { layoutAtlas, LABEL_OFFSET } from './layout.js'
 import { dependentsOf, baselineIndex } from './state.js'
 import { buildStops, findingsAt, signalStateAt, blockIndex, faultsCaught, checkLamps, stripRoot } from './signal.js'
-import { reduce, describe, summary, timeline, verifyChain, canonical } from '../../chainguard/src/signalbox-state.js'
+import { reduce, describe, summary, timeline, verifyChain, canonical, proofVerdict } from '../../chainguard/src/signalbox-state.js'
 import { ask, EXAMPLES } from '../../chainguard/src/dispatch.js'
 import { blastRadius as blastOf, blockRisk as riskOf, crewStats, tourStep, towerLanes } from './insights.js'
 
@@ -193,6 +193,13 @@ function updateMap() {
   const drill = activeDrill()
   if (drill) spadNow.add(stripRoot(view.sb.scanDir)(drill.file))
   const broken = new Set((drill?.usedBy || []).map(stripRoot(view.sb.scanDir)))
+  // A fault on screen lights up what it caught: the stray files (SPAD) and the importers of a
+  // removed export (contract).
+  if (view.event?.t === 'verify' && !view.event.ok) {
+    const strip = stripRoot(view.sb.scanDir)
+    for (const f of view.event.checks.scope?.outside || []) spadNow.add(strip(f))
+    for (const r of view.event.checks.contract?.removed || []) for (const u of r.usedBy) broken.add(strip(u))
+  }
   const blast = model.blast && layout.stations[model.blast] ? blastRadius(model.blast) : null
   const related = new Set()
   if (model.selected) {
@@ -292,7 +299,7 @@ function updateStats() {
   $('#health').setAttribute('aria-valuenow', String(pct))
   const badge = $('#mode')
   badge.dataset.mode = model.mode
-  badge.textContent = `Mode · ${model.mode === 'live' ? (view.atHead ? 'Live' : 'Live · paused') : model.mode === 'replay' ? 'Replay' : 'Plan open'}`
+  badge.textContent = `Mode · ${model.mode === 'proof' ? 'Safety proof' : model.mode === 'live' ? (view.atHead ? 'Live' : 'Live · paused') : model.mode === 'replay' ? 'Replay' : 'Plan open'}`
 }
 
 // ------------------------------------------------------------------ signal box panel (board)
@@ -398,8 +405,8 @@ function updateTower() {
       h('div', { class: 'lane-top' },
         h('span', { class: 'lane-name' }, l.agent.toUpperCase()),
         h('span', { class: `signal-head s-${{ working: 'occupied', held: 'danger', fault: 'fault', off: 'cleared', standby: 'clear' }[l.status]}` }, h('i', { class: 'lamp red' }), h('i', { class: 'lamp amber' }), h('i', { class: 'lamp green' }))),
-      h('p', { class: 'lane-status' }, LANE_TEXT[l.status]),
-      h('p', { class: 'lane-block' }, t ? [h('b', {}, l.task), ` · wave ${t.wave} · `, taskFiles(l.task).map((f) => f.split('/').pop()).join(', ')] : l.status === 'off' ? 'Block cleared and committed' : l.status === 'held' ? 'Waiting at the signal, holding nothing' : '—'),
+      h('p', { class: 'lane-status' }, l.status === 'off' && l.last?.t === 'rollback' ? 'Rolled back' : LANE_TEXT[l.status]),
+      h('p', { class: 'lane-block' }, t ? [h('b', {}, l.task), ` · wave ${t.wave} · `, taskFiles(l.task).map((f) => f.split('/').pop()).join(', ')] : l.status === 'off' ? (l.last?.t === 'rollback' ? 'Rolled back: nothing committed' : 'Block cleared and committed') : l.status === 'held' ? 'Waiting at the signal, holding nothing' : '—'),
       l.heldFor ? h('p', { class: 'lane-held' }, h('b', {}, `Refused ${l.heldFor}: `), l.reason.replace(/^signal at danger: /, '')) : h('p', { class: 'lane-last' }, h('time', {}, l.last.at.slice(11, 19)), ' ', describe(l.last)),
       h('p', { class: 'lane-stats' }, h('b', {}, String(l.clears)), ' cleared · ', h('b', { class: l.faults ? 'f' : '' }, String(l.faults)), ' faults · ', h('b', { class: l.denies ? 'd' : '' }, String(l.denies)), ' refused'))
   })
@@ -454,17 +461,151 @@ async function runDrill(kind, btn) {
 
 function updateTowerActions() {
   const el = $('#tower-actions')
+  const prove = () => h('button', { class: 'prove-btn', title: 'Three drill agents at once on a throwaway fixture repo; one goes rogue. Watch the interlocking catch it.', onclick: startProof }, h('span', { 'aria-hidden': 'true' }, '◆ '), model.mode === 'live' ? 'Prove safety' : 'Prove safety · recorded run')
+  if (model.mode === 'proof') {
+    if (el.dataset.mode === 'proof') return
+    el.dataset.mode = 'proof'
+    el.replaceChildren(h('button', { class: 'chaos-btn alt', onclick: exitProof }, 'Back to the network'))
+    return
+  }
   if (model.mode === 'live') {
     if (el.dataset.mode === 'live') return
     el.dataset.mode = 'live'
     el.replaceChildren(
+      prove(),
       h('button', { class: 'chaos-btn', title: 'Makes a real edit to a file no agent holds. The checks catch it, then the file is restored from git.', onclick: (e) => runDrill('spad', e.currentTarget) }, h('span', { 'aria-hidden': 'true' }, '⚡ '), 'Simulate chaos: SPAD'),
       h('button', { class: 'chaos-btn alt', title: 'Renames an export other files still import. The contract check catches it, then the file is restored from git.', onclick: (e) => runDrill('contract', e.currentTarget) }, 'Break a contract'))
     return
   }
   const first = model.events.findIndex((e) => e.t === 'drill')
   el.dataset.mode = model.mode
-  el.replaceChildren(...(first < 0 ? [] : [h('button', { class: 'chaos-btn', onclick: () => { stopTour(); goTo(view.stops.findIndex((st) => st.event === first)); chaosFlash() } }, h('span', { 'aria-hidden': 'true' }, '⚡ '), 'Replay the chaos drill')]))
+  el.replaceChildren(...(recordedProof ? [prove()] : []), ...(first < 0 ? [] : [h('button', { class: 'chaos-btn', onclick: () => { stopTour(); goTo(view.stops.findIndex((st) => st.event === first)); chaosFlash() } }, h('span', { 'aria-hidden': 'true' }, '⚡ '), 'Replay the chaos drill')]))
+}
+
+// ------------------------------------------------------------------ safety proof
+// "Prove safety": three drill agents at once on a throwaway fixture repo, one strays and breaks a
+// contract, it is caught and rolled back while the other two clear (chainguard/src/prove.js). Live
+// mode runs it for real and streams it; the deployed site replays a real recorded run. The verdict
+// is recomputed here from the ledger, and the hash chain re-verified in this browser.
+
+const recordedProof = Object.values(import.meta.glob('./data/proof.json', { eager: true, import: 'default' }))[0] || null
+
+function startProof() {
+  if (model.proof) return
+  stopTour()
+  stopPlay()
+  if (model.mode === 'live') {
+    fetch('./api/prove', { method: 'POST', headers: { 'x-signalbox': 'drill' } })
+      .then(async (r) => { if (!r.ok) showCaption({ kind: 'fault', text: (await r.json()).error }) })
+      .catch((err) => showCaption({ kind: 'fault', text: `Proof failed: ${err.message}` }))
+    return
+  }
+  if (!recordedProof) return showCaption({ kind: 'fault', text: 'No recorded proof in this build. Run it live: npm run signalbox, then Prove safety.' })
+  enterProof(recordedProof.atlas, 'recorded')
+  const events = recordedProof.events
+  let k = 0
+  const next = () => {
+    if (!model.proof) return
+    if (k >= events.length) return finishProof(recordedProof.atlas, recordedProof.verdict)
+    const e = events[k++]
+    proofEvent(e)
+    proofStep(replayCaption(e))
+    const slow = e.t === 'verify' || e.t === 'rollback' || e.t === 'clear'
+    model.proof.timer = setTimeout(next, e.t === 'verify' && !e.ok ? 3400 : slow ? 2000 : 1200)
+  }
+  model.proof.timer = setTimeout(next, 900)
+}
+
+function replayCaption(e) {
+  if (e.t === 'init') return 'Signal box open on a fixture repo: 3 green blocks, 3 drill agents'
+  if (e.t === 'claim') return `${e.agent} enters ${e.task}`
+  if (e.t === 'verify' && !e.ok) return `${e.agent} edited outside its block and broke a contract: FAULT, nothing committed`
+  if (e.t === 'rollback') return `${e.agent.split(' ')[0]} rolled back: its block and the stray file restored`
+  if (e.t === 'verify') return `${e.task}: scope, contract, scan and isolated tests pass`
+  if (e.t === 'clear') return `${e.task} committed alone by ${e.agent}`
+  return describe(e)
+}
+
+function enterProof(atlas, source) {
+  if (model.proof) return
+  model.proof = { source, home: { atlas: model.atlas, events: model.events, mode: model.mode, stop: model.stop, pack: model.pack }, timer: null }
+  model.mode = 'proof'
+  model.atlas = atlas
+  model.events = []
+  model.stop = Infinity
+  model.selected = null
+  model.blast = null
+  document.body.classList.add('proving')
+  const hud = $('#proof')
+  hud.hidden = false
+  hud.dataset.state = 'running'
+  hud.replaceChildren(
+    h('div', { class: 'pf-head' },
+      h('span', { class: 'pf-kicker' }, source === 'live' ? 'Safety proof · live' : `Safety proof · recorded ${recordedProof.recordedAt.slice(0, 16).replace('T', ' ')} UTC`),
+      h('button', { class: 'pf-close', onclick: exitProof, 'aria-label': 'Back to the network' }, 'Back to the network')),
+    h('p', { class: 'pf-step', id: 'pf-step' }, 'Opening a signal box on a throwaway fixture repo…'),
+    h('p', { class: 'pf-note' }, 'drill-1, drill-2, drill-3 are scripted agents running as three processes at once on the real interlocking engine. IBM Bob\'s own run is on legacy-dapp/.'))
+  $('#packs').hidden = true
+  setRoute()
+  rebuild()
+  $('#tower').scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function proofStep(text) {
+  const el = $('#pf-step')
+  if (!el) return
+  el.textContent = text
+  el.classList.remove('flip')
+  void el.offsetWidth
+  el.classList.add('flip')
+}
+
+function proofEvent(e) {
+  if (!model.proof) return
+  model.events = [...model.events, e]
+  model.stop = Infinity
+  rebuild()
+  if (e.t === 'verify' && !e.ok) {
+    chaosFlash()
+    const f = e.checks.scope.outside[0]
+    if (f) flashTouched([stripRoot(view.sb.scanDir)(f)])
+  }
+}
+
+async function finishProof(atlas, verdict) {
+  if (!model.proof) return
+  model.atlas = atlas
+  rebuild()
+  // Recompute what the server claimed: the verdict from the ledger, the chain in this browser.
+  const local = proofVerdict(model.events)
+  const chain = await verifyChain(model.events, sha256hex)
+  const ok = Boolean(local?.ok && chain.ok && chain.chained && verdict?.audit && local.spads > 0 && local.contractBreaks > 0)
+  const hud = $('#proof')
+  hud.dataset.state = ok ? 'ok' : 'fail'
+  hud.replaceChildren(
+    h('div', { class: 'pf-head' },
+      h('span', { class: 'pf-kicker' }, model.proof.source === 'live' ? 'Safety proof · live' : 'Safety proof · recorded run'),
+      h('button', { class: 'pf-close', onclick: exitProof }, 'Back to the network')),
+    h('p', { class: 'pf-verdict' }, ok ? 'All changes proven. Zero collisions. Ledger verified.' : 'Proof failed.'),
+    h('ul', { class: 'pf-checks' },
+      (local?.checks || []).map((c) => h('li', { class: c.ok ? 'ok' : 'bad' }, c.text)),
+      h('li', { class: local?.spads && local?.contractBreaks ? 'ok' : 'bad' }, `Rogue agent caught: SPAD + contract break, stray ${local?.strays.join(', ') || 'file'} restored, nothing committed`),
+      h('li', { class: chain.ok && chain.chained ? 'ok' : 'bad' }, `Ledger re-verified in your browser: ${chain.checked} SHA-256 chained events, head ${chain.head?.slice(0, 12)}`),
+      h('li', { class: verdict?.audit ? 'ok' : 'bad' }, 'Every commit audited against git: signed by its agent, only its block\'s files')))
+  proofStep('')
+}
+
+function exitProof() {
+  if (!model.proof) return
+  clearTimeout(model.proof.timer)
+  const home = model.proof.home
+  model.proof = null
+  Object.assign(model, { atlas: home.atlas, events: home.events, mode: home.mode, stop: home.stop })
+  document.body.classList.remove('proving')
+  $('#proof').hidden = true
+  $('#packs').hidden = false
+  setRoute()
+  rebuild()
 }
 
 // ------------------------------------------------------------------ dispatcher desk
@@ -487,6 +628,12 @@ function askDesk(question) {
       h('pre', {}, a.prompt)) : null,
   ].filter(Boolean))
   out.hidden = false
+  if (a.action === 'prove') return startProof()
+  if (a.action === 'drill') {
+    if (model.mode === 'live') return runDrill(a.kind, $('.ask-go'))
+    out.append(h('p', { class: 'ask-q' }, 'Drills edit files, so they run only on the live panel (npm run signalbox). Here: “simulate bad agent” replays the recorded safety proof.'))
+    return
+  }
   if (a.blast && layout.stations[a.blast]) {
     model.blast = a.blast
     select(a.blast)
@@ -497,14 +644,14 @@ function askDesk(question) {
   }
 }
 
-const DESK_CHIPS = ['start wave 1', 'riskiest block', 'why w2-lib']
+const DESK_CHIPS = ['start all safe wave 1', 'simulate bad agent', 'why is this signal at danger']
 
 function buildDesk() {
   $('#ask').replaceChildren(
     h('form', { class: 'ask-form', onsubmit: (e) => { e.preventDefault(); askDesk() } },
       h('label', { for: 'ask-input', class: 'ask-label', title: 'Deterministic: keyword intents over the ledger, no language model. Bob uses the same desk: sb ask "…" or the signalbox_ask MCP tool.' }, 'Desk'),
       h('span', { class: 'ask-prompt', 'aria-hidden': 'true' }, '›'),
-      h('input', { id: 'ask-input', type: 'text', autocomplete: 'off', spellcheck: 'false', placeholder: 'why w2-lib · riskiest block · start wave 1' }),
+      h('input', { id: 'ask-input', type: 'text', autocomplete: 'off', spellcheck: 'false', placeholder: 'simulate bad agent · start wave 1 · why is this at danger' }),
       h('kbd', { class: 'ask-kbd', title: 'Press / to focus' }, '/'),
       h('button', { type: 'submit', class: 'ask-go' }, 'Run')),
     h('div', { class: 'ask-examples' }, DESK_CHIPS.map((x) => h('button', { type: 'button', class: 'ask-chip', onclick: () => askDesk(x) }, x))),
@@ -766,7 +913,7 @@ function finishTour() {
   const sum = summary(view.sb)
   select(null)
   showCaption({ kind: 'done', text: `${sum.cleared} of ${sum.total} blocks cleared by ${crewStats(model.events, view.stops[view.i].event).length} Bob subagents. Legacy call sites: ${base} → ${now}. Every step is in a hash-chained ledger.` })
-  model.tour.timer = setTimeout(stopTour, 6000)
+  model.tour.timer = setTimeout(() => { stopTour(); if (recordedProof && model.mode !== 'live') startProof() }, 6000)
 }
 
 function stopTour() {
@@ -825,7 +972,7 @@ function crewSection() {
   if (!list.length) return null
   const fmt = (ms) => (ms >= 60e3 ? `${Math.floor(ms / 60e3)}m ${Math.round((ms % 60e3) / 1e3)}s` : `${Math.round(ms / 1e3)}s`)
   return [
-    h('p', { class: 'eyebrow' }, `Crew · ${list.length} Bob subagent${list.length > 1 ? 's' : ''}`),
+    h('p', { class: 'eyebrow' }, `Crew · ${list.length} ${model.mode === 'proof' ? 'drill agent' : 'Bob subagent'}${list.length > 1 ? 's' : ''}`),
     h('ul', { class: 'crew' }, list.map((a) => h('li', { style: `--c:${a.color}` },
       h('span', { class: 'crew-name' }, a.agent.toUpperCase()),
       h('span', { class: 'crew-state' }, a.active ? `in ${a.active}` : a.cleared ? 'off duty' : 'standing by'),
@@ -1203,6 +1350,7 @@ async function connectLive() {
   let refetch = null
   es.addEventListener('ledger', (msg) => {
     const e = JSON.parse(msg.data)
+    if (model.proof) return void (model.proof.home.events = [...model.proof.home.events, e])
     model.events = [...model.events, e]
     if (model.follow) model.stop = Infinity
     rebuild()
@@ -1211,16 +1359,23 @@ async function connectLive() {
   es.addEventListener('live', (msg) => {
     const prev = model.live
     model.live = JSON.parse(msg.data)
+    if (model.proof) return
     const changed = model.live.present.filter((f) => (prev?.findings[f]?.length || 0) !== (model.live.findings[f]?.length || 0))
     render()
     flashTouched([...new Set([...changed, ...model.live.modified])])
   })
+  es.addEventListener('proof-open', (msg) => enterProof(JSON.parse(msg.data).atlas, 'live'))
+  es.addEventListener('proof-step', (msg) => proofStep(JSON.parse(msg.data).text))
+  es.addEventListener('proof', (msg) => proofEvent(JSON.parse(msg.data).event))
+  es.addEventListener('proof-done', (msg) => { const d = JSON.parse(msg.data); finishProof(d.atlas, d.verdict) })
+  es.addEventListener('proof-error', (msg) => { proofStep(`Proof failed to run: ${JSON.parse(msg.data).error}`); setTimeout(exitProof, 4000) })
   es.addEventListener('head', () => {
     clearTimeout(refetch)
     refetch = setTimeout(async () => {
       try {
         const r = await fetch('./api/snapshot', { cache: 'no-store' })
         const next = await r.json()
+        if (model.proof) return void Object.assign(model.proof.home, { atlas: next.atlas, events: next.ledger })
         model.atlas = next.atlas
         model.events = next.ledger
         model.live = next.live
@@ -1255,6 +1410,8 @@ async function start() {
   render()
   // ?tour starts the guided replay on load (handy for recording the demo video).
   if (new URLSearchParams(location.search).has('tour')) setTimeout(startTour, 700)
+  // ?prove starts the safety proof on load (the video's 40-second segment).
+  if (new URLSearchParams(location.search).has('prove')) setTimeout(startProof, 900)
 }
 
 let resizeTimer

@@ -1115,3 +1115,31 @@ body.chaos::after {
 .shot-view { max-width: min(1400px, 96vw); }
 .shot-full { display: block; max-width: 100%; margin: 0 24px 24px; max-height: 78vh; width: calc(100% - 48px); object-fit: contain; }
 @media (max-width: 640px) { .bobwork { margin: 0 16px 20px; } }
+
+/* safety proof */
+.prove-btn {
+  font: 600 12.5px var(--f-mono); letter-spacing: 0.04em; cursor: pointer; border-radius: 8px; padding: 8px 16px; border: 0;
+  color: #03140c; background: linear-gradient(180deg, #5cf2bb, #22c98a);
+  box-shadow: 0 0 0 1px rgba(62, 230, 168, 0.7), 0 6px 24px -8px rgba(62, 230, 168, 0.9);
+}
+.prove-btn:hover { transform: translateY(-1px); box-shadow: 0 0 0 1px #9ff5d3, 0 10px 32px -8px rgba(62, 230, 168, 1); }
+.mode[data-mode='proof'] { color: var(--steel); border-color: var(--steel); }
+.mode[data-mode='proof']::before { animation: blink 0.8s steps(2, jump-none) infinite; }
+.proof-hud { margin: 14px 32px 0; padding: 16px 20px; border-radius: 10px; background: var(--card); box-shadow: inset 0 0 0 2px var(--steel), 0 0 40px -12px var(--steel); display: grid; gap: 8px; }
+.proof-hud[hidden] { display: none; }
+.proof-hud[data-state='fail'] { box-shadow: inset 0 0 0 2px var(--sig-red), 0 0 40px -12px var(--sig-red); }
+.pf-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pf-kicker { font: 600 12px var(--f-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--steel); }
+.pf-close { font: 600 12px var(--f-mono); cursor: pointer; background: transparent; color: var(--ink-2); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 10px; }
+.pf-close:hover { color: var(--ink); border-color: var(--steel); }
+.pf-step { margin: 0; font: 600 22px/1.25 var(--f-sign); color: var(--ink); min-height: 1.25em; }
+.pf-step:empty { display: none; }
+.pf-step.flip { animation: lane-in 0.45s ease-out; }
+.pf-note { margin: 0; font-size: 12px; color: var(--ink-3); }
+.pf-verdict { margin: 4px 0 2px; font: 600 clamp(26px, 3.4vw, 44px)/1.05 var(--f-sign); color: var(--steel); text-shadow: 0 0 30px rgba(62, 230, 168, 0.55); animation: lane-in 0.6s ease-out; }
+.proof-hud[data-state='fail'] .pf-verdict { color: var(--sig-red); text-shadow: none; }
+.pf-checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font: 13px var(--f-mono); color: var(--ink-2); }
+.pf-checks li::before { content: '✓ '; color: var(--steel); font-weight: 600; }
+.pf-checks li.bad::before { content: '✗ '; color: var(--sig-red); }
+body.proving .rules-strip, body.proving .schedule { display: none; }
+@media (max-width: 640px) { .proof-hud { margin: 12px 16px 0; } }

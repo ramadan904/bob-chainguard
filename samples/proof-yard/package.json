@@ -1,0 +1,6 @@
+{
+  "name": "proof-yard",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test \"src/__tests__/*.test.js\"" }
+}

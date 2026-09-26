@@ -124,7 +124,7 @@ export function describe(e) {
       return `${e.task} track circuit FAULT: ${failed.join(', ')}${!e.checks.tests.ok && e.checks.tests.summary ? ` (${e.checks.tests.summary})` : ''}`
     }
     case 'clear': return `${e.task} cleared by ${e.agent} -> ${e.commit.slice(0, 7)}`
-    case 'rollback': return `${e.agent || 'operator'} rolled back ${e.task} (${e.files.length} files restored)`
+    case 'rollback': return `${e.agent || 'operator'} rolled back ${e.task} (${e.files.length} files restored${e.strays?.length ? `, stray ${e.strays.join(', ')} restored` : ''})`
     case 'recover': return `${e.agent} recovered ${e.task} from checkpoint (${e.files.length} files)`
     case 'drill': return `CHAOS DRILL (${e.by}): ${e.kind === 'contract' ? `renamed ${e.renamed.from} in` : 'stray edit to'} ${e.file}, caught in ${e.detectMs} ms`
     case 'drill-end': return `chaos drill over: ${e.file} ${e.restored ? 'restored from git' : 'left as is (changed since)'}`
@@ -217,4 +217,44 @@ export async function verifyChain(events, hashHex) {
     prev = e.h
   }
   return { ok: true, chained: true, checked: events.length, head: prev }
+}
+
+// ------------------------------------------------------------------ safety verdict
+// What a run proves, from the ledger alone: no two agents ever held the same file at the same
+// time, every fault was caught before a commit and contained (rolled back, or fixed and cleared),
+// and what cleared. Used by `signalbox prove` and re-checked by the panel.
+export function proofVerdict(events) {
+  const tl = timeline(events)
+  const state = reduce(events)
+  if (!tl || !state) return null
+  const filesOf = (task) => new Set([...state.tasks[task].files, ...state.tasks[task].extra])
+  let collisions = 0
+  for (let i = 0; i < tl.runs.length; i++) {
+    for (let j = i + 1; j < tl.runs.length; j++) {
+      const a = tl.runs[i]
+      const b = tl.runs[j]
+      const overlap = a.start < (b.end ?? tl.t1) && b.start < (a.end ?? tl.t1)
+      if (overlap && [...filesOf(a.task)].some((f) => filesOf(b.task).has(f))) collisions++
+    }
+  }
+  const faults = events.filter((e) => e.t === 'verify' && !e.ok)
+  const uncontained = tl.runs.filter((r) => r.verifies.some((v) => !v.ok) && r.outcome === 'open')
+  const m = metrics(events)
+  const checks = [
+    { ok: collisions === 0, text: `${collisions === 0 ? 'Zero' : collisions} collisions: no two agents ever held the same file at once` },
+    { ok: faults.length > 0 ? uncontained.length === 0 : true, text: `${faults.length} fault${faults.length === 1 ? '' : 's'} caught before commit${faults.length ? `, ${uncontained.length ? `${uncontained.length} not yet contained` : 'all contained'}` : ''}` },
+    { ok: m.cleared > 0, text: `${m.cleared} block${m.cleared === 1 ? '' : 's'} cleared and committed alone, ${m.agents.length} agents, up to ${m.peakParallel} at once` },
+  ]
+  return {
+    ok: checks.every((c) => c.ok),
+    collisions,
+    faults: faults.length,
+    spads: faults.filter((f) => f.checks?.scope && !f.checks.scope.ok).length,
+    contractBreaks: faults.filter((f) => f.checks?.contract && !f.checks.contract.ok).length,
+    strays: events.filter((e) => e.t === 'rollback').flatMap((e) => e.strays || []),
+    cleared: m.cleared,
+    agents: m.agents.length,
+    peak: m.peakParallel,
+    checks,
+  }
 }

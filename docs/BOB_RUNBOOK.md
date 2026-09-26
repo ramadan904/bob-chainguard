@@ -103,7 +103,14 @@ What judges see on the panel:
 - The **control tower** shows one lane per Bob subagent: what it holds, what it just did, and
   an amber "Held at signal" lane (plus an amber pulse on the map) for the refused wave-2 claim.
 
-### 2a. Chaos drill (the 20-second moment)
+### 2a. Safety proof (the rogue-agent moment, about 20 s)
+
+Any time the panel is open, click **◆ Prove safety** (or type *simulate bad agent* in the Desk).
+Three scripted drill agents enter three blocks of a small fixture repo at once; one strays and
+breaks a contract; it is caught, rolled back, and the other two commit. It runs in a throwaway
+repository, so it never touches Bob's run or its ledger: safe to do mid-run.
+
+### 2b. Chaos drill on the real repo
 
 While wave 1 is running, **between two releases**, click **⚡ Simulate chaos: SPAD** in the
 control tower (or run `npm run -s sb -- drill spad --hold 6`). The signal box makes a real stray

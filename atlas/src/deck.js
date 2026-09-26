@@ -115,11 +115,11 @@ const slides = [
   // 8. command
   `<section class="slide">
     <div class="kicker">Operate it live</div>
-    <h2>A control tower, a chaos button and a dispatcher that answers.</h2>
+    <h2>A control tower, a rogue-agent proof and a desk that acts.</h2>
     <div class="cards three">
       <div class="card"><div class="icon">${lamp('amber')}${lamp('green')}</div><b>Control tower</b><p>One lane per Bob subagent, streamed from the ledger: the block it holds, its last move, and an amber <em>Held at signal</em> the moment interlocking refuses a claim.</p></div>
-      <div class="card red"><div class="icon">${lamp('red')}</div><b>Chaos drill</b><p>One click makes a <strong>real</strong> stray edit or breaks a real export. The checks catch it in milliseconds, every release locks, and the file is restored from git. It's in the ledger too.</p></div>
-      <div class="card"><div class="icon">${lamp('green')}</div><b>Dispatcher desk</b><p>"Start all green wave-1 blocks." "Why is w2-lib at danger?" Answers come from the ledger. Bob Agent mode asks the same desk from its terminal: <code>sb ask</code>.</p></div>
+      <div class="card red"><div class="icon">${lamp('red')}</div><b>Prove safety</b><p>One click: three agents enter at once, one goes <strong>rogue</strong> (strays out of its block, breaks an export). Caught before commit, rolled back, the other two commit. <em>Zero collisions. Ledger verified.</em></p></div>
+      <div class="card"><div class="icon">${lamp('green')}</div><b>Desk</b><p>"Start all safe wave 1" hands Bob the dispatch. "Simulate bad agent" runs the proof. "Why is this signal at danger?" answers from the ledger. Bob uses it too: <code>sb ask</code>.</p></div>
     </div>
   </section>`,
 

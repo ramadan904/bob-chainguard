@@ -2,6 +2,8 @@
 //   GET /api/snapshot   git history (Atlas data) + full ledger
 //   GET /api/stream     server-sent events: `ledger` (new events), `live` (fresh scan + who owns
 //                       each modified file), `head` (a block was committed; refetch the snapshot)
+//   POST /api/prove     safety proof (prove.js) on a throwaway fixture repo, streamed as `proof-*`
+//                       events; the real ledger and working tree are never touched
 //   POST /api/drill     chaos drill ({ kind: 'spad' | 'contract' }): a real stray edit or contract
 //                       break, caught by the checks, restored from git after `drillHoldMs`
 // Zero dependencies: node:http, fs.watch and the same scanner/reducer as the CLI.
@@ -18,7 +20,7 @@ import { reduce, ownerOf } from './signalbox-state.js'
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.woff2': 'font/woff2', '.woff': 'font/woff', '.svg': 'image/svg+xml', '.png': 'image/png' }
 
-export async function serve(root, { port = 4700, host = '127.0.0.1', dist = join(root, 'atlas', 'dist'), scanPath, drillHoldMs = 6000 } = {}) {
+export async function serve(root, { port = 4700, host = '127.0.0.1', dist = join(root, 'atlas', 'dist'), scanPath, drillHoldMs = 6000, proofPaceMs = 1600 } = {}) {
   const ledger = ledgerPath(root)
   const scanRoot = () => scanPath || reduce(readLedger(root))?.scanDir || 'legacy-dapp/src'
   if (!existsSync(join(root, scanRoot()))) throw new Error(`nothing to watch: ${scanRoot()} does not exist. Open the signal box first (signalbox init --scan <dir>).`)
@@ -88,6 +90,15 @@ export async function serve(root, { port = 4700, host = '127.0.0.1', dist = join
   const pump = setInterval(pumpLedger, 1000) // belt and braces for filesystems without reliable events
   pump.unref()
 
+  // Drills and proofs run code on this machine, so only this panel may start them: a custom header
+  // (cross-site pages can't send one without a CORS preflight, which this server never grants),
+  // a same-origin Origin, and a loopback Host (no DNS rebinding).
+  const panelOnly = (req) => {
+    const hostOk = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(req.headers.host || '')
+    const originOk = !req.headers.origin || req.headers.origin === `http://${req.headers.host}`
+    return req.headers['x-signalbox'] === 'drill' && hostOk && originOk
+  }
+  let proving = false
   const server = createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost')
     if (url.pathname === '/api/snapshot') {
@@ -100,15 +111,26 @@ export async function serve(root, { port = 4700, host = '127.0.0.1', dist = join
       }
       return
     }
+    if (url.pathname === '/api/prove' && req.method === 'POST') {
+      const reply = (code, body) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)) }
+      if (!panelOnly(req)) return reply(403, { error: 'the proof can only be started from the signal box panel on this machine' })
+      if (proving) return reply(409, { error: 'a proof is already running' })
+      proving = true
+      reply(202, { started: true })
+      import('./prove.js').then(({ prove }) => prove({
+        pace: proofPaceMs,
+        onOpen: (atlas) => send('proof-open', { atlas }),
+        onEvent: (event) => send('proof', { event }),
+        onStep: (text) => send('proof-step', { text }),
+      })).then((r) => send('proof-done', { atlas: r.atlas, verdict: r.verdict, recordedAt: r.recordedAt }))
+        .catch((err) => send('proof-error', { error: err.message }))
+        .finally(() => { proving = false })
+      return
+    }
     if (url.pathname === '/api/drill' && req.method === 'POST') {
       const kind = url.searchParams.get('kind') || 'spad'
       const reply = (code, body) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)) }
-      // The drill writes to the working tree, so only this panel may trigger it: a custom header
-      // (cross-site pages can't send one without a CORS preflight, which this server never grants),
-      // a same-origin Origin, and a loopback Host (no DNS rebinding).
-      const hostOk = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(req.headers.host || '')
-      const originOk = !req.headers.origin || req.headers.origin === `http://${req.headers.host}`
-      if (req.headers['x-signalbox'] !== 'drill' || !hostOk || !originOk) return reply(403, { error: 'drills can only be started from the signal box panel on this machine' })
+      if (!panelOnly(req)) return reply(403, { error: 'drills can only be started from the signal box panel on this machine' })
       try {
         const e = drill(root, { kind, by: 'operator (panel)' })
         pumpLedger()
