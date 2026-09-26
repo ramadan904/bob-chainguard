@@ -7,8 +7,8 @@
 
 Parallel AI agents are fast, and nobody trusts them. Put two on one repository and they overwrite
 each other's files. One renames a function another still calls. One makes a failing test pass by
-editing the test. What comes back is a single diff too large to review, with no record of which
-agent changed what, or whether any one change was safe on its own.
+editing the test. What comes back is one diff too large to review, with no record of which agent
+changed what.
 
 So teams run one agent at a time, and the work that needs parallel agents most, large migrations
 and upgrades, stays slow.
@@ -31,8 +31,12 @@ network without collisions.
 4. **One commit per block.** A clear block is committed alone and signed by its agent. A failing
    block stays uncommitted until the agent fixes it or rolls back, and everyone else keeps working.
 5. **Control tower.** Every move is written to a SHA-256 hash-chained ledger and shown live: one
-   lane per Bob subagent, refused claims in amber, faults with the failing test. A chaos button
-   makes a real stray edit; the checks catch it in milliseconds and git restores it.
+   lane per Bob subagent, refused claims in amber, faults with the failing test.
+
+**The safety proof.** One click puts three agents into three blocks at once; one goes rogue, edits
+outside its block and breaks an export. It is caught before commit and rolled back, stray file
+included, while the other two commit untouched. The panel recomputes the verdict from the ledger:
+all changes proven, zero collisions, ledger verified.
 
 The test case is an ERC-20 wallet dApp that Bob migrates from ethers v5 and web3.js (sunset in
 2025) to viem and wagmi: 72 legacy call sites in 10 files, planned as 6 blocks in 2 waves.

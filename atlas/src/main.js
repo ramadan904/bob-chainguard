@@ -438,11 +438,24 @@ function activeDrill() {
   return null
 }
 
-function chaosFlash() {
+function chaosFlash(ms = 1600) {
   document.body.classList.remove('chaos')
   void document.body.offsetWidth
+  document.body.style.setProperty('--alarm', `${ms}ms`)
   document.body.classList.add('chaos')
-  setTimeout(() => document.body.classList.remove('chaos'), 1600)
+  clearTimeout(chaosFlash.t)
+  chaosFlash.t = setTimeout(() => document.body.classList.remove('chaos'), ms)
+}
+
+// A stamp across the map when a block is rolled back: what was undone, and that nothing reached a commit.
+function rollbackStamp(e) {
+  const card = $('#map-card')
+  card.querySelector('.stamp')?.remove()
+  const stamp = h('div', { class: 'stamp', role: 'status' },
+    h('b', {}, 'Rolled back'),
+    h('span', {}, `${e.agent.split(' ')[0]} · ${e.task} · ${[...e.files, ...(e.strays || [])].map((f) => f.split('/').pop()).join(' + ')} restored · nothing committed`))
+  card.append(stamp)
+  setTimeout(() => stamp.remove(), 3200)
 }
 
 async function runDrill(kind, btn) {
@@ -459,27 +472,43 @@ async function runDrill(kind, btn) {
   btn.blur()
 }
 
+// Two views of the same interlocking: IBM Bob's run on legacy-dapp, and the safety proof's drill
+// agents. Same engine, same four checks, same kind of hash-chained ledger.
+function updateTowerView() {
+  const el = $('#tower-view')
+  if (!recordedProof && model.mode !== 'live' && !model.proof) return void (el.hidden = true)
+  el.hidden = false
+  const bobEvents = model.proof ? model.proof.home.events : model.events
+  const bobAgents = [...new Set(bobEvents.filter((e) => e.t === 'claim').map((e) => e.agent))]
+  const bobSub = bobAgents.length ? `${bobAgents.length} Bob subagent${bobAgents.length > 1 ? 's' : ''} · ${bobEvents.length} ledger events` : bobEvents.length ? 'signal box open · no claims yet' : 'not recorded yet'
+  const tab = (on, label, sub, onclick, cls) => h('button', { class: `tv-tab ${cls}${on ? ' on' : ''}`, 'aria-pressed': String(on), onclick }, h('b', {}, label), h('small', {}, sub))
+  el.replaceChildren(
+    h('div', { class: 'tv-tabs', role: 'group', 'aria-label': 'Which run' },
+      tab(!model.proof, 'IBM Bob run', `legacy-dapp · ${bobSub}`, () => model.proof && exitProof(), 'bob'),
+      tab(Boolean(model.proof), '◆ Safety proof', model.mode === 'live' || model.proof?.source === 'live' ? 'drill agents · run it live' : 'drill agents · recorded run', () => !model.proof && startProof(), 'proof')),
+    h('p', { class: 'tv-same' }, 'Same signal box for both: claim → track circuit (scope · contract · scan · isolated tests) → one commit per block → SHA-256 chained ledger.'))
+}
+
 function updateTowerActions() {
+  updateTowerView()
   const el = $('#tower-actions')
-  const prove = () => h('button', { class: 'prove-btn', title: 'Three drill agents at once on a throwaway fixture repo; one goes rogue. Watch the interlocking catch it.', onclick: startProof }, h('span', { 'aria-hidden': 'true' }, '◆ '), model.mode === 'live' ? 'Prove safety' : 'Prove safety · recorded run')
   if (model.mode === 'proof') {
     if (el.dataset.mode === 'proof') return
     el.dataset.mode = 'proof'
-    el.replaceChildren(h('button', { class: 'chaos-btn alt', onclick: exitProof }, 'Back to the network'))
+    el.replaceChildren()
     return
   }
   if (model.mode === 'live') {
     if (el.dataset.mode === 'live') return
     el.dataset.mode = 'live'
     el.replaceChildren(
-      prove(),
       h('button', { class: 'chaos-btn', title: 'Makes a real edit to a file no agent holds. The checks catch it, then the file is restored from git.', onclick: (e) => runDrill('spad', e.currentTarget) }, h('span', { 'aria-hidden': 'true' }, '⚡ '), 'Simulate chaos: SPAD'),
       h('button', { class: 'chaos-btn alt', title: 'Renames an export other files still import. The contract check catches it, then the file is restored from git.', onclick: (e) => runDrill('contract', e.currentTarget) }, 'Break a contract'))
     return
   }
   const first = model.events.findIndex((e) => e.t === 'drill')
   el.dataset.mode = model.mode
-  el.replaceChildren(...(recordedProof ? [prove()] : []), ...(first < 0 ? [] : [h('button', { class: 'chaos-btn', onclick: () => { stopTour(); goTo(view.stops.findIndex((st) => st.event === first)); chaosFlash() } }, h('span', { 'aria-hidden': 'true' }, '⚡ '), 'Replay the chaos drill')]))
+  el.replaceChildren(...(first < 0 ? [] : [h('button', { class: 'chaos-btn', onclick: () => { stopTour(); goTo(view.stops.findIndex((st) => st.event === first)); chaosFlash() } }, h('span', { 'aria-hidden': 'true' }, '⚡ '), 'Replay the chaos drill')]))
 }
 
 // ------------------------------------------------------------------ safety proof
@@ -511,7 +540,7 @@ function startProof() {
     proofEvent(e)
     proofStep(replayCaption(e))
     const slow = e.t === 'verify' || e.t === 'rollback' || e.t === 'clear'
-    model.proof.timer = setTimeout(next, e.t === 'verify' && !e.ok ? 3400 : slow ? 2000 : 1200)
+    model.proof.timer = setTimeout(next, e.t === 'verify' && !e.ok ? 4200 : e.t === 'rollback' ? 3400 : slow ? 2000 : 1200)
   }
   model.proof.timer = setTimeout(next, 900)
 }
@@ -566,10 +595,12 @@ function proofEvent(e) {
   model.stop = Infinity
   rebuild()
   if (e.t === 'verify' && !e.ok) {
-    chaosFlash()
+    chaosFlash(3000)
     const f = e.checks.scope.outside[0]
     if (f) flashTouched([stripRoot(view.sb.scanDir)(f)])
+    $('#map-card').scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
+  if (e.t === 'rollback') rollbackStamp(e)
 }
 
 async function finishProof(atlas, verdict) {
@@ -586,13 +617,38 @@ async function finishProof(atlas, verdict) {
     h('div', { class: 'pf-head' },
       h('span', { class: 'pf-kicker' }, model.proof.source === 'live' ? 'Safety proof · live' : 'Safety proof · recorded run'),
       h('button', { class: 'pf-close', onclick: exitProof }, 'Back to the network')),
-    h('p', { class: 'pf-verdict' }, ok ? 'All changes proven. Zero collisions. Ledger verified.' : 'Proof failed.'),
+    h('p', { class: 'pf-verdict' }, ok ? 'All changes proven. Zero collisions. Ledger verified. Parallel agents safe.' : 'Proof failed.'),
     h('ul', { class: 'pf-checks' },
       (local?.checks || []).map((c) => h('li', { class: c.ok ? 'ok' : 'bad' }, c.text)),
       h('li', { class: local?.spads && local?.contractBreaks ? 'ok' : 'bad' }, `Rogue agent caught: SPAD + contract break, stray ${local?.strays.join(', ') || 'file'} restored, nothing committed`),
       h('li', { class: chain.ok && chain.chained ? 'ok' : 'bad' }, `Ledger re-verified in your browser: ${chain.checked} SHA-256 chained events, head ${chain.head?.slice(0, 12)}`),
       h('li', { class: verdict?.audit ? 'ok' : 'bad' }, 'Every commit audited against git: signed by its agent, only its block\'s files')))
   proofStep('')
+  showVerdict({ ok, local, chain })
+}
+
+// The finale: full screen, line by line, with the verified ledger head large. Esc or a click
+// closes it; the detailed checks stay in the proof panel.
+function showVerdict({ ok, local, chain }) {
+  const el = $('#verdict')
+  const close = () => { el.hidden = true; document.removeEventListener('keydown', onKey) }
+  const onKey = (e) => { if (e.key === 'Escape') close() }
+  const lines = ok ? ['All changes proven.', `${local.collisions === 0 ? 'Zero' : local.collisions} collisions.`, 'Ledger verified.', 'Parallel agents safe.'] : ['Proof failed.']
+  el.dataset.state = ok ? 'ok' : 'fail'
+  el.replaceChildren(
+    h('div', { class: 'vd-card' },
+      h('p', { class: 'vd-kicker' }, `Safety proof · ${local?.agents ?? 0} agents at once · 1 rogue`),
+      h('h2', { class: 'vd-lines' }, lines.map((l, k) => h('span', { style: `--k:${k}` }, l))),
+      h('p', { class: 'vd-chain' }, h('span', { class: 'vd-lock', 'aria-hidden': 'true' }, '⛓'),
+        chain.ok && chain.chained ? ['Ledger verified in your browser · ', h('b', {}, `${chain.checked} SHA-256 chained events`), ' · head ', h('code', {}, chain.head.slice(0, 16))] : 'Ledger check failed'),
+      h('p', { class: 'vd-facts' }, `${local?.faults ?? 0} rogue change caught before commit · stray ${local?.strays.join(', ') || 'file'} restored · ${local?.cleared ?? 0} blocks committed alone`),
+      h('div', { class: 'vd-actions' },
+        h('button', { class: 'prove-btn', onclick: close }, 'See every check'),
+        h('button', { class: 'pf-close', onclick: () => { close(); exitProof() } }, 'Back to the IBM Bob run'))))
+  el.hidden = false
+  el.onclick = (e) => { if (e.target === el) close() }
+  document.addEventListener('keydown', onKey)
+  el.querySelector('.prove-btn').focus()
 }
 
 function exitProof() {
@@ -603,6 +659,7 @@ function exitProof() {
   Object.assign(model, { atlas: home.atlas, events: home.events, mode: home.mode, stop: home.stop })
   document.body.classList.remove('proving')
   $('#proof').hidden = true
+  $('#verdict').hidden = true
   $('#packs').hidden = false
   setRoute()
   rebuild()
@@ -913,7 +970,13 @@ function finishTour() {
   const sum = summary(view.sb)
   select(null)
   showCaption({ kind: 'done', text: `${sum.cleared} of ${sum.total} blocks cleared by ${crewStats(model.events, view.stops[view.i].event).length} Bob subagents. Legacy call sites: ${base} → ${now}. Every step is in a hash-chained ledger.` })
-  model.tour.timer = setTimeout(() => { stopTour(); if (recordedProof && model.mode !== 'live') startProof() }, 6000)
+  // The tour's last act: the same signal box against a rogue agent.
+  model.tour.timer = setTimeout(() => {
+    if (!model.tour) return
+    if (!recordedProof || model.mode === 'live') return stopTour()
+    showCaption({ kind: 'fault', text: 'Now the hard case: what happens when an agent goes rogue? Three agents, one signal box.' })
+    model.tour.timer = setTimeout(() => { stopTour(); startProof() }, 3200)
+  }, 6000)
 }
 
 function stopTour() {

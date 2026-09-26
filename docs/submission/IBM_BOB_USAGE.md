@@ -23,14 +23,18 @@ tests and the live panel.
 
 ## Why this showcases Bob
 
-Parallel agents are only useful if they're safe. The signal box turns Bob's subagents from "several
-chats editing the same repo" into a coordinated crew:
+Parallel agents are only useful if they're safe. The signal box turns Bob's subagents into a
+coordinated crew:
 - Every agent has an exclusive block and a green signal before it starts.
 - Every change passes an independent track circuit before it's committed.
 - Every failure stays contained to one block.
 
 The dispatcher is itself a Bob agent, so the planning, coordination and recovery are Bob's
 multi-step reasoning, not a script.
+
+The **safety proof** stress-tests the same signal box: three agents at once, one rogue, caught
+before commit and rolled back while the others commit. Its agents are scripted so the rogue is
+guaranteed; Bob's subagents face the same checks.
 
 ## Results
 
