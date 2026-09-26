@@ -33,21 +33,21 @@ const slides = [
   `<section class="slide title">
     <div class="kicker">IBM Bob 2.0 Hackathon</div>
     <h1>Signal<span>box</span></h1>
-    <p class="big">Interlocking for parallel IBM&nbsp;Bob subagents.</p>
-    <p class="sub">Many Bob subagents, one codebase, no collisions. Every change is proven before it's committed, and a rogue agent is caught and rolled back while the others keep working.</p>
+    <p class="big">Every Bob agent at once. Nothing unproven gets in.</p>
+    <p class="sub">The missing control layer for multi-agent development: railway interlocking for IBM&nbsp;Bob subagents.</p>
     <div class="signals">${lamp('red')}${lamp('amber')}${lamp('green')}</div>
   </section>`,
 
   // 2. problem
   `<section class="slide">
     <div class="kicker">The problem</div>
-    <h2>Parallel AI agents don't trust each other. Neither do we.</h2>
+    <h2>You put three agents on one codebase to go three times faster. By morning, you can't trust any of it.</h2>
     <div class="cards three">
-      <div class="card red"><b>They collide</b><p>Two agents edit the same file. One overwrites the other.</p></div>
-      <div class="card red"><b>They break contracts</b><p>One agent renames a function another agent's code still calls.</p></div>
-      <div class="card red"><b>They cheat</b><p>A failing test gets "fixed" by editing the test.</p></div>
+      <div class="card red"><b>They collide</b><p>Two agents edit the same file. One silently overwrites the other.</p></div>
+      <div class="card red"><b>They break each other</b><p>One renames a function the other two still call.</p></div>
+      <div class="card red"><b>They cheat</b><p>A failing test gets "fixed" by rewriting the test.</p></div>
     </div>
-    <p class="note">The result is one giant diff nobody can review. So teams run one agent at a time, and big migrations stay slow.</p>
+    <p class="note">What's left is a 4,000-line diff nobody can review. So you throw it away and go back to <strong>one agent at a time</strong>, and the work that needs parallel agents most stays slow.</p>
   </section>`,
 
   // 3. insight
@@ -181,7 +181,7 @@ const slides = [
   // 11. close
   `<section class="slide title close">
     <div class="signals">${lamp('green')}${lamp('green')}${lamp('green')}</div>
-    <h2 class="huge">Parallel Bob subagents<br>you can actually trust.</h2>
+    <h2 class="huge">Every Bob agent at once.<br>Nothing unproven gets in.</h2>
     <p class="sub">bob-chainguard.vercel.app · github.com/ramadan904/bob-chainguard</p>
   </section>`,
 ]

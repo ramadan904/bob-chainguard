@@ -64,27 +64,29 @@ Then merge to `main` again (step 0's link). The live panel and the deck's result
 
 ## 4. The lablab.ai form: copy and paste
 
-**Title:** Signalbox: interlocking for parallel IBM Bob subagents
+**Title:** Signalbox: every Bob agent at once, nothing unproven gets in
 
 **Short description:**
-Many Bob subagents, one codebase, no collisions. Signalbox gives each agent an exclusive block of files, opens waves like railway signals, and proves every change (scope, contracts, legacy scan, isolated tests) before it is committed.
+The missing control layer for multi-agent development. Signalbox lets several IBM Bob subagents change one codebase at the same time: each gets an exclusive block, waves open like railway signals, and every change is proven (scope, contracts, legacy scan, isolated tests) before it is committed. A rogue agent is caught and rolled back while the others keep working.
 
 **Long description:**
-Everyone wants AI agents working in parallel, but they collide: they edit the same files, break
-functions other agents depend on, and "fix" failing tests by editing the tests. Signalbox brings
-railway interlocking to IBM Bob 2.0.
+You put three AI agents on one codebase to go three times faster. By morning one has renamed a
+function the others still call, one has "fixed" a failing test by rewriting it, and the diff is
+too big to review. So you go back to one agent at a time. Signalbox is the control layer that
+makes Bob's parallelism safe, built on railway interlocking.
 - chainguard scans the repo, reads the import graph and plans the change as blocks in waves.
-- A Bob dispatcher agent starts one subagent per green block.
+- A Bob dispatcher agent (Agent mode) starts one subagent per green block, in parallel.
 - Each subagent claims its block and edits only those files.
 - Releasing a block runs a track circuit: scope, exported contract, legacy scan, and the
   behavior tests on an isolated git worktree. A clear block is committed alone and signed by its
-  agent. A faulty block is fixed or rolled back while the other agents keep working.
-- A live transit-map panel shows agents occupying blocks, faults and the train graph, and the
-  deployed site replays the recorded run.
-- Safety nets: protected tests, a live SPAD alarm, a pre-commit guard and a black-box recorder.
+  agent; a faulty one is fixed or rolled back while the others keep working.
+- The live Control Tower shows Bob's subagents, refused claims, faults and a train graph of the
+  parallelism; every event is in a SHA-256 hash-chained ledger anyone can replay and verify.
+- **The safety proof:** one click, three agents at once, one goes rogue. Caught before commit,
+  rolled back, the other two commit. "Zero collisions. Ledger verified. Parallel agents safe."
 
-We proved it by having Bob migrate a real ERC-20 wallet dApp from ethers v5 + web3.js to
-viem/wagmi. Rule packs make it work for any migration (a Moment.js → date-fns pack is included).
+Bob migrated an ERC-20 wallet dApp from ethers v5 + web3.js to viem/wagmi under the signal box.
+Rule packs make it work for any migration (a Moment.js → date-fns pack is included).
 
 **Tags:** IBM Bob, Agentic AI, Multi-agent, Developer Tools, Code Migration, Web3, viem
 

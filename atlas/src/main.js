@@ -11,7 +11,7 @@ import bobShots from './data/bob-shots.json'
 import { layoutAtlas, LABEL_OFFSET } from './layout.js'
 import { dependentsOf, baselineIndex } from './state.js'
 import { buildStops, findingsAt, signalStateAt, blockIndex, faultsCaught, checkLamps, stripRoot } from './signal.js'
-import { reduce, describe, summary, timeline, verifyChain, canonical, proofVerdict } from '../../chainguard/src/signalbox-state.js'
+import { reduce, describe, summary, timeline, verifyChain, canonical, proofVerdict, metrics } from '../../chainguard/src/signalbox-state.js'
 import { ask, EXAMPLES } from '../../chainguard/src/dispatch.js'
 import { blastRadius as blastOf, blockRisk as riskOf, crewStats, tourStep, towerLanes } from './insights.js'
 
@@ -486,7 +486,29 @@ function updateTowerView() {
     h('div', { class: 'tv-tabs', role: 'group', 'aria-label': 'Which run' },
       tab(!model.proof, 'IBM Bob run', `legacy-dapp · ${bobSub}`, () => model.proof && exitProof(), 'bob'),
       tab(Boolean(model.proof), '◆ Safety proof', model.mode === 'live' || model.proof?.source === 'live' ? 'drill agents · run it live' : 'drill agents · recorded run', () => !model.proof && startProof(), 'proof')),
+    compareRuns(bobEvents, model.proof ? model.proof.home.atlas : model.atlas),
     h('p', { class: 'tv-same' }, 'Same signal box for both: claim → track circuit (scope · contract · scan · isolated tests) → one commit per block → SHA-256 chained ledger.'))
+}
+
+// Side by side, from each run's own ledger: what IBM Bob's subagents did on legacy-dapp, and what
+// the drill agents did in the safety proof. The rows are the same because the engine is the same.
+function compareRuns(bobEvents, bobAtlas) {
+  const col = (events) => {
+    const m = events.some((e) => e.t === 'init') ? metrics(events) : null
+    const v = m ? proofVerdict(events) : null
+    return m && { agents: `${m.agents.length} · up to ${m.peakParallel} at once`, cleared: `${m.cleared} / ${m.blocks}`, caught: `${m.faults} fault${m.faults === 1 ? '' : 's'} · ${m.denied} refused claim${m.denied === 1 ? '' : 's'}`, collisions: String(v?.collisions ?? 0), events: String(events.length) }
+  }
+  const bob = col(bobEvents)
+  const proof = recordedProof ? col(recordedProof.events) : null
+  if (!proof) return null
+  const rows = [['Agents', 'agents'], ['Blocks cleared', 'cleared'], ['Stopped before commit', 'caught'], ['Collisions', 'collisions'], ['Ledger events', 'events']]
+  const pending = h('span', { class: 'tv-pending' }, `recorded after IBM Bob's run · plan: ${bobAtlas.plan.tasks.length} blocks, ${bobAtlas.plan.waves} waves`)
+  return h('div', { class: 'tv-compare', role: 'table', 'aria-label': 'IBM Bob run and safety proof, side by side' },
+    h('div', { class: 'tv-row tv-headrow', role: 'row' }, h('span', {}, ''), h('b', { class: 'bob' }, 'IBM Bob · legacy-dapp'), h('b', { class: 'proof' }, '◆ Safety proof · drill agents')),
+    rows.map(([label, key], k) => h('div', { class: 'tv-row', role: 'row' },
+      h('span', { class: 'tv-k' }, label),
+      bob ? h('span', { class: `tv-v${key === 'collisions' ? ' zero' : ''}` }, bob[key]) : k === 0 ? pending : h('span', { class: 'tv-v dim' }, '·'),
+      h('span', { class: `tv-v${key === 'collisions' ? ' zero' : ''}` }, proof[key]))))
 }
 
 function updateTowerActions() {
@@ -631,21 +653,28 @@ async function finishProof(atlas, verdict) {
 // closes it; the detailed checks stay in the proof panel.
 function showVerdict({ ok, local, chain }) {
   const el = $('#verdict')
-  const close = () => { el.hidden = true; document.removeEventListener('keydown', onKey) }
+  const close = () => { el.hidden = true; document.body.classList.remove('safe'); document.removeEventListener('keydown', onKey) }
   const onKey = (e) => { if (e.key === 'Escape') close() }
-  const lines = ok ? ['All changes proven.', `${local.collisions === 0 ? 'Zero' : local.collisions} collisions.`, 'Ledger verified.', 'Parallel agents safe.'] : ['Proof failed.']
   el.dataset.state = ok ? 'ok' : 'fail'
+  const signal = (k) => h('span', { class: 'vd-signal', style: `--k:${k}` }, h('i', { class: 'r' }), h('i', { class: 'g' }))
   el.replaceChildren(
     h('div', { class: 'vd-card' },
       h('p', { class: 'vd-kicker' }, `Safety proof · ${local?.agents ?? 0} agents at once · 1 rogue`),
-      h('h2', { class: 'vd-lines' }, lines.map((l, k) => h('span', { style: `--k:${k}` }, l))),
+      ok ? h('div', { class: 'vd-signals', 'aria-hidden': 'true' }, [0, 1, 2].map(signal)) : null,
+      h('h2', { class: 'vd-hero' }, ok ? 'Parallel agents safe.' : 'Proof failed.'),
+      ok ? h('div', { class: 'vd-badges' },
+        h('div', { class: 'vd-badge', style: '--k:0' }, h('b', {}, '⛓'), h('span', {}, 'Ledger verified')),
+        h('div', { class: 'vd-badge', style: '--k:1' }, h('b', {}, String(local.collisions)), h('span', {}, 'collisions')),
+        h('div', { class: 'vd-badge', style: '--k:2' }, h('b', {}, `${local.faults} caught`), h('span', {}, 'rogue change · 0 committed'))) : null,
+      h('p', { class: 'vd-lines' }, ok ? 'All changes proven. Every agent at once, nothing unproven got in.' : 'See the checks for what failed.'),
       h('p', { class: 'vd-chain' }, h('span', { class: 'vd-lock', 'aria-hidden': 'true' }, '⛓'),
-        chain.ok && chain.chained ? ['Ledger verified in your browser · ', h('b', {}, `${chain.checked} SHA-256 chained events`), ' · head ', h('code', {}, chain.head.slice(0, 16))] : 'Ledger check failed'),
-      h('p', { class: 'vd-facts' }, `${local?.faults ?? 0} rogue change caught before commit · stray ${local?.strays.join(', ') || 'file'} restored · ${local?.cleared ?? 0} blocks committed alone`),
+        chain.ok && chain.chained ? ['Re-verified in your browser · ', h('b', {}, `${chain.checked} SHA-256 chained events`), ' · head ', h('code', {}, chain.head.slice(0, 16))] : 'Ledger check failed'),
+      h('p', { class: 'vd-facts' }, `Rogue agent caught by scope + contract · stray ${local?.strays.join(', ') || 'file'} restored · ${local?.cleared ?? 0} blocks committed alone, signed by their agents`),
       h('div', { class: 'vd-actions' },
         h('button', { class: 'prove-btn', onclick: close }, 'See every check'),
         h('button', { class: 'pf-close', onclick: () => { close(); exitProof() } }, 'Back to the IBM Bob run'))))
   el.hidden = false
+  if (ok) document.body.classList.add('safe')
   el.onclick = (e) => { if (e.target === el) close() }
   document.addEventListener('keydown', onKey)
   el.querySelector('.prove-btn').focus()
@@ -660,6 +689,7 @@ function exitProof() {
   document.body.classList.remove('proving')
   $('#proof').hidden = true
   $('#verdict').hidden = true
+  document.body.classList.remove('safe')
   $('#packs').hidden = false
   setRoute()
   rebuild()
