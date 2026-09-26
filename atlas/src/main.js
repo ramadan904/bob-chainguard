@@ -404,7 +404,7 @@ function updateTower() {
     },
       h('div', { class: 'lane-top' },
         h('span', { class: 'lane-name' }, l.agent.toUpperCase()),
-        h('span', { class: `signal-head s-${{ working: 'occupied', held: 'danger', fault: 'fault', off: 'cleared', standby: 'clear' }[l.status]}` }, h('i', { class: 'lamp red' }), h('i', { class: 'lamp amber' }), h('i', { class: 'lamp green' }))),
+        h('span', { class: `signal-head s-${l.status === 'off' && l.last?.t === 'rollback' ? 'none' : { working: 'occupied', held: 'danger', fault: 'fault', off: 'cleared', standby: 'clear' }[l.status]}` }, h('i', { class: 'lamp red' }), h('i', { class: 'lamp amber' }), h('i', { class: 'lamp green' }))),
       h('p', { class: 'lane-status' }, l.status === 'off' && l.last?.t === 'rollback' ? 'Rolled back' : LANE_TEXT[l.status]),
       h('p', { class: 'lane-block' }, t ? [h('b', {}, l.task), ` · wave ${t.wave} · `, taskFiles(l.task).map((f) => f.split('/').pop()).join(', ')] : l.status === 'off' ? (l.last?.t === 'rollback' ? 'Rolled back: nothing committed' : 'Block cleared and committed') : l.status === 'held' ? 'Waiting at the signal, holding nothing' : '—'),
       l.heldFor ? h('p', { class: 'lane-held' }, h('b', {}, `Refused ${l.heldFor}: `), l.reason.replace(/^signal at danger: /, '')) : h('p', { class: 'lane-last' }, h('time', {}, l.last.at.slice(11, 19)), ' ', describe(l.last)),
