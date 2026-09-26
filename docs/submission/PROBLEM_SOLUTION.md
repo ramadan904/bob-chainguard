@@ -5,38 +5,37 @@
 
 ## Problem
 
-AI agents can now change code in parallel, and every team that tries it hits the same wall.
-Two agents edit the same file. One agent quietly renames a function another agent's code depends
-on. A third "fixes" a failing test by changing the test. The result is one huge diff nobody can review.
+Parallel AI agents are fast, and nobody trusts them. Put two on one repository and they overwrite
+each other's files. One renames a function another still calls. One makes a failing test pass by
+editing the test. What comes back is a single diff too large to review, with no record of which
+agent changed what, or whether any one change was safe on its own.
 
-So teams fall back to one agent at a time, and large migrations stay slow, exactly where
-parallel agents should help most.
+So teams run one agent at a time, and the work that needs parallel agents most, large migrations
+and upgrades, stays slow.
 
-## Solution: Signalbox, interlocking for parallel Bob subagents
+## Solution
 
-Railways solved "many trains, one network" with **interlocking**. Signalbox applies it to IBM Bob
-subagents working on one repository:
+Signalbox is interlocking for IBM Bob subagents: the rules railways use to run many trains on one
+network without collisions.
 
-1. **Blocks.** chainguard scans the repo and reads the import graph. It splits the change into
-   blocks (one per subagent task) and orders them into waves, so no block depends on a block in
-   its own or a later wave.
-2. **Signals.** A Bob subagent must `claim` its block. The signal box refuses the claim while an
-   earlier wave is uncleared or another agent holds the files. Only one train per block.
-3. **Track circuit.** An agent can only `release` its block when four checks pass:
-   - scope: no edits outside any block, otherwise it's flagged as a SPAD ("signal passed at danger")
-   - exported contract: nothing other code imports was removed or renamed
-   - legacy scan: no old-library calls left in the block
-   - behavior tests: run on an **isolated git worktree** holding only cleared work plus this block,
-     so parallel agents can neither cause nor mask each other's failures
-4. **Commit or roll back.** A clear block is committed on its own and tagged with its agent. A
-   faulty block stays uncommitted until the agent fixes it or rolls it back, and the other agents
-   keep working.
-5. **Live control tower.** Every step lands in a hash-chained ledger, streamed to a transit-map
-   panel: one lane per Bob subagent, refused claims flash amber, faults show the failing test. A
-   chaos button makes a real stray edit; the checks catch it in milliseconds and git restores it.
+1. **Blocks and waves.** chainguard scans the code and its import graph and splits the change into
+   blocks, one per subagent. Blocks in a wave share no files; a wave depends only on earlier waves.
+2. **Signals.** A subagent must claim its block before editing. The claim is refused, and recorded,
+   while an earlier wave is still open or another agent holds the files.
+3. **Track circuit.** A block is released only when four checks pass:
+   - **Scope:** nothing outside the block was edited (otherwise it is a SPAD, a signal passed at danger).
+   - **Contract:** no export that other code still imports was removed or renamed.
+   - **Legacy scan:** no old-library calls remain in the block.
+   - **Tests:** the behavior tests pass on an isolated git worktree holding only cleared work plus
+     this block, so parallel agents can neither cause nor hide each other's failures.
+4. **One commit per block.** A clear block is committed alone and signed by its agent. A failing
+   block stays uncommitted until the agent fixes it or rolls back, and everyone else keeps working.
+5. **Control tower.** Every move is written to a SHA-256 hash-chained ledger and shown live: one
+   lane per Bob subagent, refused claims in amber, faults with the failing test. A chaos button
+   makes a real stray edit; the checks catch it in milliseconds and git restores it.
 
-We proved it on a real ERC-20 wallet dApp: Bob migrates it from ethers v5 + web3.js (web3.js was
-sunset in 2025) to viem/wagmi. That's 72 legacy call sites in 10 files, split into 6 blocks in 2 waves.
+The test case is an ERC-20 wallet dApp that Bob migrates from ethers v5 and web3.js (sunset in
+2025) to viem and wagmi: 72 legacy call sites in 10 files, planned as 6 blocks in 2 waves.
 
 ## Impact
 
