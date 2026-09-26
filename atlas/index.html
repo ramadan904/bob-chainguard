@@ -58,6 +58,7 @@
         <p id="tower-sub" class="tower-counts"></p>
         <div class="tower-actions" id="tower-actions"></div>
       </div>
+      <div class="tower-view" id="tower-view" hidden></div>
       <ol class="rules-strip" id="tower-rules" aria-label="Interlocking rules">
         <li><b>1</b> agent per block</li>
         <li><b>W<sub>n</sub></b> opens when W<sub>n−1</sub> clears</li>
@@ -125,6 +126,7 @@
     </section>
 
     <div class="caption" id="caption" role="status" aria-live="polite"></div>
+    <div class="verdict" id="verdict" role="dialog" aria-modal="true" aria-label="Safety proof verdict" hidden></div>
     <dialog class="diff shot-view" id="shot" aria-label="Bob session screenshot"></dialog>
     <dialog class="diff" id="diff" aria-label="Bob's change"></dialog>
     <dialog class="diff verify" id="verify" aria-label="Verify the ledger"></dialog>

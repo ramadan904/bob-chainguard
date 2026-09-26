@@ -40,10 +40,10 @@ export async function prove({ pace = 0, keep = false, onOpen = () => {}, onEvent
     for (const e of all.slice(seen)) onEvent(e)
     seen = all.length
   }
-  const step = async (text) => {
+  const step = async (text, hold = 1) => {
     flush()
     onStep(text)
-    if (pace) await sleep(pace)
+    if (pace) await sleep(pace * hold)
   }
   try {
     cpSync(FIXTURE, dir, { recursive: true, filter: (src) => !src.includes('node_modules') })
@@ -77,10 +77,10 @@ export async function prove({ pace = 0, keep = false, onOpen = () => {}, onEvent
     await step(`${crew.at(-1).name} edits src/index.js outside its block and renames fare()`)
 
     const caught = await agent(dir, ['release', bad.id, '--agent', crew.at(-1).name])
-    await step(`${crew.at(-1).name}: FAULT, nothing committed`)
+    await step(`${crew.at(-1).name}: FAULT, nothing committed`, 2.4) // the moment to watch
 
     await agent(dir, ['rollback', bad.id, '--agent', crew.at(-1).name, '--strays', 'src/index.js'])
-    await step(`${crew.at(-1).name} rolled back: block and stray file restored`)
+    await step(`${crew.at(-1).name} rolled back: block and stray file restored`, 2)
 
     const releases = await Promise.all(good.map((t, k) => agent(dir, ['release', t.id, '--agent', `drill-${k + 1}`])))
     await step(`${releases.filter((r) => r.code === 0).length} blocks cleared and committed`)

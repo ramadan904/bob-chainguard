@@ -8,6 +8,7 @@ import './deck.css'
 import atlas from './data/atlas-data.json'
 import momentAtlas from './data/atlas-moment.json'
 import bobShots from './data/bob-shots.json'
+import { proofVerdict } from '../../chainguard/src/signalbox-state.js'
 import { baselineIndex } from './state.js'
 import { metrics } from '../../chainguard/src/signalbox-state.js'
 
@@ -18,6 +19,9 @@ const m = ledger.length ? metrics(ledger) : null
 const base = atlas.snapshots[baselineIndex(atlas)]
 const now = atlas.snapshots[atlas.snapshots.length - 1]
 const ran = Boolean(m && m.cleared)
+// The safety proof slide reads the real recorded proof run (npm run atlas refreshes it).
+const proofRun = Object.values(import.meta.glob('./data/proof.json', { eager: true, import: 'default' }))[0] || null
+const pv = proofRun ? proofVerdict(proofRun.events) : null
 const momentNow = momentAtlas.snapshots[momentAtlas.snapshots.length - 1].totals.findings
 
 const dur = (ms) => (ms >= 3600e3 ? `${Math.floor(ms / 3600e3)} h ${Math.round((ms % 3600e3) / 60e3)} min` : `${Math.max(1, Math.round(ms / 60e3))} min`)
@@ -30,7 +34,7 @@ const slides = [
     <div class="kicker">IBM Bob 2.0 Hackathon</div>
     <h1>Signal<span>box</span></h1>
     <p class="big">Interlocking for parallel IBM&nbsp;Bob subagents.</p>
-    <p class="sub">Many agents, one codebase, no collisions. Every change is proven before it's committed.</p>
+    <p class="sub">Many Bob subagents, one codebase, no collisions. Every change is proven before it's committed, and a rogue agent is caught and rolled back while the others keep working.</p>
     <div class="signals">${lamp('red')}${lamp('amber')}${lamp('green')}</div>
   </section>`,
 
@@ -83,6 +87,19 @@ const slides = [
       <div class="card"><div class="chk">T</div><b>Isolated tests</b><p>Run on a git worktree with only cleared work plus this block, so agents can't cause or mask each other's failures.</p></div>
     </div>
   </section>`,
+
+  // 5b. safety proof: the real recorded run
+  pv ? `<section class="slide dense">
+    <div class="kicker">The safety proof · one click</div>
+    <h2>${pv.agents} agents at once. One goes rogue. It never reaches a commit.</h2>
+    <div class="cards three">
+      <div class="card red"><div class="icon">${lamp('red')}</div><b>Rogue agent</b><p>Edits a file outside its block <em>and</em> renames an export another file imports. Caught by scope <strong>and</strong> contract: ${pv.spads} SPAD, ${pv.contractBreaks} contract break.</p></div>
+      <div class="card"><div class="icon">${lamp('amber')}</div><b>Rolled back</b><p>Its block and the stray ${pv.strays.map((f) => `<code>${f.split('/').pop()}</code>`).join(', ')} restored from git. Nothing it did was committed.</p></div>
+      <div class="card"><div class="icon">${lamp('green')}</div><b>Others untouched</b><p>${pv.cleared} blocks pass all four checks and commit alone, signed by their agents. Up to ${pv.peak} agents at once.</p></div>
+    </div>
+    <p class="big"><span class="mint">All changes proven. ${pv.collisions === 0 ? 'Zero' : pv.collisions} collisions. Ledger verified. Parallel agents safe.</span></p>
+    <p class="note">Real recorded run, ${proofRun.events.length} SHA-256 chained events. Scripted drill agents, so the rogue is guaranteed; the same signal box Bob's subagents run under. Try it: <code>bob-chainguard.vercel.app/?prove</code></p>
+  </section>` : '',
 
   // 6. bob
   `<section class="slide">
