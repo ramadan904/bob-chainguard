@@ -1,7 +1,8 @@
 # IBM Bob Usage Statement
 
-Bob can run several subagents in parallel. The hard part is trusting what they do together: one
-agent's change breaking another's, a test "fixed" by editing it, a diff nobody can review. We built
+**Every agent finished. The build didn't.** Bob can run several subagents in parallel; the hard part
+is trusting what they do together: one agent's change breaking another's, a test "fixed" by editing
+it, a diff nobody can review. We built
 Signalbox as the control layer that makes Bob's parallelism safe on one codebase, and designed every
 part of it around Bob's capabilities.
 

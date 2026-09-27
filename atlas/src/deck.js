@@ -32,6 +32,7 @@ const slides = [
   // 1. title
   `<section class="slide title">
     <div class="kicker">IBM Bob 2.0 Hackathon</div>
+    <p class="hook">Every agent finished. The build didn't.</p>
     <h1>Signal<span>box</span></h1>
     <p class="big">Every Bob agent at once. Nothing unproven gets in.</p>
     <p class="sub">The missing control layer for multi-agent development: railway interlocking for IBM&nbsp;Bob subagents.</p>
@@ -41,13 +42,13 @@ const slides = [
   // 2. problem
   `<section class="slide">
     <div class="kicker">The problem</div>
-    <h2>You put three agents on one codebase to go three times faster. By morning, you can't trust any of it.</h2>
+    <h2>Every agent finished. The build didn't. And nobody can tell which change broke it.</h2>
     <div class="cards three">
       <div class="card red"><b>They collide</b><p>Two agents edit the same file. One silently overwrites the other.</p></div>
       <div class="card red"><b>They break each other</b><p>One renames a function the other two still call.</p></div>
       <div class="card red"><b>They cheat</b><p>A failing test gets "fixed" by rewriting the test.</p></div>
     </div>
-    <p class="note">What's left is a 4,000-line diff nobody can review. So you throw it away and go back to <strong>one agent at a time</strong>, and the work that needs parallel agents most stays slow.</p>
+    <p class="note">What's left is a 4,000-line diff nobody can review and a morning of lost work. So teams stop trusting agents in parallel and go back to <strong>one at a time</strong>, and the work that needs parallel agents most stays slow.</p>
   </section>`,
 
   // 3. insight
@@ -97,7 +98,7 @@ const slides = [
       <div class="card"><div class="icon">${lamp('amber')}</div><b>Rolled back</b><p>Its block and the stray ${pv.strays.map((f) => `<code>${f.split('/').pop()}</code>`).join(', ')} restored from git. Nothing it did was committed.</p></div>
       <div class="card"><div class="icon">${lamp('green')}</div><b>Others untouched</b><p>${pv.cleared} blocks pass all four checks and commit alone, signed by their agents. Up to ${pv.peak} agents at once.</p></div>
     </div>
-    <p class="big"><span class="mint">All changes proven. ${pv.collisions === 0 ? 'Zero' : pv.collisions} collisions. Ledger verified. Parallel agents safe.</span></p>
+    <p class="big"><span class="mint">All changes proven. ${pv.collisions === 0 ? 'Zero' : pv.collisions} collisions. Ledger verified. Parallel agents are now safe.</span></p>
     <p class="note">Real recorded run, ${proofRun.events.length} SHA-256 chained events. Scripted drill agents, so the rogue is guaranteed; the same signal box Bob's subagents run under. Try it: <code>bob-chainguard.vercel.app/?prove</code></p>
   </section>` : '',
 
@@ -194,6 +195,7 @@ const slides = [
   `<section class="slide title close">
     <div class="signals">${lamp('green')}${lamp('green')}${lamp('green')}</div>
     <h2 class="huge">Every Bob agent at once.<br>Nothing unproven gets in.</h2>
+    <p class="big">The missing control layer for multi-agent development.</p>
     <p class="sub">bob-chainguard.vercel.app · github.com/ramadan904/bob-chainguard</p>
   </section>`,
 ]

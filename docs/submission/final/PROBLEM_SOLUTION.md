@@ -2,10 +2,10 @@
 
 ## Problem
 
-You put three AI agents on one codebase to go three times faster. By morning one has renamed a
-function the other two still call, another has "fixed" a failing test by rewriting the test, and
-you are looking at a 4,000-line diff nobody can review, with no record of which agent did what.
-So you throw it away and go back to one agent at a time.
+**Every agent finished. The build didn't.** You let three AI agents loose on one codebase to go three
+times faster. One renamed a function the others still call; another "fixed" a failing test by
+rewriting the test. Now a 4,000-line diff nobody can review, and a night's work in the bin. So teams stop trusting agents in parallel and go back to one
+at a time.
 
 The agents are capable; what's missing is a control layer that lets them work at once without
 trusting each other.

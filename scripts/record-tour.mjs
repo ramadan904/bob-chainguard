@@ -62,7 +62,7 @@ const t0 = Date.now()
 if (proof) {
   await page.goto(`${base}/?prove`)
   await page.waitForFunction(() => ['ok', 'fail'].includes(document.getElementById('proof')?.dataset.state), null, { timeout: 120e3, polling: 250 })
-  await page.waitForTimeout(4000)
+  await page.waitForTimeout(7500)
 } else if (deck) {
   await page.goto(`${base}/deck.html#1`)
   const total = await page.$$eval('.slide', (s) => s.length)
