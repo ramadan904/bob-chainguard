@@ -98,7 +98,7 @@ if (demo) {
   ]))
   await page.waitForTimeout(12500)
   // 0:20-0:40 the idea and the Control Tower
-  await page.goto(`${base}/`)
+  await page.goto(`${base}/?still`)
   await page.waitForTimeout(1200)
   await caption('Signalbox: railway interlocking for IBM Bob. No agent enters a block until its signal is green.', 6500)
   await page.evaluate(() => document.getElementById('tower').scrollIntoView({ behavior: 'smooth', block: 'start' }))
