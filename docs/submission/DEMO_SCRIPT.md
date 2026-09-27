@@ -21,6 +21,11 @@ agent (0:32–1:12) → the release (1:12–1:30). Record it from https://bob-ch
 ready clip `docs/submission/media/proof.webm` covers 0:40–1:30 (re-record with `npm run record:proof`).
 It claims nothing about a Bob run: the BOB side shows the plan, the proof uses labelled drill agents.
 
+**Ready-made, no editing:** `docs/submission/media/demo.webm` (70 s, 1920×1080, on-screen captions,
+no voice) is this cut recorded end to end: `npm run record:demo`. Upload it as is, or talk over it.
+Recording by hand? Open https://bob-chainguard.vercel.app/?still (a first visit without `?still` plays
+the parallel run by itself), or press **▶ Watch 3 agents run at once** instead of typing in the desk.
+
 **If you complete a recorded IBM Bob run**, insert 15 s of it after 0:32 (BOB-1/2/3 working at once,
 one held at the signal) and say: "These are IBM Bob's own subagents under the same signal box."
 
