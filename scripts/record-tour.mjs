@@ -2,7 +2,9 @@
 // Records the guided replay (or the deck) as a 1920×1080 video for the demo edit.
 //   npm run record:tour            the ?tour replay of the recorded run, until the tour ends
 //   npm run record:tour -- --deck  every deck slide, 5 s each
-//   npm run record:proof           the safety proof replay (about 20 s), until its verdict + 4 s
+//   npm run record:proof           the safety proof replay (about 30 s), until its verdict
+//   npm run record:demo            the whole ~90 s demo video with on-screen captions: the pain
+//                                  hook, the Control Tower, "simulate bad agent", the proof, the close
 // Serves atlas/dist itself, so run `npm run atlas` (or `npm run finalize`) first. Needs Playwright:
 //   npm i --no-save playwright && npx playwright install chromium
 // Writes docs/submission/media/tour.webm (or deck.webm), plus .mp4 when ffmpeg is on the PATH.
@@ -15,8 +17,9 @@ import { spawnSync, execSync } from 'node:child_process'
 const root = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).trim()
 const dist = join(root, 'atlas', 'dist')
 const deck = process.argv.includes('--deck')
-const proof = process.argv.includes('--proof')
-const name = deck ? 'deck' : proof ? 'proof' : 'tour'
+const demo = process.argv.includes('--demo')
+const proof = process.argv.includes('--proof') || demo
+const name = deck ? 'deck' : demo ? 'demo' : proof ? 'proof' : 'tour'
 const outDir = join(root, 'docs', 'submission', 'media')
 
 let chromium
@@ -59,7 +62,57 @@ const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePa
 const context = await browser.newContext({ viewport: { width: 1920, height: 1080 }, recordVideo: { dir: tmp, size: { width: 1920, height: 1080 } }, colorScheme: 'dark' })
 const page = await context.newPage()
 const t0 = Date.now()
-if (proof) {
+// On-screen captions for the demo video (it has no voice-over; record one on top if you like).
+const CARD = (lines) => `<!doctype html><meta charset="utf-8"><style>
+  html,body{margin:0;height:100%;background:#050912;color:#edf1fb;font-family:'IBM Plex Sans Condensed','Arial Narrow',sans-serif}
+  body{display:grid;place-content:center;gap:22px;padding:0 180px}
+  p{margin:0;opacity:0;font-weight:600;letter-spacing:-.01em;animation:in .8s ease-out forwards}
+  p.big{font-size:84px;line-height:1.05;color:#ff8a95}
+  p.small{font-size:46px;line-height:1.2;color:#a9b3c9}
+  @keyframes in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+</style>${lines.map(([cls, t, d]) => `<p class="${cls}" style="animation-delay:${d}s">${t}</p>`).join('')}`
+async function caption(text, ms) {
+  await page.evaluate((t) => {
+    let el = document.getElementById('demo-cap')
+    if (!el) {
+      el = document.createElement('div')
+      el.id = 'demo-cap'
+      el.style.cssText = 'position:fixed;left:50%;bottom:56px;transform:translateX(-50%);z-index:90;max-width:1500px;padding:18px 30px;border-radius:12px;background:rgba(3,8,16,.9);box-shadow:inset 0 0 0 1px #2c3a58,0 20px 60px -20px #000;color:#edf1fb;font:600 34px/1.3 "IBM Plex Sans Condensed",sans-serif;text-align:center;transition:opacity .4s'
+      document.body.append(el)
+    }
+    el.textContent = t
+    el.style.opacity = t ? '1' : '0'
+  }, text)
+  if (ms) await page.waitForTimeout(ms)
+}
+if (demo) {
+  // 0:00-0:20 the pain
+  await page.setContent(CARD([['big', 'Every agent finished.', 0.3], ['big', "The build didn't.", 1.6]]))
+  await page.waitForTimeout(6500)
+  await page.setContent(CARD([
+    ['small', 'Three AI agents. One codebase.', 0.2],
+    ['small', 'One renamed a function the others still call.', 1.8],
+    ['small', 'One "fixed" a failing test by rewriting the test.', 3.6],
+    ['small', 'Nobody can tell which change broke the build.', 5.4],
+    ['big', 'So teams stop trusting agents in parallel.', 7.6],
+  ]))
+  await page.waitForTimeout(12500)
+  // 0:20-0:40 the idea and the Control Tower
+  await page.goto(`${base}/`)
+  await page.waitForTimeout(1200)
+  await caption('Signalbox: railway interlocking for IBM Bob. No agent enters a block until its signal is green.', 6500)
+  await page.evaluate(() => document.getElementById('tower').scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  await caption("The Control Tower: IBM Bob's plan, 6 blocks in 2 waves, and the safety proof. Same signal box.", 6500)
+  await caption('Watch what happens when one agent goes rogue.', 1200)
+  await page.click('#ask-input')
+  await page.keyboard.type('simulate bad agent', { delay: 90 })
+  await page.waitForTimeout(500)
+  await caption('', 0)
+  await page.keyboard.press('Enter')
+  // 0:40-1:30 the proof, the finale, the close
+  await page.waitForFunction(() => ['ok', 'fail'].includes(document.getElementById('proof')?.dataset.state), null, { timeout: 120e3, polling: 250 })
+  await page.waitForTimeout(9000)
+} else if (proof) {
   await page.goto(`${base}/?prove`)
   await page.waitForFunction(() => ['ok', 'fail'].includes(document.getElementById('proof')?.dataset.state), null, { timeout: 120e3, polling: 250 })
   await page.waitForTimeout(7500)
