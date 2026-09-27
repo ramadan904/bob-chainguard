@@ -455,7 +455,7 @@ function rollbackStamp(e) {
     h('b', {}, 'Rolled back'),
     h('span', {}, `${e.agent.split(' ')[0]} · ${e.task} · ${[...e.files, ...(e.strays || [])].map((f) => f.split('/').pop()).join(' + ')} restored · nothing committed`))
   card.append(stamp)
-  setTimeout(() => stamp.remove(), 3200)
+  setTimeout(() => stamp.remove(), 4200)
 }
 
 async function runDrill(kind, btn) {
@@ -563,7 +563,7 @@ function startProof() {
     proofEvent(e)
     proofStep(replayCaption(e))
     const slow = e.t === 'verify' || e.t === 'rollback' || e.t === 'clear'
-    model.proof.timer = setTimeout(next, e.t === 'verify' && !e.ok ? 4200 : e.t === 'rollback' ? 3400 : slow ? 2000 : 1200)
+    model.proof.timer = setTimeout(next, e.t === 'verify' && !e.ok ? 5200 : e.t === 'rollback' ? 4400 : slow ? 2000 : 1200)
   }
   model.proof.timer = setTimeout(next, 900)
 }
@@ -618,7 +618,7 @@ function proofEvent(e) {
   model.stop = Infinity
   rebuild()
   if (e.t === 'verify' && !e.ok) {
-    chaosFlash(3000)
+    chaosFlash(4000)
     const f = e.checks.scope.outside[0]
     if (f) flashTouched([stripRoot(view.sb.scanDir)(f)])
     $('#map-card').scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -640,7 +640,7 @@ async function finishProof(atlas, verdict) {
     h('div', { class: 'pf-head' },
       h('span', { class: 'pf-kicker' }, model.proof.source === 'live' ? 'Safety proof · live' : 'Safety proof · recorded run'),
       h('button', { class: 'pf-close', onclick: exitProof }, 'Back to the network')),
-    h('p', { class: 'pf-verdict' }, ok ? 'All changes proven. Zero collisions. Ledger verified. Parallel agents safe.' : 'Proof failed.'),
+    h('p', { class: 'pf-verdict' }, ok ? 'All changes proven. Zero collisions. Ledger verified. Parallel agents are now safe.' : 'Proof failed.'),
     h('ul', { class: 'pf-checks' },
       (local?.checks || []).map((c) => h('li', { class: c.ok ? 'ok' : 'bad' }, c.text)),
       h('li', { class: local?.spads && local?.contractBreaks ? 'ok' : 'bad' }, `Rogue agent caught: SPAD + contract break, stray ${local?.strays.join(', ') || 'file'} restored, nothing committed`),
@@ -662,18 +662,19 @@ function showVerdict({ ok, local, chain }) {
     h('div', { class: 'vd-card' },
       h('p', { class: 'vd-kicker' }, `Safety proof · ${local?.agents ?? 0} agents at once · 1 rogue`),
       ok ? h('div', { class: 'vd-signals', 'aria-hidden': 'true' }, [0, 1, 2].map(signal)) : null,
-      h('h2', { class: 'vd-hero' }, ok ? 'Parallel agents safe.' : 'Proof failed.'),
+      h('h2', { class: 'vd-hero' }, ok ? 'Parallel agents are now safe.' : 'Proof failed.'),
       ok ? h('div', { class: 'vd-badges' },
         h('div', { class: 'vd-badge', style: '--k:0' }, h('b', {}, '⛓'), h('span', {}, 'Ledger verified')),
         h('div', { class: 'vd-badge', style: '--k:1' }, h('b', {}, String(local.collisions)), h('span', {}, 'collisions')),
         h('div', { class: 'vd-badge', style: '--k:2' }, h('b', {}, `${local.faults} caught`), h('span', {}, 'rogue change · 0 committed'))) : null,
-      h('p', { class: 'vd-lines' }, ok ? 'All changes proven. Every agent at once, nothing unproven got in.' : 'See the checks for what failed.'),
+      h('p', { class: 'vd-lines' }, ok ? 'All changes proven. Zero collisions. Ledger verified.' : 'See the checks for what failed.'),
       h('p', { class: 'vd-chain' }, h('span', { class: 'vd-lock', 'aria-hidden': 'true' }, '⛓'),
         chain.ok && chain.chained ? ['Re-verified in your browser · ', h('b', {}, `${chain.checked} SHA-256 chained events`), ' · head ', h('code', {}, chain.head.slice(0, 16))] : 'Ledger check failed'),
       h('p', { class: 'vd-facts' }, `Rogue agent caught by scope + contract · stray ${local?.strays.join(', ') || 'file'} restored · ${local?.cleared ?? 0} blocks committed alone, signed by their agents`),
+      ok ? h('p', { class: 'vd-close' }, 'This is the missing control layer for multi-agent development.') : null,
       h('div', { class: 'vd-actions' },
         h('button', { class: 'prove-btn', onclick: close }, 'See every check'),
-        h('button', { class: 'pf-close', onclick: () => { close(); exitProof() } }, 'Back to the IBM Bob run'))))
+        h('button', { class: 'pf-close', onclick: () => { close(); exitProof() } }, 'Back to the Control Tower'))))
   el.hidden = false
   if (ok) document.body.classList.add('safe')
   el.onclick = (e) => { if (e.target === el) close() }
@@ -1005,7 +1006,7 @@ function finishTour() {
   model.tour.timer = setTimeout(() => {
     if (!model.tour) return
     if (!recordedProof || model.mode === 'live') return stopTour()
-    showCaption({ kind: 'fault', text: 'Now the hard case: what happens when an agent goes rogue? Three agents, one signal box.' })
+    showCaption({ kind: 'fault', text: 'Every agent finished. The build didn\'t: not here. Now watch one agent go rogue.' })
     model.tour.timer = setTimeout(() => { stopTour(); startProof() }, 3200)
   }, 6000)
 }

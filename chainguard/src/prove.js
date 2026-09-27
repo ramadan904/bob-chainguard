@@ -77,10 +77,10 @@ export async function prove({ pace = 0, keep = false, onOpen = () => {}, onEvent
     await step(`${crew.at(-1).name} edits src/index.js outside its block and renames fare()`)
 
     const caught = await agent(dir, ['release', bad.id, '--agent', crew.at(-1).name])
-    await step(`${crew.at(-1).name}: FAULT, nothing committed`, 2.4) // the moment to watch
+    await step(`${crew.at(-1).name}: FAULT, nothing committed`, 3) // the moment to watch
 
     await agent(dir, ['rollback', bad.id, '--agent', crew.at(-1).name, '--strays', 'src/index.js'])
-    await step(`${crew.at(-1).name} rolled back: block and stray file restored`, 2)
+    await step(`${crew.at(-1).name} rolled back: block and stray file restored`, 2.6)
 
     const releases = await Promise.all(good.map((t, k) => agent(dir, ['release', t.id, '--agent', `drill-${k + 1}`])))
     await step(`${releases.filter((r) => r.code === 0).length} blocks cleared and committed`)
@@ -99,6 +99,6 @@ export async function prove({ pace = 0, keep = false, onOpen = () => {}, onEvent
 }
 
 export function verdictLine(v) {
-  return v.ok ? 'All changes proven. Zero collisions. Ledger verified. Parallel agents safe.' : 'Proof FAILED: see the checks above.'
+  return v.ok ? 'All changes proven. Zero collisions. Ledger verified. Parallel agents are now safe.' : 'Proof FAILED: see the checks above.'
 }
 

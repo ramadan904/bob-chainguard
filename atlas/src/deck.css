@@ -134,3 +134,4 @@ em { color: var(--mint); font-style: normal; }
 .slide.dense .big { font-size: 50px; }
 .slide.dense .card { padding: 30px 34px; }
 .slide.dense .note { font-size: 26px; }
+.hook { margin: 0; font: 600 44px/1.1 var(--f-sign); color: #ff8a95; letter-spacing: 0.01em; }

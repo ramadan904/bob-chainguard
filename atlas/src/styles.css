@@ -1261,3 +1261,22 @@ body.safe::before { content: ''; position: fixed; inset: 0; z-index: 55; pointer
   .tv-row { grid-template-columns: 0.9fr 1fr 1fr; gap: 8px; padding: 6px 8px; }
   .tv-row > * { min-width: 0; overflow-wrap: anywhere; }
 }
+
+/* the hook: the pain, in one line */
+.hook { margin: 10px 0 0; font: 600 13px var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--sig-red); }
+.hook + .oneliner { margin-top: 4px; }
+
+/* a slower, more final finale */
+body.chaos::after { box-shadow: inset 0 0 0 8px var(--sig-red), inset 0 0 220px 50px rgba(255, 30, 50, 0.6); }
+.stamp { animation-duration: 4.2s; }
+.vd-signal .r { animation-delay: calc(0.3s + var(--k) * 0.55s); }
+.vd-signal .g { animation-delay: calc(0.75s + var(--k) * 0.55s); }
+.vd-hero { animation-delay: 2.2s; animation-duration: 0.9s; }
+.vd-badge { animation-delay: calc(3s + var(--k) * 0.35s); }
+.vd-card .vd-lines { animation-delay: 4.1s; }
+.vd-close { margin: 0; font: 600 clamp(18px, 2.1vw, 24px)/1.25 var(--f-sign); color: var(--steel); letter-spacing: 0.01em; opacity: 0; animation: vd-line 0.8s ease-out 4.8s forwards; }
+.vd-chain { animation-delay: 5.4s; }
+.vd-facts { animation-delay: 5.7s; }
+.vd-actions { animation-delay: 6s; }
+body.safe::before { animation-duration: 4s; animation-delay: 2s; }
+@media (prefers-reduced-motion: reduce) { .vd-close { animation: none; opacity: 1; } }

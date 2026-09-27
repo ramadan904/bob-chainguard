@@ -84,7 +84,7 @@ makes Bob's parallelism safe, built on railway interlocking.
 - The live Control Tower shows Bob's subagents, refused claims, faults and a train graph of the
   parallelism; every event is in a SHA-256 hash-chained ledger anyone can replay and verify.
 - **The safety proof:** one click, three agents at once, one goes rogue. Caught before commit,
-  rolled back, the other two commit. "Zero collisions. Ledger verified. Parallel agents safe."
+  rolled back, the other two commit. "Zero collisions. Ledger verified. Parallel agents are now safe."
 
 The demo target, an ERC-20 wallet dApp on ethers v5 + web3.js, is planned for Bob as 6 blocks in 2
 waves (72 legacy call sites); the recorded end-to-end Bob migration was not completed before the

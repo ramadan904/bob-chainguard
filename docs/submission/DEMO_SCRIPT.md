@@ -6,22 +6,23 @@ go from the human pain to the proof. Record the Bob IDE on the left and the live
 
 | Time | On screen | Voice-over |
 | --- | --- | --- |
-| 0:00–0:08 | Black screen, then a terminal scrolling a huge `git diff` (4,000+ lines) | "You put three AI agents on one codebase to go three times faster." |
-| 0:08–0:16 | The diff keeps scrolling; cut to a red test run | "By morning, one renamed a function the other two still call. One 'fixed' a failing test by rewriting the test. Nobody can review this. So you throw it away, and go back to one agent at a time." |
-| 0:16–0:25 | Signalbox panel: **"Every Bob agent at once. Nothing unproven gets in."**, the wave schedule, the Control Tower | "Railways solved many trains on one track a century ago: no train enters a section until its signal is green. Signalbox is that signal box, for IBM Bob." |
-| 0:25–0:38 | **IBM Bob run** tab: BOB-1, BOB-2, BOB-3 working at once (time-lapse); one lane amber, HELD AT SIGNAL | "Here, IBM Bob's subagents migrate a real dApp in parallel. Each owns a block. One tried to jump ahead: refused." |
-| 0:38–0:44 | Desk: type **simulate bad agent** | "Now the hard question: what happens when an agent goes rogue?" |
-| 0:44–0:52 | DRILL-1, DRILL-2, DRILL-3 enter three blocks at the same instant | "Three agents. Three blocks. Same instant." |
-| **0:52–1:03** | DRILL-3 edits outside its block and breaks an export → 3 s red alarm, `index.js` flares, FAULT | "The third one touches a file it doesn't own and breaks something the others depend on. Caught before it can commit." |
-| **1:03–1:12** | **ROLLED BACK** stamps across the map; the other two lanes pass all four checks and commit | "Rolled back. The stray file restored. The other two never noticed." |
-| **1:12–1:24** | The finale: three signals turn green, **"Parallel agents safe."**, badges *Ledger verified · 0 collisions · 1 caught*. Hold. | *(let it land for two beats)* "Zero collisions. Every change proven. The ledger re-verified in your browser." |
-| 1:24–1:30 | **Back to the IBM Bob run**; the side-by-side table: same rows, same engine | "Same signal box Bob ran under. Every Bob agent at once. Nothing unproven gets in." |
-| 1:30–2:30 *(optional)* | `?tour` replay of the Bob run; **Ledger verified** → **Tamper test**; rule pack → Moment | "Anyone can replay the run and verify it. And it isn't only Web3." |
+| 0:00–0:07 | Black. White text fades in: **"Every agent finished. The build didn't."** | *(silence, then)* "Every agent finished. The build didn't." |
+| 0:07–0:20 | A huge `git diff` scrolling; a red failing test; the panel's map with 72 red stations | "You let three AI agents loose on one codebase. One renamed a function the others still call. One 'fixed' a test by rewriting it. Now nobody can tell which change broke the build, and the whole night's work goes in the bin. So teams stop trusting agents in parallel." |
+| 0:20–0:32 | Signalbox panel: **"Every Bob agent at once. Nothing unproven gets in."**; the Control Tower with the IBM Bob tab: 6 blocks, 2 waves | "Signalbox is railway interlocking for IBM Bob. No agent enters a block until its signal is green. No change gets in until it is proven." |
+| 0:32–0:40 | Desk: type **simulate bad agent** | "Watch what happens when one agent goes rogue." |
+| 0:40–0:48 | DRILL-1, DRILL-2, DRILL-3 enter three blocks at the same instant | "Three agents. Three blocks. Same instant." |
+| **0:48–1:02** | DRILL-3 edits outside its block and breaks an export → 4 s red alarm, `index.js` flares, FAULT | "The third one touches a file it doesn't own and breaks something the others depend on. Caught before it can commit." |
+| **1:02–1:12** | **ROLLED BACK** stamps across the map; the other two lanes pass all four checks and commit | "Rolled back automatically. Stray file restored. The other two never noticed." |
+| **1:12–1:26** | The finale: signals turn green, **"Parallel agents are now safe."**, badges, then *All changes proven. Zero collisions. Ledger verified.* Hold. | *(two beats of silence)* "All changes proven. Zero collisions. Ledger verified." |
+| 1:26–1:30 | The closing line appears: **"This is the missing control layer for multi-agent development."** | "This is the missing control layer for multi-agent development." |
 
-**The 90-second cut is 0:00–1:30.** Pain (0:00–0:16) → the idea (0:16–0:25) → Bob in parallel
-(0:25–0:38) → the rogue agent (0:38–1:12) → the release (1:12–1:24) → the promise (1:24–1:30).
-Don't rush the finale: two seconds of silence on "Parallel agents safe." is the moment judges remember.
-The ready clip `docs/submission/media/proof.webm` covers 0:44–1:24.
+**The 90-second cut is exactly the table above.** Pain (0:00–0:20) → the idea (0:20–0:32) → the rogue
+agent (0:32–1:12) → the release (1:12–1:30). Record it from https://bob-chainguard.vercel.app/ ; the
+ready clip `docs/submission/media/proof.webm` covers 0:40–1:30 (re-record with `npm run record:proof`).
+It claims nothing about a Bob run: the BOB side shows the plan, the proof uses labelled drill agents.
+
+**If you complete a recorded IBM Bob run**, insert 15 s of it after 0:32 (BOB-1/2/3 working at once,
+one held at the signal) and say: "These are IBM Bob's own subagents under the same signal box."
 
 ### If there is no recorded Bob run (honest cut, about 90 s)
 

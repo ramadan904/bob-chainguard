@@ -3,8 +3,9 @@
 <!-- Limit: 500 words. `npm run finalize` fills every {{value}} from the ledger and bob_sessions/ and writes the
      paste-ready version to docs/submission/final/. Edit wording here, never the numbers. -->
 
-Bob can already run several subagents in parallel. The hard part is trusting what they do together:
-one agent's change breaking another's, a test "fixed" by editing it, a diff nobody can review.
+**Every agent finished. The build didn't.** Bob can run several subagents in parallel; the hard part
+is trusting what they do together: one agent's change breaking another's, a test "fixed" by editing
+it, a diff nobody can review.
 Signalbox is the control layer that makes Bob's parallelism safe to use on one codebase.
 
 Here Bob isn't a helper; Bob is the workforce. Every change to `legacy-dapp/src` between tag
@@ -26,7 +27,7 @@ We built the harness: the scanner and planner, the interlocking, the behavior te
 
 ## Why this showcases Bob
 
-The signal box turns Bob's parallel subagents into a coordinated crew, with guarantees:
+The signal box gives Bob's parallel subagents guarantees:
 - Every agent has an exclusive block and a green signal before it starts.
 - Every change passes an independent track circuit before it's committed.
 - Every failure stays contained to one block.
