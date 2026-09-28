@@ -13,7 +13,7 @@ export default function App() {
     <main>
       <header>
         <h1>ChainGuard Wallet</h1>
-        <p className="muted">ERC-20 wallet on Sepolia · stack: ethers v5 + web3.js 1.x</p>
+        <p className="muted">ERC-20 wallet on Sepolia · stack: viem + wagmi</p>
       </header>
       <div className="grid">
         <WalletPanel wallet={wallet} erc20={erc20} />
