@@ -1,28 +1,24 @@
-import { ethers } from 'ethers'
-import Web3 from 'web3'
-import { RPC_URL, CHAIN_ID } from '../config.js'
+import { RPC_URL } from '../config.js'
+import { createPublicClient, createWalletClient, custom, http } from 'viem'
+import { sepolia } from 'viem/chains'
 
-// Read-only ethers provider used by most of the app.
-export const readProvider = new ethers.providers.StaticJsonRpcProvider(RPC_URL, CHAIN_ID)
+export const chain = sepolia
 
-// A second, web3.js-based client left over from the original codebase. The activity
-// feed and gas helpers still depend on it.
-export const web3 = new Web3(RPC_URL)
+// Read-only viem public client used by most of the app.
+export const publicClient = createPublicClient({ chain: sepolia, transport: http(RPC_URL) })
 
 export function hasInjectedWallet() {
   return typeof window !== 'undefined' && Boolean(window.ethereum)
 }
 
-// Browser wallet provider (MetaMask, Rabby, ...). Created lazily because window.ethereum
+// Browser wallet client (MetaMask, Rabby, ...). Created lazily because window.ethereum
 // only exists in the browser.
-let browserProvider
 export function getBrowserProvider() {
   if (!hasInjectedWallet()) throw new Error('No injected wallet found. Install MetaMask or another EIP-1193 wallet.')
-  if (!browserProvider) browserProvider = new ethers.providers.Web3Provider(window.ethereum, 'any')
-  return browserProvider
+  return createWalletClient({ chain: sepolia, transport: custom(window.ethereum) })
 }
 
-export function getWalletWeb3() {
+export function getWalletClient(account) {
   if (!hasInjectedWallet()) throw new Error('No injected wallet found.')
-  return new Web3(window.ethereum)
+  return createWalletClient({ account, chain: sepolia, transport: custom(window.ethereum) })
 }
