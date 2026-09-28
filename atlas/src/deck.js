@@ -24,7 +24,7 @@ const proofRun = Object.values(import.meta.glob('./data/proof.json', { eager: tr
 const pv = proofRun ? proofVerdict(proofRun.events) : null
 const momentNow = momentAtlas.snapshots[momentAtlas.snapshots.length - 1].totals.findings
 
-const dur = (ms) => (ms >= 3600e3 ? `${Math.floor(ms / 3600e3)} h ${Math.round((ms % 3600e3) / 60e3)} min` : `${Math.max(1, Math.round(ms / 60e3))} min`)
+const dur = (ms) => (ms >= 3600e3 ? `${Math.floor(ms / 3600e3)} h ${Math.round((ms % 3600e3) / 60e3)} min` : ms >= 60e3 ? `${Math.floor(ms / 60e3)}m ${Math.round((ms % 60e3) / 1e3)}s` : `${Math.max(1, Math.round(ms / 1e3))}s`)
 const lamp = (c) => `<span class="lamp-big ${c}"></span>`
 const pending = '<span class="pending">after the Bob run</span>'
 
@@ -151,7 +151,7 @@ const slides = [
       <div><span class="n amber">${ran ? m.agents.length : '?'}</span><label>Bob subagents${ran ? `, up to ${m.peakParallel} at once` : ''}</label></div>
       <div><span class="n red">${ran ? m.faults : '?'}</span><label>faults caught before commit</label></div>
       <div><span class="n">${ran ? `${m.denied} / ${m.drillsCaught}` : '?'}</span><label>claims refused at signal / chaos drills caught</label></div>
-      <div><span class="n">${ran ? dur(m.wallClockMs) : '?'}</span><label>wall clock</label></div>
+      <div><span class="n">${ran ? dur(m.runMs) : '?'}</span><label>Bob's run, first claim to last clear</label></div>
     </div>
     <p class="note">${ran ? 'Behavior tests: 22/22, never modified. The deployed panel replays this exact run.' : `Run pending: ${pending}. <code>npm run finalize</code> fills this slide from the ledger.`}</p>
   </section>` : pv ? `<section class="slide dense">

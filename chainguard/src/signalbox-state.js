@@ -190,6 +190,12 @@ export function metrics(events) {
     drills: events.filter((e) => e.t === 'drill').length,
     drillsCaught: events.filter((e) => e.t === 'drill' && (e.caught?.scope || e.caught?.contract)).length,
     wallClockMs: (lastClear ?? tl.t1) - tl.t0,
+    // The agents' own time: first claim (or refused claim) to the last clear. The box can sit open
+    // for hours before a dispatcher starts, so this is the number that describes the run.
+    runMs: (() => {
+      const first = events.filter((e) => e.t === 'claim' || e.t === 'deny').map((e) => Date.parse(e.at)).sort((a, b) => a - b)[0]
+      return first == null ? 0 : (lastClear ?? tl.t1) - first
+    })(),
     agentBusyMs: busy,
     firstTimeRight: cleared.filter((t) => t.attempts === 1).length,
   }

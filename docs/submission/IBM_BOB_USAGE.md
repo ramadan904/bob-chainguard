@@ -42,7 +42,7 @@ guaranteed; Bob's subagents face the same checks.
 
 - Legacy call sites: {{calls_before}} → {{calls_after}}. Blocks: {{blocks}} cleared in {{waves}} waves.
 - Faults caught before commit: {{faults}}. Claims refused at signal: {{denied}}. Chaos drills caught: {{drills}}. Tests: {{tests}}.
-- Wall clock: {{wall_clock}}.
+- Bob's run, first claim to last clear: {{wall_clock}}.
 - Bobcoins used: {{bobcoins}}.
 
 ## watsonx
