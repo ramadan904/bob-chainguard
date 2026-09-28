@@ -23,7 +23,12 @@ export function useWallet() {
   }, [connectAsync])
 
   const switchChain = useCallback(async () => {
-    await switchChainAsync({ chainId: CHAIN_ID })
+    setError(null)
+    try {
+      await switchChainAsync({ chainId: CHAIN_ID })
+    } catch (e) {
+      setError(e.message)
+    }
   }, [switchChainAsync])
 
   return {

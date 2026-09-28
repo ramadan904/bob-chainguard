@@ -40,6 +40,7 @@ export async function sendErc20Transfer(signer, address, to, amountRaw) {
     })
     const hash = await signer.writeContract(request)
     const receipt = await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 })
+    if (receipt.status === 'reverted') throw new Error('Transaction reverted')
     return { hash, blockNumber: Number(receipt.blockNumber), status: receipt.status }
   } catch (err) {
     throw new Error(err.shortMessage || err.message)
@@ -56,6 +57,7 @@ export async function approveSpender(signer, address, spender, amountRaw = maxUi
     args: [spender, BigInt(amountRaw)],
   })
   const hash = await signer.writeContract(request)
-  await publicClient.waitForTransactionReceipt({ hash })
+  const receipt = await publicClient.waitForTransactionReceipt({ hash })
+  if (receipt.status === 'reverted') throw new Error('Transaction reverted')
   return hash
 }
