@@ -1,0 +1,25 @@
+[As submitted to lablab.ai before the deadline, 27 Sep 2026. The IBM Bob run was recorded afterwards: see IBM_BOB_USAGE.md.]
+
+Bob can run several subagents in parallel; the hard part is trusting what they do together. We built Signalbox as the control layer that makes Bob's parallelism safe on one codebase, and designed every part of it around Bob's capabilities.
+
+HOW SIGNALBOX IS BUILT FOR BOB
+- Agent mode (multi-step orchestration): a generated dispatcher prompt turns one Bob agent into the conductor. It reads the signal box, starts a subagent for every green block, handles faults and moves wave by wave.
+- Subagents and parallel tasks: the planner splits a change into blocks that share no files, so a whole wave of Bob subagents can work at once. Each subagent gets its own prompt with the claim, edit, release protocol.
+- Tool use (MCP): "signalbox mcp" exposes the signal box as MCP tools (signalbox_claim, signalbox_release, signalbox_ask, signalbox_status and more). A fault comes back as a tool error naming every failing check, so Bob can fix the code and retry.
+- Document understanding: each subagent prompt points Bob at the migration playbook and lists the traps its files hit (for example viem's parseUnits rounding and async recoverMessageAddress).
+- Self-correction: release runs four checks on an isolated copy of the repo. Bob receives the failing test, but can never edit the tests (they are protected).
+- Code review: the ledger records which agent changed which block, so a Bob reviewer can audit the whole run.
+- Operator desk: the same plain-language desk ("start all safe wave 1", "riskiest remaining block") is available to Bob as "sb ask" and the signalbox_ask MCP tool.
+
+GUARANTEES FOR BOB'S PARALLEL SUBAGENTS
+Every agent has an exclusive block and a green signal before it starts. Every change passes an independent track circuit before it is committed. Every failure stays contained to one block.
+
+WHAT WE PROVED
+The safety proof runs the same engine with three agents at once, one of them rogue. The rogue's out-of-block edit and contract break were caught before commit and rolled back, the other two blocks committed alone, and the ledger showed zero collisions. These agents are scripted so the misbehaviour is guaranteed; they face exactly the checks a Bob subagent faces.
+
+Also shipped for Bob: "npm run bob:prep", "bob:open" and "bob:retake" to set up, open and retake a Bob run, plus a runbook with the exact prompts (docs/BOB_RUNBOOK.md).
+
+HONEST STATUS
+We did not complete the recorded end-to-end migration of the demo dApp by IBM Bob before the deadline, so this statement reports no Bob-run numbers. Everything above is built, tested (93 tests, Linux and Windows) and live at https://bob-chainguard.vercel.app/
+
+watsonx.ai / watsonx Orchestrate: not used.

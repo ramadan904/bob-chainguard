@@ -15,7 +15,7 @@ const root = execSync('git rev-parse --show-toplevel', { encoding: 'utf8' }).tri
 const run = (cmd, opts = {}) => execSync(cmd, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...opts })
 const step = (msg) => console.log(`\n▸ ${msg}`)
 const kb = (n) => `${Math.round(n / 1024)} kB`
-const dur = (ms) => (ms >= 3600e3 ? `${Math.floor(ms / 3600e3)} h ${Math.round((ms % 3600e3) / 60e3)} min` : `${Math.max(1, Math.round(ms / 60e3))} min`)
+const dur = (ms) => (ms >= 3600e3 ? `${Math.floor(ms / 3600e3)} h ${Math.round((ms % 3600e3) / 60e3)} min` : ms >= 60e3 ? `${Math.floor(ms / 60e3)} min ${Math.round((ms % 60e3) / 1e3)} s` : `${Math.max(1, Math.round(ms / 1e3))} s`)
 
 const events = readLedger(root)
 const state = reduce(events)
@@ -107,6 +107,7 @@ const numbers = [
   `| Blocks cleared on the first release | ${m.firstTimeRight} / ${m.cleared} |`,
   `| Behavior tests | ${tests}${testsChanged ? ' (test files changed!)' : ', unmodified'} |`,
   `| Bundle (gzip) | ${bundle ? `${kb(bundle.before)} → ${kb(bundle.after)} (−${bundle.change}%)` : 'build failed'} |`,
+  `| Bob's run, first claim → last clear | ${dur(m.runMs)} |`,
   `| Wall clock, box opened → last clear | ${dur(m.wallClockMs)} |`,
   '',
   warnings.length ? `## Warnings\n\n${warnings.map((w) => `- ${w}`).join('\n')}\n` : '## Warnings\n\nNone. Ready to submit.\n',
@@ -131,7 +132,7 @@ const values = {
   fault_example: fault ? faultExample : null,
   denied: m.denied,
   drills: m.drillsCaught,
-  wall_clock: dur(m.wallClockMs),
+  wall_clock: dur(m.runMs),
   tests: `${tests.replace(/^Tests\s+/, '')}${testsChanged ? ' (TEST FILES CHANGED)' : ', unmodified'}`,
   shots_onboarding: list(pick(/onboard/i)),
   shots_dispatcher: list(pick(/dispatch/i)),

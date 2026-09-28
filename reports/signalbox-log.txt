@@ -1,0 +1,22 @@
+19:48:29  signal box opened at 5b361b6: 6 blocks in 2 waves
+00:07:37  bob-proof held at signal for w2-lib: signal at danger: wave 2 opens when w1-lib-1, w1-lib-2, w1-hooks clear
+00:08:16  bob-3 entered w1-hooks
+00:08:19  bob-2 entered w1-lib-2
+00:08:20  bob-1 entered w1-lib-1
+00:09:07  w1-lib-2 track circuit clear (Tests  22 passed (22))
+00:09:14  w1-hooks track circuit clear (Tests  22 passed (22))
+00:09:25  w1-lib-2 track circuit clear (Tests  22 passed (22))
+00:09:26  w1-lib-2 cleared by bob-2 -> fc38ec6
+00:09:32  w1-hooks track circuit clear (Tests  22 passed (22))
+00:09:33  w1-hooks cleared by bob-3 -> c8264c5
+00:09:38  w1-lib-1 track circuit clear (Tests  22 passed (22))
+00:09:38  w1-lib-1 cleared by bob-1 -> 8a041a2
+00:10:55  bob-6 entered w2-components
+00:10:56  bob-4 entered w2-lib
+00:11:00  bob-5 entered w2-hooks
+00:11:20  w2-hooks track circuit clear (Tests  22 passed (22))
+00:11:21  w2-hooks cleared by bob-5 -> 7125ffa
+00:11:25  w2-components track circuit clear (Tests  22 passed (22))
+00:11:25  w2-components cleared by bob-6 -> 8d9889c
+00:11:53  w2-lib track circuit clear (Tests  22 passed (22))
+00:11:54  w2-lib cleared by bob-4 -> e3fa6b9

@@ -49,6 +49,6 @@ dApp from ethers v5 and web3.js to viem and wagmi: 72 legacy call sites, 6 block
 | Faults caught before commit | {{faults}} (e.g. {{fault_example}}) |
 | Refused claims / chaos drills caught | {{denied}} / {{drills}}, none reached a commit |
 | Behavior tests | 22 / 22, never modified |
-| Wall-clock time | {{wall_clock}} |
+| Bob's run (first claim → last clear) | {{wall_clock}} |
 
 Swap the rule pack (Moment.js → date-fns ships too) and the same control layer protects any large parallel-agent change.

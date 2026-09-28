@@ -38,7 +38,7 @@ export function TransferForm({ wallet, erc20, contractAddress }) {
       setStatus({ kind: 'ok', text: `Confirmed in block ${r.blockNumber}`, hash: r.hash })
       erc20.refresh()
     } catch (err) {
-      setStatus({ kind: 'error', text: err.reason || err.message })
+      setStatus({ kind: 'error', text: err.shortMessage || err.message })
     }
   }
 

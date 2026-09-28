@@ -1,0 +1,27 @@
+[As submitted to lablab.ai before the deadline, 27 Sep 2026. The IBM Bob run was recorded afterwards: see IBM_BOB_USAGE.md.]
+
+PROBLEM
+Every agent finished. The build didn't. Teams let three AI coding agents loose on one codebase to go three times faster. One renames a function the others still call. Another "fixes" a failing test by rewriting the test. Nobody can tell which change broke the build. So teams stop trusting agents in parallel and go back to one at a time.
+
+SOLUTION: SIGNALBOX
+Every Bob agent at once. Nothing unproven gets in. Signalbox is the missing control layer for IBM Bob subagents, built on railway interlocking.
+1. Blocks and waves: it reads the import graph and splits a change into blocks, one per agent. Blocks in a wave share no files; a wave opens only after earlier waves clear.
+2. Signals: an agent must claim its block before editing. The claim is refused, and recorded, while its wave is closed or another agent holds the files.
+3. Track circuit: a block is released only when four checks pass: scope (nothing outside the block changed), exported contract (nothing others import was removed), legacy scan, and behavior tests on an isolated git worktree.
+4. One commit per block, signed by its agent. A failing block is fixed or rolled back; everyone else keeps working.
+5. Control Tower: every move lands in a SHA-256 hash-chained ledger, shown live and replayable.
+
+TARGET USERS AND HOW THEY USE IT
+Engineering teams running IBM Bob agents in parallel on real codebases, especially large migrations. They open the Control Tower, type plain requests at the operator desk ("start all safe wave 1", "why is this signal at danger?", "simulate bad agent"), and hand the generated dispatch prompt to Bob's dispatcher agent. Bob's subagents call Signalbox through CLI or MCP tools.
+
+WHAT MAKES IT UNIQUE
+Instead of trusting agents or reviewing giant diffs afterwards, Signalbox applies a proven safety model from railways: exclusive blocks, signals and interlocking, checked before anything is committed. The ledger is re-verified in the browser and audited against git.
+
+PROOF THAT IT WORKS
+One click runs the safety proof: three agents enter three blocks at once on the real engine. One goes rogue, editing outside its block and renaming an export another file imports. Recorded run: 3 agents at once, 1 rogue change caught before commit (scope + contract), the stray file restored on rollback, 2 blocks committed alone, 0 collisions, 10 SHA-256 chained events verified.
+
+BUILT AND VERIFIED
+93 automated tests pass on Linux and Windows in CI, including the safety proof end to end. A second rule pack (Moment.js to date-fns) runs the full protocol in CI. The demo migration is planned: an ERC-20 wallet dApp from ethers v5 + web3.js to viem + wagmi, 72 legacy call sites, 6 blocks in 2 waves.
+
+Honest status: the recorded end-to-end migration by IBM Bob was not completed before the deadline, so we report no Bob-run numbers. Every number above comes from a real run of the system.
+Live: https://bob-chainguard.vercel.app/

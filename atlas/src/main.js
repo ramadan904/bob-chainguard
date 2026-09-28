@@ -269,7 +269,7 @@ function tween(key, el, to) {
 
 function buildStats() {
   const cell = (key, label) =>
-    h('div', { class: `stat stat-${key}` }, h('dt', {}, label), h('dd', {}, h('span', { class: 'num', id: `stat-${key}` }), h('span', { class: 'sub', id: `stat-${key}-sub` })))
+    h('div', { class: `stat stat-${key}` }, h('dt', { id: `stat-${key}-dt` }, label), h('dd', {}, h('span', { class: 'num', id: `stat-${key}` }), h('span', { class: 'sub', id: `stat-${key}-sub` })))
   $('#stats').replaceChildren(
     cell('calls', 'Legacy call sites'),
     cell('blocks', 'Blocks cleared'),
@@ -284,12 +284,19 @@ function updateStats() {
   const sum = summary(view.sb)
   tween('calls', $('#stat-calls'), calls)
   $('#stat-calls-sub').textContent = baseCalls - calls > 0 ? `−${baseCalls - calls} since baseline` : 'baseline'
-  tween('blocks', $('#stat-blocks'), sum.cleared)
-  $('#stat-blocks-sub').textContent = `of ${sum.total} in ${view.sb.waves} waves`
-  tween('agents', $('#stat-agents'), sum.agents.length)
-  $('#stat-agents-sub').textContent = sum.agents.join(' · ') || 'none in section'
-  tween('faults', $('#stat-faults'), view.faults)
-  $('#stat-faults-sub').textContent = view.faults ? 'stopped before commit' : ''
+  // Before any Bob run the plan alone would headline zeros: show the recorded parallel run instead,
+  // labelled as such (the Bob plan's own counts stay in the Control Tower).
+  const pv = model.mode === 'baseline' && recordedProof?.verdict
+  $('#stat-blocks-dt').textContent = 'Blocks cleared'
+  $('#stat-agents-dt').textContent = pv ? 'Agents at once' : 'Agents in section'
+  $('#stat-faults-dt').textContent = pv ? 'Rogue changes caught' : 'Faults caught'
+  $('#stats').dataset.source = pv ? 'proof' : 'run'
+  tween('blocks', $('#stat-blocks'), pv ? pv.cleared : sum.cleared)
+  $('#stat-blocks-sub').textContent = pv ? `parallel run · ${pv.collisions} collisions` : `of ${sum.total} in ${view.sb.waves} waves`
+  tween('agents', $('#stat-agents'), pv ? pv.peak : sum.agents.length)
+  $('#stat-agents-sub').textContent = pv ? 'recorded safety proof' : sum.agents.join(' · ') || 'none in section'
+  tween('faults', $('#stat-faults'), pv ? pv.faults : view.faults)
+  $('#stat-faults-sub').textContent = pv ? '0 committed' : view.faults ? 'stopped before commit' : ''
   document.body.dataset.done = String(calls === 0)
   const files = Object.keys(view.findings).length || 1
   const clean = Object.values(view.findings).filter((l) => l.length === 0).length
@@ -733,17 +740,17 @@ function askDesk(question) {
   }
 }
 
-const DESK_CHIPS = ['start all safe wave 1', 'simulate bad agent', 'why is this signal at danger']
+const DESK_CHIPS = ['simulate bad agent', 'start all safe wave 1', 'who is working?', 'riskiest remaining block', 'why is this signal at danger']
 
 function buildDesk() {
   $('#ask').replaceChildren(
     h('form', { class: 'ask-form', onsubmit: (e) => { e.preventDefault(); askDesk() } },
-      h('label', { for: 'ask-input', class: 'ask-label', title: 'Deterministic: keyword intents over the ledger, no language model. Bob uses the same desk: sb ask "…" or the signalbox_ask MCP tool.' }, 'Desk'),
+      h('label', { for: 'ask-input', class: 'ask-label', title: 'Deterministic: keyword intents over the ledger, no language model. Bob uses the same desk: sb ask "…" or the signalbox_ask MCP tool.' }, 'Operator desk'),
       h('span', { class: 'ask-prompt', 'aria-hidden': 'true' }, '›'),
-      h('input', { id: 'ask-input', type: 'text', autocomplete: 'off', spellcheck: 'false', placeholder: 'simulate bad agent · start wave 1 · why is this at danger' }),
+      h('input', { id: 'ask-input', type: 'text', autocomplete: 'off', spellcheck: 'false', placeholder: 'Tell the signal box what to do: simulate bad agent · start wave 1 · who is working?' }),
       h('kbd', { class: 'ask-kbd', title: 'Press / to focus' }, '/'),
       h('button', { type: 'submit', class: 'ask-go' }, 'Run')),
-    h('div', { class: 'ask-examples' }, DESK_CHIPS.map((x) => h('button', { type: 'button', class: 'ask-chip', onclick: () => askDesk(x) }, x))),
+    h('div', { class: 'ask-examples' }, DESK_CHIPS.map((x, i) => h('button', { type: 'button', class: i ? 'ask-chip' : 'ask-chip hot', onclick: () => askDesk(x) }, x))),
     h('div', { class: 'ask-answer', id: 'ask-answer', hidden: true, 'aria-live': 'polite' }))
 }
 
@@ -1491,7 +1498,8 @@ async function start() {
   const live = await connectLive()
   if (!live) {
     model.mode = model.events.length ? 'replay' : 'baseline'
-    model.stop = model.events.length ? 0 : Infinity
+    // A recorded run opens on its result (the replay control starts it from the beginning).
+    model.stop = Infinity
   }
   model.home = { atlas: model.atlas, events: model.events, mode: model.mode, stop: model.stop }
   buildPacks()
@@ -1506,7 +1514,18 @@ async function start() {
   // ?tour starts the guided replay on load (handy for recording the demo video).
   if (new URLSearchParams(location.search).has('tour')) setTimeout(startTour, 700)
   // ?prove starts the safety proof on load (the video's 40-second segment).
-  if (new URLSearchParams(location.search).has('prove')) setTimeout(startProof, 900)
+  const params = new URLSearchParams(location.search)
+  if (params.has('prove')) setTimeout(startProof, 900)
+  $('#watch').onclick = startProof
+  // Before a Bob run, a first visit plays the parallel run by itself unless the visitor acts first
+  // (?still keeps the page still, for recordings and screenshots).
+  let seen = false
+  try { seen = sessionStorage.getItem('sb-autoproof') === '1'; sessionStorage.setItem('sb-autoproof', '1') } catch { /* private mode */ }
+  if (model.mode === 'baseline' && recordedProof && !seen && !['prove', 'tour', 'still'].some((k) => params.has(k)) && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const auto = setTimeout(startProof, 2600)
+    const cancel = () => { clearTimeout(auto); for (const t of ['pointerdown', 'keydown', 'wheel', 'touchstart']) removeEventListener(t, cancel, true) }
+    for (const t of ['pointerdown', 'keydown', 'wheel', 'touchstart']) addEventListener(t, cancel, true)
+  }
 }
 
 let resizeTimer

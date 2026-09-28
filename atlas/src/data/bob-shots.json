@@ -1,1 +1,8 @@
-[]
+[
+  {
+    "src": "bob/ramadan-onboarding.png",
+    "member": "ramadan",
+    "caption": "Onboarding: Bob reads the repo and the playbook",
+    "order": 0
+  }
+]

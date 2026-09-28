@@ -1,46 +1,63 @@
-import { ethers } from 'ethers'
-import { readProvider, web3 } from './clients.js'
+import { maxUint256 } from 'viem'
+import { publicClient } from './viem.js'
 import { ERC20_ABI } from './abi.js'
 
-export function getReadContract(address) {
-  return new ethers.Contract(address, ERC20_ABI, readProvider)
-}
-
 export async function fetchErc20Metadata(address) {
-  const c = getReadContract(address)
-  const [name, symbol, decimals, totalSupply] = await Promise.all([c.name(), c.symbol(), c.decimals(), c.totalSupply()])
+  const [name, symbol, decimals, totalSupply] = await Promise.all([
+    publicClient.readContract({ address, abi: ERC20_ABI, functionName: 'name' }),
+    publicClient.readContract({ address, abi: ERC20_ABI, functionName: 'symbol' }),
+    publicClient.readContract({ address, abi: ERC20_ABI, functionName: 'decimals' }),
+    publicClient.readContract({ address, abi: ERC20_ABI, functionName: 'totalSupply' }),
+  ])
   return { address, name, symbol, decimals, totalSupply: totalSupply.toString() }
 }
 
 export async function fetchErc20Balance(address, owner) {
-  const balance = await getReadContract(address).balanceOf(owner)
+  const balance = await publicClient.readContract({ address, abi: ERC20_ABI, functionName: 'balanceOf', args: [owner] })
   return balance.toString()
 }
 
-// Allowance is still read through the old web3.js contract wrapper.
 export async function fetchAllowance(address, owner, spender) {
-  const legacy = new web3.eth.Contract(ERC20_ABI, address)
-  return legacy.methods.allowance(owner, spender).call()
+  const allowance = await publicClient.readContract({ address, abi: ERC20_ABI, functionName: 'allowance', args: [owner, spender] })
+  return allowance.toString()
 }
 
 export async function fetchEthBalance(owner) {
-  const wei = await readProvider.getBalance(owner)
+  const wei = await publicClient.getBalance({ address: owner })
   return wei.toString()
 }
 
 // Simulates the transfer first so the user sees a revert reason before signing.
 export async function sendErc20Transfer(signer, address, to, amountRaw) {
-  const c = new ethers.Contract(address, ERC20_ABI, signer)
-  await c.callStatic.transfer(to, amountRaw)
-  const gas = await c.estimateGas.transfer(to, amountRaw)
-  const tx = await c.transfer(to, amountRaw, { gasLimit: gas.mul(120).div(100) })
-  const receipt = await tx.wait(1)
-  return { hash: tx.hash, blockNumber: receipt.blockNumber, status: receipt.status }
+  const account = signer.account
+  try {
+    const { request } = await publicClient.simulateContract({
+      account,
+      address,
+      abi: ERC20_ABI,
+      functionName: 'transfer',
+      args: [to, BigInt(amountRaw)],
+    })
+    const hash = await signer.writeContract(request)
+    const receipt = await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 })
+    if (receipt.status === 'reverted') throw new Error('Transaction reverted')
+    return { hash, blockNumber: Number(receipt.blockNumber), status: receipt.status }
+  } catch (err) {
+    throw new Error(err.shortMessage || err.message)
+  }
 }
 
-export async function approveSpender(signer, address, spender, amountRaw = ethers.constants.MaxUint256) {
-  const c = new ethers.Contract(address, ERC20_ABI, signer)
-  const tx = await c.approve(spender, amountRaw)
-  await tx.wait()
-  return tx.hash
+export async function approveSpender(signer, address, spender, amountRaw = maxUint256) {
+  const account = signer.account
+  const { request } = await publicClient.simulateContract({
+    account,
+    address,
+    abi: ERC20_ABI,
+    functionName: 'approve',
+    args: [spender, BigInt(amountRaw)],
+  })
+  const hash = await signer.writeContract(request)
+  const receipt = await publicClient.waitForTransactionReceipt({ hash })
+  if (receipt.status === 'reverted') throw new Error('Transaction reverted')
+  return hash
 }
