@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { BigNumber } from 'ethers'
 import { fetchErc20Balance, fetchErc20Metadata, fetchEthBalance } from '../lib/erc20.js'
 import { watchBlocks } from '../lib/events.js'
 
@@ -29,6 +28,6 @@ export function useErc20(address, account) {
     return watchBlocks(() => refresh())
   }, [refresh])
 
-  const isEmpty = balance != null && BigNumber.from(balance).isZero()
+  const isEmpty = balance != null && BigInt(balance) === 0n
   return { meta, balance, ethBalance, isEmpty, error, refresh }
 }
