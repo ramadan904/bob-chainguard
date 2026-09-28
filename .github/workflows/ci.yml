@@ -32,11 +32,11 @@ jobs:
         run: |
           node scripts/prove-pack.mjs | tee pack.txt
           { echo '```'; cat pack.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-      # Reporting only while the migration is in progress. After Bob's cleanup step,
-      # replace with `npm run guard` so new ethers/web3.js code fails CI.
-      - name: chainguard scan
+      # Bob's migration took legacy-dapp/src to 0 legacy call sites, so the guard is blocking:
+      # any new ethers v5 / web3.js call fails CI. The report still goes to the summary.
+      - name: chainguard guard
         run: |
-          npm run -s scan
+          npm run -s guard
           node chainguard/bin/chainguard.js scan legacy-dapp/src --baseline reports/baseline.json --format md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:

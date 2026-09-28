@@ -100,9 +100,9 @@ if (demo) {
   // 0:20-0:40 the idea and the Control Tower
   await page.goto(`${base}/?still`)
   await page.waitForTimeout(1200)
-  await caption('Signalbox: railway interlocking for IBM Bob. No agent enters a block until its signal is green.', 6500)
+  await caption("Signalbox: railway interlocking for IBM Bob. Here is Bob's real run: 72 legacy calls down to 0.", 6500)
   await page.evaluate(() => document.getElementById('tower').scrollIntoView({ behavior: 'smooth', block: 'start' }))
-  await caption("The Control Tower: IBM Bob's plan, 6 blocks in 2 waves, and the safety proof. Same signal box.", 6500)
+  await caption('6 Bob subagents, up to 3 at once. One claim refused at a red signal. 6 of 6 blocks cleared, 0 faults.', 7000)
   await caption('Watch what happens when one agent goes rogue.', 1200)
   await page.click('#ask-input')
   await page.keyboard.type('simulate bad agent', { delay: 90 })
