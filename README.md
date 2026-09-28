@@ -8,6 +8,8 @@ Built for the IBM Bob 2.0 Hackathon (Sep 25–27, 2026).
 
 ### The IBM Bob run
 
+▶ **Watch the run (56 s): https://youtu.be/yXCaLWE52gA**
+
 IBM Bob's parallel subagents migrated `legacy-dapp` from ethers v5 + web3.js to viem + wagmi under
 the signal box: **72 → 0 legacy call sites, 6/6 blocks in 2 waves, 6 Bob subagents with up to 3 at
 once, 1 claim refused at a red signal, 0 faults, 22/22 behavior tests passing and never modified,
