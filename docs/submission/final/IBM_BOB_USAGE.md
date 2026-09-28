@@ -25,6 +25,7 @@ We built the harness: the scanner and planner, the interlocking, the behavior te
 | **Subagents + parallel tasks** | One subagent per block, a whole wave at once: 6 subagents, up to 3 in parallel, on files the signal box keeps disjoint. | ledger: `claim` events with overlapping times |
 | **Agent mode, terminal + edits** | Each subagent runs the protocol itself: `claim` → edit → `release` (isolated tests) → fix and release again, or `rollback`. | 6 commits `signalbox: clear <block>`, tagged `Signalbox-Agent: bob-1` … `bob-6` |
 | **Self-verification** | Every block passed scope, contract, legacy scan and the 22 behavior tests on an isolated worktree before its commit; no fault occurred in this run, so no fix-and-retry was needed. Tests were never modified. | `verify` events, all `ok: true` |
+| **Code review + fix** | After the migration Bob reviewed `before-bob..HEAD` and reported 8 findings with file:line. The High one was real: a reverted transfer was shown as confirmed (viem returns `status: 'reverted'` where ethers threw). A follow-up Bob task fixed it and added a regression test. | commits `247adc8` (cleanup), `ec1fbb1` (fixes + `erc20.test.js`) |
 
 ## Why this showcases Bob
 
@@ -44,7 +45,8 @@ guaranteed; Bob's subagents face the same checks.
 - Legacy call sites: 72 → 0. Blocks: 6/6 cleared in 2 waves.
 - Faults caught before commit: 0. Claims refused at signal: 1. Chaos drills caught: 0. Tests: passed, unmodified.
 - Bob's parallel run: 4 min 17 s from the first claim to the last clear (00:07–00:11 UTC, 28 Sep).
-- Bob's cost: about 5.1 Bobcoins for all three sessions (onboarding 0.46, expand 1.17, dispatcher run 3.47).
+- Bob's cost: about 7.5 Bobcoins for six sessions (onboarding 0.46, expand 1.17, dispatcher run 3.47,
+  cleanup 1.08, review 0.35, fixes 0.97).
 
 ## watsonx
 

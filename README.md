@@ -15,6 +15,16 @@ bundle 537 → 161 kB gzip**. Bob's parallel run took 4 min 17 s; every block is
 `Signalbox-Agent: bob-N`, and `npm run -s sb -- audit` re-checks the hash-chained ledger against git.
 Details: [reports/after.md](reports/after.md), [reports/signalbox-report.md](reports/signalbox-report.md).
 
+After the parallel run, Bob finished the job in three more sessions:
+- **Cleanup** (`247adc8`): removed ethers and web3 from `package.json` (509 → 125 installed
+  packages); `npm run guard` is now blocking in CI.
+- **Code review** of `before-bob..HEAD`: 8 findings with file:line. The one rated High was real and
+  invisible to the tests: viem's `waitForTransactionReceipt` returns `status: 'reverted'` where
+  ethers' `tx.wait()` threw, so a failed transfer was shown as "Confirmed in block N".
+- **Fixes** (`ec1fbb1`): reverted receipts now throw (transfer and approve), `switchChain`
+  rejections reach the UI, the unused `lib/clients.js` is gone, and two new tests pin the revert
+  behavior (24/24 pass).
+
 *Timing note:* this run was recorded on 27–28 Sep 2026, after the hackathon submission deadline
 (27 Sep, 15:00 UTC). The statements as submitted are kept in `docs/submission/final/*.txt`.
 
