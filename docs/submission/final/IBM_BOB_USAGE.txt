@@ -1,3 +1,5 @@
+[As submitted to lablab.ai before the deadline, 27 Sep 2026. The IBM Bob run was recorded afterwards: see IBM_BOB_USAGE.md.]
+
 Bob can run several subagents in parallel; the hard part is trusting what they do together. We built Signalbox as the control layer that makes Bob's parallelism safe on one codebase, and designed every part of it around Bob's capabilities.
 
 HOW SIGNALBOX IS BUILT FOR BOB

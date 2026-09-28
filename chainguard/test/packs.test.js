@@ -94,7 +94,10 @@ test('block prompts carry the traps for their rules and warn off shared-folder t
   const { scanDir } = await import('../src/scan.js')
   const { DEFAULT_PACK } = await import('../src/rules.js')
   const { fileURLToPath } = await import('node:url')
-  const dir = fileURLToPath(new URL('../../legacy-dapp/src', import.meta.url))
+  let dir = fileURLToPath(new URL('../../legacy-dapp/src', import.meta.url))
+  // After Bob's migration the working tree has no legacy calls left to plan, so plan the code as it
+  // was before the migration.
+  if (!scanDir(dir, DEFAULT_PACK.rules).totals.findings) dir = legacyTree()
   const plan = buildPlan(scanDir(dir, DEFAULT_PACK.rules), { scanPath: 'legacy-dapp/src', pack: DEFAULT_PACK })
   const signing = plan.tasks.find((t) => t.files.some((f) => f.endsWith('signing.js')))
   assert.match(signing.prompt, /recoverMessageAddress is async/)
@@ -102,3 +105,19 @@ test('block prompts carry the traps for their rules and warn off shared-folder t
   assert.equal(signing.prompt.match(/parseUnits silently rounds/g).length, 1, 'each trap once')
   for (const t of plan.tasks) assert.match(t.prompt, /Judge the tests by `release`/)
 })
+
+// legacy-dapp/src as it was before the migration: the parent of the first `signalbox: clear` commit,
+// written out to a temp folder (tests run on a full clone in CI).
+function legacyTree() {
+  const repo = fileURLToPath(new URL('../..', import.meta.url))
+  const git = (...args) => execFileSync('git', args, { cwd: repo, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+  const clears = git('log', '--format=%H', '--grep=^signalbox: clear', '--', 'legacy-dapp/src').trim().split('\n')
+  const rev = `${clears.at(-1)}^`
+  const out = mkdtempSync(join(tmpdir(), 'legacy-src-'))
+  for (const f of git('ls-tree', '-r', '--name-only', rev, 'legacy-dapp/src').trim().split('\n')) {
+    const dest = join(out, f.slice('legacy-dapp/src/'.length))
+    mkdirSync(join(dest, '..'), { recursive: true })
+    writeFileSync(dest, git('show', `${rev}:${f}`))
+  }
+  return out
+}

@@ -6,12 +6,24 @@ block is released only after a track circuit proves it clear. Signalbox does the
 subagents changing one codebase at the same time, and shows it live on a transit-map signal box.
 Built for the IBM Bob 2.0 Hackathon (Sep 25–27, 2026).
 
+### The IBM Bob run
+
+IBM Bob's parallel subagents migrated `legacy-dapp` from ethers v5 + web3.js to viem + wagmi under
+the signal box: **72 → 0 legacy call sites, 6/6 blocks in 2 waves, 6 Bob subagents with up to 3 at
+once, 1 claim refused at a red signal, 0 faults, 22/22 behavior tests passing and never modified,
+bundle 537 → 161 kB gzip**. Bob's parallel run took 4 min 17 s; every block is its own commit tagged
+`Signalbox-Agent: bob-N`, and `npm run -s sb -- audit` re-checks the hash-chained ledger against git.
+Details: [reports/after.md](reports/after.md), [reports/signalbox-report.md](reports/signalbox-report.md).
+
+*Timing note:* this run was recorded on 27–28 Sep 2026, after the hackathon submission deadline
+(27 Sep, 15:00 UTC). The statements as submitted are kept in `docs/submission/final/*.txt`.
+
 ## Judge it in 60 seconds
 
 | Try this | What you'll see |
 | --- | --- |
 | Click **◆ Prove safety** (or type *simulate bad agent* in the Desk) | Three drill agents enter three blocks at once; one edits outside its block and breaks an export. It is caught before commit and rolled back, the other two commit, and the verdict is re-checked in your browser: *All changes proven. Zero collisions. Ledger verified.* (20 s; the deployed site replays a real recorded run, `npm run signalbox` runs it live) |
-| Open **https://bob-chainguard.vercel.app/?tour** *(after a recorded Bob run)* | The Bob run replays itself with captions: subagents claiming blocks, a refused claim, a fault caught before commit; it ends with the safety proof |
+| Open **https://bob-chainguard.vercel.app/?tour**  | The Bob run replays itself with captions: subagents claiming blocks, a refused claim, a fault caught before commit; it ends with the safety proof |
 | Click **Ledger verified** under the title, then **Tamper test** | Your browser re-hashes every event; editing one event in memory breaks the chain right there |
 | Type *why w2-lib* in the **Desk** bar under the control tower | An answer computed from the ledger, and the block lights up |
 | Toggle **Risk heatmap** on the map | Every unfinished block glows by risk |

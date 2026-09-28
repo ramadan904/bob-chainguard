@@ -31,7 +31,8 @@ try {
   const lib = await import(new URL('../chainguard/src/signalbox.js', import.meta.url))
   const { reduce } = await import(new URL('../chainguard/src/signalbox-state.js', import.meta.url))
 
-  const opened = lib.init(wt, { scanPath: 'samples/moment-billing/src', pack: 'chainguard/packs/moment-to-date-fns.json', testCmd: 'npm test --prefix samples/moment-billing' })
+  // force: the checkout carries the committed Bob-run ledger; a fresh box replaces it in this throwaway copy only.
+  const opened = lib.init(wt, { scanPath: 'samples/moment-billing/src', pack: 'chainguard/packs/moment-to-date-fns.json', testCmd: 'npm test --prefix samples/moment-billing', force: true })
   const tasks = opened.plan.tasks
   expect('signal box opens with the Moment.js pack', tasks.length > 1 && opened.pack.endsWith('moment-to-date-fns.json'), `${tasks.length} blocks in ${opened.plan.waves} waves`)
 

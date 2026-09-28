@@ -1,3 +1,5 @@
+[As submitted to lablab.ai before the deadline, 27 Sep 2026. The IBM Bob run was recorded afterwards: see IBM_BOB_USAGE.md.]
+
 PROBLEM
 Every agent finished. The build didn't. Teams let three AI coding agents loose on one codebase to go three times faster. One renames a function the others still call. Another "fixes" a failing test by rewriting the test. Nobody can tell which change broke the build. So teams stop trusting agents in parallel and go back to one at a time.
 

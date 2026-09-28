@@ -1498,7 +1498,8 @@ async function start() {
   const live = await connectLive()
   if (!live) {
     model.mode = model.events.length ? 'replay' : 'baseline'
-    model.stop = model.events.length ? 0 : Infinity
+    // A recorded run opens on its result (the replay control starts it from the beginning).
+    model.stop = Infinity
   }
   model.home = { atlas: model.atlas, events: model.events, mode: model.mode, stop: model.stop }
   buildPacks()

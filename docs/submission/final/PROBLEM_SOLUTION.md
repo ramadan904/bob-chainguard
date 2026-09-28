@@ -1,5 +1,9 @@
 # Problem & Solution Statement
 
+> **Timing note:** the IBM Bob run reported here was recorded on 27–28 Sep 2026, after the IBM Bob 2.0
+> Hackathon submission deadline (27 Sep, 15:00 UTC). The version submitted before the deadline is kept
+> unchanged in `LONG_DESCRIPTION.txt` and `IBM_BOB_USAGE.txt` in this folder.
+
 
 ## Problem
 
@@ -44,9 +48,9 @@ dApp from ethers v5 and web3.js to viem and wagmi: 72 legacy call sites, 6 block
 | --- | --- |
 | Legacy call sites | 72 → 0 |
 | Blocks cleared by Bob subagents | 6/6, 6 agents, up to 3 in parallel |
-| Faults caught before commit | 0 (e.g. {{fault_example}}) |
+| Faults caught before commit | 0 (every block passed all four checks) |
 | Refused claims / chaos drills caught | 1 / 0, none reached a commit |
 | Behavior tests | 22 / 22, never modified |
-| Wall-clock time | 4 h 23 min |
+| Bob's parallel run | 4 min 17 s, first claim to last clear |
 
 Swap the rule pack (Moment.js → date-fns ships too) and the same control layer protects any large parallel-agent change.
