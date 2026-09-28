@@ -1,8 +1,8 @@
-import { ethers, BigNumber } from 'ethers'
+import { formatUnits, parseUnits, parseEther } from 'viem'
 
 // Format a raw on-chain integer amount for display, trimming to `maxFractionDigits`.
 export function formatAmount(raw, decimals = 18, maxFractionDigits = 4) {
-  const value = ethers.utils.formatUnits(BigNumber.from(raw), decimals)
+  const value = formatUnits(BigInt(raw), decimals)
   const [whole, fraction = ''] = value.split('.')
   const trimmed = fraction.slice(0, maxFractionDigits).replace(/0+$/, '')
   const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
@@ -13,7 +13,11 @@ export function formatAmount(raw, decimals = 18, maxFractionDigits = 4) {
 export function parseAmount(input, decimals = 18) {
   const cleaned = String(input).trim().replace(/,/g, '')
   if (!/^\d*\.?\d*$/.test(cleaned) || cleaned === '' || cleaned === '.') throw new Error(`Invalid amount: ${input}`)
-  return ethers.utils.parseUnits(cleaned, decimals).toString()
+  const dotIndex = cleaned.indexOf('.')
+  if (dotIndex !== -1 && cleaned.length - dotIndex - 1 > decimals) {
+    throw new Error(`Too many decimals for ${decimals} decimal asset: ${input}`)
+  }
+  return parseUnits(cleaned, decimals).toString()
 }
 
 export function formatEth(weiRaw, maxFractionDigits = 4) {
@@ -21,28 +25,28 @@ export function formatEth(weiRaw, maxFractionDigits = 4) {
 }
 
 export function parseEth(input) {
-  return ethers.utils.parseEther(String(input)).toString()
+  return parseEther(String(input)).toString()
 }
 
 export function isZeroAmount(raw) {
-  return BigNumber.from(raw).isZero()
+  return BigInt(raw) === 0n
 }
 
 // True when `balance` covers `amount` (both raw integers).
 export function hasSufficientBalance(balance, amount) {
-  return BigNumber.from(balance).gte(BigNumber.from(amount))
+  return BigInt(balance) >= BigInt(amount)
 }
 
 // Share of `part` in `total` in basis points (1% = 100).
 export function shareBps(part, total) {
-  const t = BigNumber.from(total)
-  if (t.isZero()) return 0
-  return BigNumber.from(part).mul(10000).div(t).toNumber()
+  const t = BigInt(total)
+  if (t === 0n) return 0
+  return Number((BigInt(part) * 10000n) / t)
 }
 
 // Largest amount that can be sent after reserving `reserve` for fees; never negative.
 export function maxSendable(balance, reserve) {
-  const b = BigNumber.from(balance)
-  const r = BigNumber.from(reserve)
-  return b.lte(r) ? '0' : b.sub(r).toString()
+  const b = BigInt(balance)
+  const r = BigInt(reserve)
+  return b <= r ? '0' : (b - r).toString()
 }

@@ -1,16 +1,17 @@
-import { ethers } from 'ethers'
+import { keccak256, toHex, recoverMessageAddress } from 'viem'
 
 export function messageDigest(message) {
-  return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(message))
+  return keccak256(toHex(message))
 }
 
-export function recoverSigner(message, signature) {
-  return ethers.utils.verifyMessage(message, signature)
+export async function recoverSigner(message, signature) {
+  return recoverMessageAddress({ message, signature })
 }
 
 export async function signWithWallet(signer, message) {
-  const signature = await signer.signMessage(message)
-  return { message, signature, signer: await signer.getAddress() }
+  const account = signer.account?.address ?? (await signer.getAddresses())[0]
+  const signature = await signer.signMessage({ account, message })
+  return { message, signature, signer: account }
 }
 
 export function buildLoginMessage(address, nonce, issuedAt = new Date().toISOString()) {
